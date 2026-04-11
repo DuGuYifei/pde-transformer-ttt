@@ -21,17 +21,17 @@
 [Project Page](https://tum-pbs.github.io/pde-transformer/landing.html) • 
 [🤗 Hugging Face](https://huggingface.co/thuerey-group/pde-transformer) • 
 [Documentation](https://tum-pbs.github.io/pde-transformer)
-<br>
-[Installation](#-quick-installation) •
-[Description](#-model-description) •
-[Features](#-key-highlights) •
-[Usage](#-usage)
-
 </div>
 
 ---
 
 **Authors:** [Benjamin Holzschuh](), [Qiang Liu](), [Georg Kohl](), [Nils Thuerey](https://ge.in.tum.de/about/n-thuerey/)
+
+---
+
+## For P3D: see https://github.com/tum-pbs/P3D
+
+---
 
 **PDE-Transformer** is a state-of-the-art neural architecture for physics simulations, specifically designed for partial differential equations (PDEs) on regular grids. This work will be presented at **ICML 2025**.
 
