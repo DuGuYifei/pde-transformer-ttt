@@ -16,10 +16,10 @@ import collections.abc
 import numpy as np
 from timm.models.layers import trunc_normal_, DropPath
 import torch
-from transformers.pytorch_utils import meshgrid, find_pruneable_heads_and_indices, prune_linear_layer
 
 from ..mixed_channels.udit import FinalLayer, precompute_freqs_cis_2d, apply_rotary_emb
 from ..mixed_channels.pde_transformer import Mlp
+from ..ttt_window_attention import TTTWindowAttention2DTime
 
 
 # Copied from transformers.models.swin.modeling_swin.window_partition
@@ -400,6 +400,12 @@ class PDEStage(nn.Module):
         self, dim: int, depth: int,
             num_heads: int, window_size: int, drop_path, mlp_ratio: float = 4.0, apply_shifts: bool = True,
             qkv_bias=True, periodic=False, use_carrier_tokens: bool = True,
+            use_ttt_window_attention: bool = False,
+            ttt_layer_type: str = "linear",
+            ttt_mini_batch_size: int = 16,
+            ttt_base_lr: float = 1.0,
+            ttt_use_gate: bool = False,
+            ttt_scan_checkpoint_group_size: int = 0,
     ):
         super().__init__()
 
@@ -414,6 +420,12 @@ class PDEStage(nn.Module):
                 periodic=periodic,
                 use_carrier_tokens=use_carrier_tokens,
                 mlp_ratio=mlp_ratio,
+                use_ttt_window_attention=use_ttt_window_attention,
+                ttt_layer_type=ttt_layer_type,
+                ttt_mini_batch_size=ttt_mini_batch_size,
+                ttt_base_lr=ttt_base_lr,
+                ttt_use_gate=ttt_use_gate,
+                ttt_scan_checkpoint_group_size=ttt_scan_checkpoint_group_size,
             )
             blocks.append(block)
         self.blocks = nn.ModuleList(blocks)
@@ -950,6 +962,12 @@ class HATDiTBlock(nn.Module):
         use_carrier_tokens=True,
         shift_size=0,
         periodic=False,
+        use_ttt_window_attention: bool = False,
+        ttt_layer_type: str = "linear",
+        ttt_mini_batch_size: int = 16,
+        ttt_base_lr: float = 1.0,
+        ttt_use_gate: bool = False,
+        ttt_scan_checkpoint_group_size: int = 0,
     ):
         super().__init__()
         """
@@ -980,15 +998,26 @@ class HATDiTBlock(nn.Module):
 
         self.cr_window = 1
 
-        self.attn_spatial = WindowAttention2DTime(
-            dim,
-            num_heads=num_heads,
-            qkv_bias=qkv_bias,
-            qk_scale=qk_scale,
-            attn_drop=attn_drop,
-            proj_drop=drop,
-            resolution=window_size,
-        )
+        if use_ttt_window_attention:
+            self.attn_spatial = TTTWindowAttention2DTime(
+                dim,
+                num_heads=num_heads,
+                ttt_layer_type=ttt_layer_type,
+                ttt_base_lr=ttt_base_lr,
+                mini_batch_size=ttt_mini_batch_size,
+                use_gate=ttt_use_gate,
+                scan_checkpoint_group_size=ttt_scan_checkpoint_group_size,
+            )
+        else:
+            self.attn_spatial = WindowAttention2DTime(
+                dim,
+                num_heads=num_heads,
+                qkv_bias=qkv_bias,
+                qk_scale=qk_scale,
+                attn_drop=attn_drop,
+                proj_drop=drop,
+                resolution=window_size,
+            )
 
         self.attn_channel = SelfAttention(
             dim=dim,
@@ -1275,6 +1304,12 @@ class PDEImpl(nn.Module):
             periodic: bool = False,
             use_carrier_tokens: bool = True,
             apply_shifts: bool = True,
+            use_ttt_window_attention: bool = False,
+            ttt_layer_type: str = "linear",
+            ttt_mini_batch_size: int = 16,
+            ttt_base_lr: float = 1.0,
+            ttt_use_gate: bool = False,
+            ttt_scan_checkpoint_group_size: int = 0,
             **kwargs
     ):
         super().__init__()
@@ -1299,6 +1334,12 @@ class PDEImpl(nn.Module):
             'use_carrier_tokens': use_carrier_tokens,
             'mlp_ratio': mlp_ratio,
             'apply_shifts': apply_shifts,
+            'use_ttt_window_attention': use_ttt_window_attention,
+            'ttt_layer_type': ttt_layer_type,
+            'ttt_mini_batch_size': ttt_mini_batch_size,
+            'ttt_base_lr': ttt_base_lr,
+            'ttt_use_gate': ttt_use_gate,
+            'ttt_scan_checkpoint_group_size': ttt_scan_checkpoint_group_size,
         }
 
         self.use_carrier_tokens = use_carrier_tokens
@@ -1607,10 +1648,20 @@ class PDETransformer(ModelMixin, ConfigMixin):
             periodic: bool = False,
             carrier_token_active: bool = True,
             patch_size: Optional[int] = None,
+            use_ttt_window_attention: bool = False,
+            ttt_layer_type: str = "linear",
+            ttt_mini_batch_size: int = 16,
+            ttt_base_lr: float = 1.0,
+            ttt_use_gate: bool = False,
+            ttt_scan_checkpoint_group_size: int = 0,
     ):
         super(PDETransformer, self).__init__()
         args = { 'num_timesteps': num_timesteps, 'patch_size': patch_size, 'learn_sigma': False,
-                 'periodic': periodic, 'use_carrier_tokens': carrier_token_active}
+                 'periodic': periodic, 'use_carrier_tokens': carrier_token_active,
+                 'use_ttt_window_attention': use_ttt_window_attention, 'ttt_layer_type': ttt_layer_type,
+                 'ttt_mini_batch_size': ttt_mini_batch_size, 'ttt_base_lr': ttt_base_lr,
+                 'ttt_use_gate': ttt_use_gate,
+                 'ttt_scan_checkpoint_group_size': ttt_scan_checkpoint_group_size}
 
         self.model: PDEImpl = PDE_models[type](**args)
         self.sample_size = sample_size

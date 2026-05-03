@@ -16,6 +16,7 @@ from timm.models.layers import DropPath
 import torch
 
 from .udit import FinalLayer, precompute_freqs_cis_2d, apply_rotary_emb
+from ..ttt_window_attention import TTTWindowAttention2DTime
 
 ###############################
 # We need to create subclass of Swinv2PreTrainedModel because it sets use_mask_token=True
@@ -352,6 +353,12 @@ class PDEStage(nn.Module):
             periodic=False, carrier_token_active: bool = True,
             mlp_ratio: float = 4.0,
             drop_path: float = 0.0,
+            use_ttt_window_attention: bool = False,
+            ttt_layer_type: str = "linear",
+            ttt_mini_batch_size: int = 16,
+            ttt_base_lr: float = 1.0,
+            ttt_use_gate: bool = False,
+            ttt_scan_checkpoint_group_size: int = 0,
     ):
         super().__init__()
 
@@ -366,6 +373,12 @@ class PDEStage(nn.Module):
                 mlp_ratio=mlp_ratio,
                 carrier_token_active=carrier_token_active,
                 drop_path=drop_path,
+                use_ttt_window_attention=use_ttt_window_attention,
+                ttt_layer_type=ttt_layer_type,
+                ttt_mini_batch_size=ttt_mini_batch_size,
+                ttt_base_lr=ttt_base_lr,
+                ttt_use_gate=ttt_use_gate,
+                ttt_scan_checkpoint_group_size=ttt_scan_checkpoint_group_size,
             )
             blocks.append(block)
 
@@ -777,6 +790,12 @@ class PDEBlock(nn.Module):
         last=False,
         do_propagation=False,
         carrier_token_active=True,
+        use_ttt_window_attention: bool = False,
+        ttt_layer_type: str = "linear",
+        ttt_mini_batch_size: int = 16,
+        ttt_base_lr: float = 1.0,
+        ttt_use_gate: bool = False,
+        ttt_scan_checkpoint_group_size: int = 0,
     ):
         super().__init__()
         """
@@ -803,15 +822,26 @@ class PDEBlock(nn.Module):
         self.carrier_token_active = carrier_token_active
 
         self.cr_window = 1
-        self.attn = WindowAttention2DTime(
-            dim,
-            num_heads=num_heads,
-            qkv_bias=qkv_bias,
-            qk_scale=qk_scale,
-            attn_drop=attn_drop,
-            proj_drop=drop,
-            resolution=window_size,
-        )
+        if use_ttt_window_attention:
+            self.attn = TTTWindowAttention2DTime(
+                dim,
+                num_heads=num_heads,
+                ttt_layer_type=ttt_layer_type,
+                ttt_base_lr=ttt_base_lr,
+                mini_batch_size=ttt_mini_batch_size,
+                use_gate=ttt_use_gate,
+                scan_checkpoint_group_size=ttt_scan_checkpoint_group_size,
+            )
+        else:
+            self.attn = WindowAttention2DTime(
+                dim,
+                num_heads=num_heads,
+                qkv_bias=qkv_bias,
+                qk_scale=qk_scale,
+                attn_drop=attn_drop,
+                proj_drop=drop,
+                resolution=window_size,
+            )
 
         self.drop_path = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
         self.norm2 = norm_layer(dim)
@@ -1135,6 +1165,12 @@ class PDEImpl(nn.Module):
             num_classes=1000,
             periodic=True,
             carrier_token_active: bool = False,
+            use_ttt_window_attention: bool = False,
+            ttt_layer_type: str = "linear",
+            ttt_mini_batch_size: int = 16,
+            ttt_base_lr: float = 1.0,
+            ttt_use_gate: bool = False,
+            ttt_scan_checkpoint_group_size: int = 0,
             **kwargs
     ):
         super().__init__()
@@ -1159,6 +1195,12 @@ class PDEImpl(nn.Module):
             "periodic": periodic,
             'carrier_token_active': carrier_token_active,
             'mlp_ratio': mlp_ratio,
+            'use_ttt_window_attention': use_ttt_window_attention,
+            'ttt_layer_type': ttt_layer_type,
+            'ttt_mini_batch_size': ttt_mini_batch_size,
+            'ttt_base_lr': ttt_base_lr,
+            'ttt_use_gate': ttt_use_gate,
+            'ttt_scan_checkpoint_group_size': ttt_scan_checkpoint_group_size,
         }
 
         if patch_size is not None:
