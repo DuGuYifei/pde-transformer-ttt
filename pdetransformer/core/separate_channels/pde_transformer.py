@@ -22,6 +22,12 @@ from ..mixed_channels.pde_transformer import Mlp
 from ..ttt_window_attention import TTTWindowAttention2DTime
 
 
+def detach_ttt_state(ttt_state):
+    if ttt_state is None:
+        return None
+    return {key: value.detach() for key, value in ttt_state.items()}
+
+
 # Copied from transformers.models.swin.modeling_swin.window_partition
 def window_partition(input_feature, window_size):
     """
@@ -482,7 +488,9 @@ class PDEStage(nn.Module):
                 hidden_states: torch.Tensor,
                 cond: Optional[torch.Tensor] = None,
                 timestep: Optional[torch.LongTensor] = None,
-                class_labels: Optional[torch.LongTensor] = None, ):
+                class_labels: Optional[torch.LongTensor] = None,
+                ttt_state_cache: Optional[dict[str, dict[str, torch.Tensor]]] = None,
+                return_ttt_state_cache: bool = False, ):
 
         B, C, D, H, W = hidden_states.shape
 
@@ -515,8 +523,15 @@ class PDEStage(nn.Module):
 
             hidden_states = window_partition(shifted_hidden_states, self.window_size)
 
-            hidden_states2, ct = block(hidden_states, ct, timestep=timestep, class_labels=class_labels, emb=cond,
-                                       attn_mask=attn_mask)
+            if return_ttt_state_cache:
+                hidden_states2, ct, ttt_state_cache = block(
+                    hidden_states, ct, timestep=timestep, class_labels=class_labels, emb=cond,
+                    attn_mask=attn_mask, ttt_state_cache=ttt_state_cache,
+                    return_ttt_state_cache=True,
+                )
+            else:
+                hidden_states2, ct = block(hidden_states, ct, timestep=timestep, class_labels=class_labels, emb=cond,
+                                           attn_mask=attn_mask)
 
             hidden_states = window_reverse(hidden_states2, self.window_size, height_pad, width_pad)
 
@@ -529,6 +544,8 @@ class PDEStage(nn.Module):
 
             hidden_states = torch.permute(hidden_states, (0, 1, 4, 2, 3))
 
+        if return_ttt_state_cache:
+            return hidden_states, ttt_state_cache
         return hidden_states
 
 
@@ -1093,7 +1110,9 @@ class HATDiTBlock(nn.Module):
                 timestep: Optional[torch.LongTensor] = None,
                 class_labels: Optional[torch.LongTensor] = None,
                 emb: Optional[torch.LongTensor] = None,
-                attn_mask: Optional[torch.Tensor] = None):
+                attn_mask: Optional[torch.Tensor] = None,
+                ttt_state_cache: Optional[dict[str, dict[str, torch.Tensor]]] = None,
+                return_ttt_state_cache: bool = False):
 
         B, C, H, W, N = x.shape
 
@@ -1220,7 +1239,19 @@ class HATDiTBlock(nn.Module):
 
         x_msa = self.norm1(x)
         x_msa = x_msa * (1 + msa1_scale) + msa1_shift
-        x_msa = self.attn_spatial(x_msa, attn_mask=attn_mask)
+        if return_ttt_state_cache and isinstance(self.attn_spatial, TTTWindowAttention2DTime):
+            if ttt_state_cache is None:
+                ttt_state_cache = {}
+            cache_key = self.attn_spatial.cache_key
+            x_msa, next_ttt_state = self.attn_spatial(
+                x_msa,
+                attn_mask=attn_mask,
+                ttt_state=ttt_state_cache.get(cache_key),
+                return_ttt_state=True,
+            )
+            ttt_state_cache[cache_key] = detach_ttt_state(next_ttt_state) if self.training else next_ttt_state
+        else:
+            x_msa = self.attn_spatial(x_msa, attn_mask=attn_mask)
         x_msa = x_msa * (1 + msa1_gate)
 
         x = x + self.drop_path(x_msa)
@@ -1280,6 +1311,8 @@ class HATDiTBlock(nn.Module):
 
         x = x.view(B, C, H, W, N)
 
+        if return_ttt_state_cache:
+            return x, ct, ttt_state_cache
         return x, ct
 
 
@@ -1470,6 +1503,8 @@ class PDEImpl(nn.Module):
                 simulation_dt: list[torch.Tensor], # list of tensor with shape B
                 task: list[torch.Tensor], # list of tensors with shape B
                 t: list[torch.Tensor],  # list of tensors with shape B
+                ttt_state_cache=None,
+                return_ttt_state_cache: bool = False,
                ):
         """
         Forward pass of PDETransformer.
@@ -1545,7 +1580,13 @@ class PDEImpl(nn.Module):
 
         for i, c in enumerate(emb_list[:-1]):
             # encoder
-            out_enc_level = self.__getattr__(f"encoder_level_{i}")(x, c)
+            encoder_level = self.__getattr__(f"encoder_level_{i}")
+            if return_ttt_state_cache:
+                out_enc_level, ttt_state_cache = encoder_level(
+                    x, c, ttt_state_cache=ttt_state_cache, return_ttt_state_cache=True
+                )
+            else:
+                out_enc_level = encoder_level(x, c)
             residuals_list.append(out_enc_level)
 
             out_enc_level = out_enc_level.view((B*C,) + out_enc_level.shape[2:])
@@ -1553,7 +1594,12 @@ class PDEImpl(nn.Module):
             x = out_enc_level.view((B, C) + out_enc_level.shape[1:])
 
         c = emb_list[-1]
-        x = self.latent(x, c)
+        if return_ttt_state_cache:
+            x, ttt_state_cache = self.latent(
+                x, c, ttt_state_cache=ttt_state_cache, return_ttt_state_cache=True
+            )
+        else:
+            x = self.latent(x, c)
 
         for i, (residual, emb) in enumerate(zip(residuals_list[1:][::-1], emb_list[1:-1][::-1])):
             # decoder
@@ -1566,7 +1612,13 @@ class PDEImpl(nn.Module):
             x = x.view((B*C,) + x.shape[2:])
             x = self.__getattr__(f"reduce_chan_level{self.num_encoder_layers - i - 1}")(x)
             x = x.view((B, C) + x.shape[1:])
-            x = self.__getattr__(f"decoder_level_{self.num_encoder_layers - i - 1}")(x, emb)
+            decoder_level = self.__getattr__(f"decoder_level_{self.num_encoder_layers - i - 1}")
+            if return_ttt_state_cache:
+                x, ttt_state_cache = decoder_level(
+                    x, emb, ttt_state_cache=ttt_state_cache, return_ttt_state_cache=True
+                )
+            else:
+                x = decoder_level(x, emb)
 
         x = x.view((B*C,) + x.shape[2:])
         x = self.__getattr__(f"up1_0")(x)
@@ -1578,7 +1630,13 @@ class PDEImpl(nn.Module):
         x = self.__getattr__(f"reduce_chan_level0")(x)
         x = x.view((B, C) + x.shape[1:])
 
-        x = self.__getattr__(f"decoder_level_0")(x, emb_list[1])
+        decoder_level = self.__getattr__(f"decoder_level_0")
+        if return_ttt_state_cache:
+            x, ttt_state_cache = decoder_level(
+                x, emb_list[1], ttt_state_cache=ttt_state_cache, return_ttt_state_cache=True
+            )
+        else:
+            x = decoder_level(x, emb_list[1])
         x = x.view((B*C,) + x.shape[2:])
 
         # output
@@ -1605,6 +1663,8 @@ class PDEImpl(nn.Module):
 
         x = x.view((B, C) + x.shape[1:])
 
+        if return_ttt_state_cache:
+            return x, ttt_state_cache
         return x
 
     def forward_with_cfg(self, x, t, y, cfg_scale):
@@ -1636,6 +1696,7 @@ class PDETransformerOutput(BaseOutput):
     """
 
     sample: torch.Tensor
+    ttt_state_cache: Optional[dict[str, dict[str, torch.Tensor]]] = None
 
 class PDETransformer(ModelMixin, ConfigMixin):
 
@@ -1682,6 +1743,8 @@ class PDETransformer(ModelMixin, ConfigMixin):
             task: list[torch.Tensor],  # list of tensors with shape B C
             t: list[torch.Tensor],  # list of tensors with shape B
             return_dict: bool = True,
+            ttt_state_cache: Optional[dict[str, dict[str, torch.Tensor]]] = None,
+            return_ttt_state_cache: bool = False,
     ):
 
         # SCALE PARAMETERS
@@ -1708,14 +1771,19 @@ class PDETransformer(ModelMixin, ConfigMixin):
             simulation_dt=simulation_dt,
             task=task,
             t=t,
+            ttt_state_cache=ttt_state_cache,
+            return_ttt_state_cache=return_ttt_state_cache,
         )
+        next_ttt_state_cache = None
+        if return_ttt_state_cache:
+            output, next_ttt_state_cache = output
 
         output = list(torch.transpose(output, 0, 1))
 
         if not return_dict:
             return (output,)
 
-        return PDETransformerOutput(sample=output)
+        return PDETransformerOutput(sample=output, ttt_state_cache=next_ttt_state_cache)
 
 
 #################################################################################

@@ -20,12 +20,16 @@ class SingleStepSupervised(lightning.LightningModule):
                  detect_zero_grad=False,
                  normalize_channels=False,
                  optimizer='adamw',
+                 use_ttt_state_cache_inference: bool = False,
+                 use_ttt_state_cache_train: bool = False,
                  ):
         super(SingleStepSupervised, self).__init__()
 
         self.image_key = image_key
         self.optimizer = optimizer
         self.normalize_channels = normalize_channels
+        self.use_ttt_state_cache_inference = use_ttt_state_cache_inference
+        self.use_ttt_state_cache_train = use_ttt_state_cache_train
 
         if isinstance(model, dict):
             self.model: nn.Module = instantiate_from_config(model)
@@ -113,7 +117,13 @@ class SingleStepSupervised(lightning.LightningModule):
 
         input, target, labels = self.get_input(batch)
 
-        pred = self.model(input, class_labels=labels).sample
+        model_output = self.model(
+            input,
+            class_labels=labels,
+            ttt_state_cache={} if self.use_ttt_state_cache_train else None,
+            return_ttt_state_cache=self.use_ttt_state_cache_train,
+        )
+        pred = model_output.sample
 
         # select last frame as target
         target = target[:, -1]
@@ -136,7 +146,13 @@ class SingleStepSupervised(lightning.LightningModule):
 
         input, target, labels = self.get_input(batch)
 
-        pred = self.model(input, class_labels=labels).sample
+        model_output = self.model(
+            input,
+            class_labels=labels,
+            ttt_state_cache={} if self.use_ttt_state_cache_train else None,
+            return_ttt_state_cache=self.use_ttt_state_cache_train,
+        )
+        pred = model_output.sample
 
         # select last frame as target
         target = target[:, -1]
@@ -184,10 +200,20 @@ class SingleStepSupervised(lightning.LightningModule):
 
     def predict_step(self, previous_frame,
                      num_inference_steps=100,
-                     generator=None, **kwargs):
+                     generator=None,
+                     ttt_state_cache=None,
+                     return_ttt_state_cache: bool = False,
+                     **kwargs):
 
-        pred = self.model(previous_frame, **kwargs).sample
-
+        model_output = self.model(
+            previous_frame,
+            ttt_state_cache=ttt_state_cache,
+            return_ttt_state_cache=return_ttt_state_cache,
+            **kwargs,
+        )
+        pred = model_output.sample
+        if return_ttt_state_cache:
+            return pred, model_output.ttt_state_cache
         return pred
 
     def postprocess_output(self, x0, physical_metadata):
@@ -224,11 +250,20 @@ class SingleStepSupervised(lightning.LightningModule):
 
             frames = [input_0.cpu()]
             previous_frame = input_0
+            ttt_state_cache = {} if self.use_ttt_state_cache_inference else None
 
             for i in tqdm(range(num_frames - 1)):
 
-                x0 = self.predict_step(previous_frame, generator=generator, class_labels=labels,
-                                       num_inference_steps=num_inference_steps)
+                if self.use_ttt_state_cache_inference:
+                    x0, ttt_state_cache = self.predict_step(
+                        previous_frame, generator=generator, class_labels=labels,
+                        num_inference_steps=num_inference_steps,
+                        ttt_state_cache=ttt_state_cache,
+                        return_ttt_state_cache=True,
+                    )
+                else:
+                    x0 = self.predict_step(previous_frame, generator=generator, class_labels=labels,
+                                           num_inference_steps=num_inference_steps)
 
                 previous_frame = x0
                 frames.append(x0.cpu())
@@ -261,11 +296,20 @@ class SingleStepSupervised(lightning.LightningModule):
 
             frames = [input_0.cpu()]
             previous_frame = input_0
+            ttt_state_cache = {} if self.use_ttt_state_cache_inference else None
 
             for i in tqdm(range(num_frames-1)):
 
-                x0 = self.predict_step(previous_frame, generator=generator, class_labels=labels,
-                                       num_inference_steps=num_inference_steps)
+                if self.use_ttt_state_cache_inference:
+                    x0, ttt_state_cache = self.predict_step(
+                        previous_frame, generator=generator, class_labels=labels,
+                        num_inference_steps=num_inference_steps,
+                        ttt_state_cache=ttt_state_cache,
+                        return_ttt_state_cache=True,
+                    )
+                else:
+                    x0 = self.predict_step(previous_frame, generator=generator, class_labels=labels,
+                                           num_inference_steps=num_inference_steps)
                 x0 = self.postprocess_output(x0, batch['physical_metadata'])
 
                 # fill boundaries with reference

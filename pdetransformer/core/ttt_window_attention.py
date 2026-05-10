@@ -232,11 +232,16 @@ class TTTBase(nn.Module):
     def ttt(self, inputs, mini_batch_size, last_mini_batch_params_dict):
         raise NotImplementedError
 
-    def forward(self, hidden_states: torch.Tensor):
+    def forward(
+        self,
+        hidden_states: torch.Tensor,
+        ttt_state: Optional[dict[str, torch.Tensor]] = None,
+        return_ttt_state: bool = False,
+    ):
         batch, seq_len = hidden_states.shape[:2]
         reminder_len = seq_len % self.mini_batch_size
         num_mini_batch = seq_len // self.mini_batch_size
-        last_mini_batch_params_dict = None
+        last_mini_batch_params_dict = ttt_state
 
         xq = self.q_proj(hidden_states)
         xk = self.k_proj(hidden_states)
@@ -285,7 +290,10 @@ class TTTBase(nn.Module):
         output_hidden_states = self.post_norm(output_hidden_states)
         if self.use_gate:
             output_hidden_states = self.apply_gate(hidden_states, output_hidden_states)
-        return self.o_proj(output_hidden_states)
+        output_hidden_states = self.o_proj(output_hidden_states)
+        if return_ttt_state:
+            return output_hidden_states, last_mini_batch_params_dict
+        return output_hidden_states
 
 
 class TTTLinear(TTTBase):
@@ -553,20 +561,30 @@ class TTTWindowAttention2DTime(nn.Module):
             self.ttt = TTTMLP(config)
         else:
             raise ValueError(f"Invalid ttt_layer_type: {ttt_layer_type}")
+        self.cache_key = f"ttt_window_attention_{id(self)}"
 
-    def forward(self, x, attn_mask: Optional[torch.Tensor] = None):
+    def forward(
+        self,
+        x,
+        attn_mask: Optional[torch.Tensor] = None,
+        ttt_state: Optional[dict[str, torch.Tensor]] = None,
+        return_ttt_state: bool = False,
+    ):
         if attn_mask is not None:
             raise NotImplementedError(
                 "TTTWindowAttention2DTime does not support shifted-window masks yet; use periodic=True."
             )
 
         if x.dim() == 3:
-            return self.ttt(x)
+            return self.ttt(x, ttt_state=ttt_state, return_ttt_state=return_ttt_state)
         if x.dim() == 4:
             batch, num_channels, num_tokens, dim = x.shape
             x = x.reshape(batch * num_channels, num_tokens, dim)
-            x = self.ttt(x)
-            return x.reshape(batch, num_channels, num_tokens, dim)
+            output = self.ttt(x, ttt_state=ttt_state, return_ttt_state=return_ttt_state)
+            if return_ttt_state:
+                x, next_ttt_state = output
+                return x.reshape(batch, num_channels, num_tokens, dim), next_ttt_state
+            return output.reshape(batch, num_channels, num_tokens, dim)
         raise ValueError(
             "TTTWindowAttention2DTime expects input shape (B, N, C) or (B, D, N, C)."
         )

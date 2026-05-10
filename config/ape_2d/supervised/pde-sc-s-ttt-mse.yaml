@@ -43,6 +43,8 @@ model:
             ttt_layer_type: linear
             ttt_mini_batch_size: 16
             ttt_base_lr: 1.0
+        use_ttt_state_cache_inference: False
+        use_ttt_state_cache_train: False
         monitor: val/loss_epoch
         ckpt_path: ${runtime.checkpoint_dir}
         timesteps: ${timesteps}

@@ -186,7 +186,10 @@ class MultiStepMSE(nn.Module):
         self.patch_size = patch_size
 
     def predict(self, batch: dict, model: nn.Module,
-                generator: torch.Generator = None, **kwargs) -> list[torch.Tensor]:
+                generator: torch.Generator = None,
+                ttt_state_cache=None,
+                return_ttt_state_cache: bool = False,
+                **kwargs) -> list[torch.Tensor]:
 
         channel_inputs, _, channel_masks, channel_pdes, channel_constants, \
             channel_constants_class, channel_idx, channel_time_step_strides, channel_task_embs, simulation_time, t_in = \
@@ -200,7 +203,9 @@ class MultiStepMSE(nn.Module):
                                    pde_parameters_class=channel_constants_class,
                                    simulation_dt=channel_time_step_strides,
                                    task=channel_task_embs,
-                                   t=t_in)
+                                   t=t_in,
+                                   ttt_state_cache=ttt_state_cache,
+                                   return_ttt_state_cache=return_ttt_state_cache)
 
         channel_predictions = prediction.sample
 
@@ -209,6 +214,8 @@ class MultiStepMSE(nn.Module):
                                for prediction_img, mask_img, target_img in
                                zip(channel_predictions, channel_masks, channel_inputs)]
 
+        if return_ttt_state_cache:
+            return channel_predictions, prediction.ttt_state_cache
         return channel_predictions
 
     def loss(self, model: nn.Module, batch: dict, **kwargs) -> Tuple[torch.Tensor, Dict]:
@@ -225,7 +232,9 @@ class MultiStepMSE(nn.Module):
                                    pde_parameters_class=channel_constants_class,
                                    simulation_dt=channel_time_step_strides,
                                    task=channel_task_embs,
-                                   t=t_in)
+                                   t=t_in,
+                                   ttt_state_cache={} if kwargs.get('use_ttt_state_cache_train', False) else None,
+                                   return_ttt_state_cache=kwargs.get('use_ttt_state_cache_train', False))
 
         channel_predictions = prediction.sample
 
@@ -260,13 +269,17 @@ class Supervised(lightning.LightningModule):
                  patch_size: int = 4,
                  timesteps: int = 6,
                  optimizer: str = 'adamw',
-                 normalize_channels: bool = False):
+                 normalize_channels: bool = False,
+                 use_ttt_state_cache_inference: bool = False,
+                 use_ttt_state_cache_train: bool = False):
 
         super().__init__()
 
         self.monitor = monitor
 
         self.optimizer = optimizer
+        self.use_ttt_state_cache_inference = use_ttt_state_cache_inference
+        self.use_ttt_state_cache_train = use_ttt_state_cache_train
 
         self.patch_size = patch_size
 
@@ -314,7 +327,11 @@ class Supervised(lightning.LightningModule):
 
         data = self.task_masking.get_inputs(batch, batch_idx)
 
-        loss, _ = self.objective.loss(self.model, data)
+        loss, _ = self.objective.loss(
+            self.model,
+            data,
+            use_ttt_state_cache_train=self.use_ttt_state_cache_train,
+        )
 
         return loss, data['task_name']
 
@@ -366,11 +383,16 @@ class Supervised(lightning.LightningModule):
 
     def predict_step(self, data,
                      num_inference_steps=100,
-                     generator=None, **kwargs):
+                     generator=None,
+                     ttt_state_cache=None,
+                     return_ttt_state_cache: bool = False,
+                     **kwargs):
 
-
-        return self.objective.predict(data, self.model, num_inference_steps=num_inference_steps,
-                               generator=generator, **kwargs)
+        return self.objective.predict(
+            data, self.model, num_inference_steps=num_inference_steps,
+            generator=generator, ttt_state_cache=ttt_state_cache,
+            return_ttt_state_cache=return_ttt_state_cache, **kwargs
+        )
 
 
     def predict(self, batch, device, num_frames=20, generator=None,
@@ -407,11 +429,20 @@ class Supervised(lightning.LightningModule):
                              .manual_seed(2024))
 
             batch_size = data['channels'][0]['channel_id'].shape[0]
+            ttt_state_cache = {} if self.use_ttt_state_cache_inference else None
 
             for _ in tqdm(range(num_frames - self.timesteps + 1)):
 
-                x0 = self.predict_step(data, generator=generator,
-                                       num_inference_steps=num_inference_steps)
+                if self.use_ttt_state_cache_inference:
+                    x0, ttt_state_cache = self.predict_step(
+                        data, generator=generator,
+                        num_inference_steps=num_inference_steps,
+                        ttt_state_cache=ttt_state_cache,
+                        return_ttt_state_cache=True,
+                    )
+                else:
+                    x0 = self.predict_step(data, generator=generator,
+                                           num_inference_steps=num_inference_steps)
 
                 # save latest time step to frames
                 frames.append(torch.stack(x0, dim=1)[:, :, -1])

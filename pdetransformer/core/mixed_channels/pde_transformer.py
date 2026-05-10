@@ -18,6 +18,12 @@ import torch
 from .udit import FinalLayer, precompute_freqs_cis_2d, apply_rotary_emb
 from ..ttt_window_attention import TTTWindowAttention2DTime
 
+
+def detach_ttt_state(ttt_state):
+    if ttt_state is None:
+        return None
+    return {key: value.detach() for key, value in ttt_state.items()}
+
 ###############################
 # We need to create subclass of Swinv2PreTrainedModel because it sets use_mask_token=True
 # This will create a parameter swinv2.embeddings.mask_token that will receive no gradient if bool_masked_pos is None
@@ -440,7 +446,9 @@ class PDEStage(nn.Module):
                 hidden_states: torch.Tensor,
                 cond: Optional[torch.Tensor] = None,
                 timestep: Optional[torch.LongTensor] = None,
-                class_labels: Optional[torch.LongTensor] = None, ):
+                class_labels: Optional[torch.LongTensor] = None,
+                ttt_state_cache: Optional[dict[str, dict[str, torch.Tensor]]] = None,
+                return_ttt_state_cache: bool = False, ):
 
         B, C, H, W = hidden_states.shape
 
@@ -473,8 +481,15 @@ class PDEStage(nn.Module):
 
             hidden_states = window_partition(shifted_hidden_states, self.window_size)
 
-            hidden_states, ct = block(hidden_states, ct, timestep=timestep, class_labels=class_labels, emb=cond,
-                                      attn_mask=attn_mask)
+            if return_ttt_state_cache:
+                hidden_states, ct, ttt_state_cache = block(
+                    hidden_states, ct, timestep=timestep, class_labels=class_labels, emb=cond,
+                    attn_mask=attn_mask, ttt_state_cache=ttt_state_cache,
+                    return_ttt_state_cache=True,
+                )
+            else:
+                hidden_states, ct = block(hidden_states, ct, timestep=timestep, class_labels=class_labels, emb=cond,
+                                          attn_mask=attn_mask)
 
             hidden_states = window_reverse(hidden_states, self.window_size, height_pad, width_pad)
 
@@ -487,6 +502,8 @@ class PDEStage(nn.Module):
 
             hidden_states = torch.permute(hidden_states, (0, 3, 1, 2))
 
+        if return_ttt_state_cache:
+            return hidden_states, ttt_state_cache
         return hidden_states
 
 class PosEmbMLPSwinv2D(nn.Module):
@@ -890,7 +907,9 @@ class PDEBlock(nn.Module):
                 timestep: Optional[torch.LongTensor] = None,
                 class_labels: Optional[torch.LongTensor] = None,
                 emb: Optional[torch.LongTensor] = None,
-                attn_mask: Optional[torch.Tensor] = None):
+                attn_mask: Optional[torch.Tensor] = None,
+                ttt_state_cache: Optional[dict[str, dict[str, torch.Tensor]]] = None,
+                return_ttt_state_cache: bool = False):
 
         B, H, W, N = x.shape
         ct = carrier_tokens
@@ -951,7 +970,19 @@ class PDEBlock(nn.Module):
 
         x_msa = x_msa * (1 + msa_scale[:, None]) + msa_shift[:, None]
 
-        x_msa = self.attn(x_msa, attn_mask=attn_mask)
+        if return_ttt_state_cache and isinstance(self.attn, TTTWindowAttention2DTime):
+            if ttt_state_cache is None:
+                ttt_state_cache = {}
+            cache_key = self.attn.cache_key
+            x_msa, next_ttt_state = self.attn(
+                x_msa,
+                attn_mask=attn_mask,
+                ttt_state=ttt_state_cache.get(cache_key),
+                return_ttt_state=True,
+            )
+            ttt_state_cache[cache_key] = detach_ttt_state(next_ttt_state) if self.training else next_ttt_state
+        else:
+            x_msa = self.attn(x_msa, attn_mask=attn_mask)
         x_msa = x_msa * (1 + msa_gate[:, None])
 
         x = x + self.drop_path(x_msa)
@@ -987,6 +1018,8 @@ class PDEBlock(nn.Module):
                     ctr_image_space.to(dtype=torch.float32)
                 ).flatten(2).transpose(1, 2).to(dtype=x.dtype)
 
+        if return_ttt_state_cache:
+            return x, ct, ttt_state_cache
         return x, ct
 
 class ConditionedEncoder2DBlock(nn.Module):
@@ -1316,7 +1349,7 @@ class PDEImpl(nn.Module):
         nn.init.constant_(self.final_layer.out_proj.weight, 0)
         nn.init.constant_(self.final_layer.out_proj.bias, 0)
 
-    def forward(self, x, t, y):
+    def forward(self, x, t, y, ttt_state_cache=None, return_ttt_state_cache: bool = False):
         """
         Forward pass of PDE transformer.
         x: (N, C, H, W) tensor of spatial inputs (images or latent representations of images)
@@ -1349,24 +1382,47 @@ class PDEImpl(nn.Module):
         residuals_list = []
         for i, c in enumerate(emb_list[:-1]):
             # encoder
-            out_enc_level = self.__getattr__(f"encoder_level_{i}")(x, c)
+            encoder_level = self.__getattr__(f"encoder_level_{i}")
+            if return_ttt_state_cache:
+                out_enc_level, ttt_state_cache = encoder_level(
+                    x, c, ttt_state_cache=ttt_state_cache, return_ttt_state_cache=True
+                )
+            else:
+                out_enc_level = encoder_level(x, c)
             residuals_list.append(out_enc_level)
             x = self.__getattr__(f"down{i}_{i+1}")(out_enc_level)
 
         c = emb_list[-1]
-        x = self.latent(x, c)
+        if return_ttt_state_cache:
+            x, ttt_state_cache = self.latent(
+                x, c, ttt_state_cache=ttt_state_cache, return_ttt_state_cache=True
+            )
+        else:
+            x = self.latent(x, c)
 
         for i, (residual, emb) in enumerate(zip(residuals_list[1:][::-1], emb_list[1:-1][::-1])):
             # decoder
             x = self.__getattr__(f"up{self.num_encoder_layers - i}_{self.num_encoder_layers - i - 1}")(x)
             x = torch.cat([x, residual], 1)
             x = self.__getattr__(f"reduce_chan_level{self.num_encoder_layers - i - 1}")(x)
-            x = self.__getattr__(f"decoder_level_{self.num_encoder_layers - i - 1}")(x, emb)
+            decoder_level = self.__getattr__(f"decoder_level_{self.num_encoder_layers - i - 1}")
+            if return_ttt_state_cache:
+                x, ttt_state_cache = decoder_level(
+                    x, emb, ttt_state_cache=ttt_state_cache, return_ttt_state_cache=True
+                )
+            else:
+                x = decoder_level(x, emb)
 
         x = self.__getattr__(f"up1_0")(x)
         x = torch.cat([x, residuals_list[0]], 1)
         x = self.__getattr__(f"reduce_chan_level0")(x)
-        x = self.__getattr__(f"decoder_level_0")(x, emb_list[1])
+        decoder_level = self.__getattr__(f"decoder_level_0")
+        if return_ttt_state_cache:
+            x, ttt_state_cache = decoder_level(
+                x, emb_list[1], ttt_state_cache=ttt_state_cache, return_ttt_state_cache=True
+            )
+        else:
+            x = decoder_level(x, emb_list[1])
 
         # output
         x = self.output(x)
@@ -1387,6 +1443,8 @@ class PDEImpl(nn.Module):
             shape=(-1, self.out_channels, height * self.patch_size, width * self.patch_size)
         )
 
+        if return_ttt_state_cache:
+            return x, ttt_state_cache
         return x
 
 @dataclass
@@ -1400,6 +1458,7 @@ class PDEOutput(BaseOutput):
     """
 
     sample: torch.Tensor
+    ttt_state_cache: Optional[dict[str, dict[str, torch.Tensor]]] = None
 
 class PDETransformer(ModelMixin, ConfigMixin):
 
@@ -1435,14 +1494,25 @@ class PDETransformer(ModelMixin, ConfigMixin):
             class_labels: Optional[torch.LongTensor] = None,
             cross_attention_kwargs: Dict[str, Any] = None,
             return_dict: bool = True,
+            ttt_state_cache: Optional[dict[str, dict[str, torch.Tensor]]] = None,
+            return_ttt_state_cache: bool = False,
     ):
 
-        output = self.model.forward(hidden_states, timestep, class_labels)
+        output = self.model.forward(
+            hidden_states,
+            timestep,
+            class_labels,
+            ttt_state_cache=ttt_state_cache,
+            return_ttt_state_cache=return_ttt_state_cache,
+        )
+        next_ttt_state_cache = None
+        if return_ttt_state_cache:
+            output, next_ttt_state_cache = output
 
         if not return_dict:
             return (output,)
 
-        return PDEOutput(sample=output)
+        return PDEOutput(sample=output, ttt_state_cache=next_ttt_state_cache)
 
 #################################################################################
 #                            PDE Transformer Configs                            #
