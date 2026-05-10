@@ -2,7 +2,7 @@
 
 import importlib.metadata
 
-__version__ = importlib.metadata.version("pdetransformer")
+__version__ = importlib.metadata.version("pdetransformer-ttt")
 
 from . import utils
 from . import visualization
