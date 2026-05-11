@@ -31,9 +31,9 @@ import jax
 import jax.numpy as jnp
 #jax.config.update("jax_platform_name", "cpu")
 
-from simulation_setups_2d import get_setup_2d
-from simulation_setups_3d import get_setup_3d
-from render import render_trajectory
+from pdetransformer.data.simulations_apebench.simulation_setups_2d import get_setup_2d
+from pdetransformer.data.simulations_apebench.simulation_setups_3d import get_setup_3d
+from pdetransformer.data.simulations_apebench.render import render_trajectory
 
 
 def prepare_data_and_log(json_path_log, h5py_path, p_fixed):
@@ -76,12 +76,10 @@ def generate_data(
         low_res: bool = False
     ):
 
-    from simulation_setups_2d import get_setup_2d
-
-    # if not low_res:
-    #     from simulation_setups_2d import get_setup_2d
-    # else:
-    #     from simulation_setups_2d_low_res import get_setup_2d
+    if low_res:
+        from pdetransformer.data.simulations_apebench.simulation_setups_2d_low_res import get_setup_2d
+    else:
+        from pdetransformer.data.simulations_apebench.simulation_setups_2d import get_setup_2d
 
 
     # Create directories, paths, and logs
