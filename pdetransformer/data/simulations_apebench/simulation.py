@@ -31,9 +31,10 @@ import jax
 import jax.numpy as jnp
 #jax.config.update("jax_platform_name", "cpu")
 
-from simulation_setups_2d import get_setup_2d
-from simulation_setups_3d import get_setup_3d
-from render import render_trajectory
+from .simulation_setups_2d import get_setup_2d
+from .simulation_setups_2d_low_res import get_setup_2d as get_setup_2d_low_res
+# from .simulation_setups_3d import get_setup_3d
+from .render import render_trajectory
 
 
 def prepare_data_and_log(json_path_log, h5py_path, p_fixed):
@@ -76,12 +77,15 @@ def generate_data(
         low_res: bool = False
     ):
 
-    from simulation_setups_2d import get_setup_2d
-
-    # if not low_res:
-    #     from simulation_setups_2d import get_setup_2d
-    # else:
-    #     from simulation_setups_2d_low_res import get_setup_2d
+    if dimension == 2:
+        get_setup = get_setup_2d_low_res if low_res else get_setup_2d
+    # elif dimension == 3:
+    #     get_setup = get_setup_3d
+    else:
+        raise ValueError(
+            "Only 2D simulations are currently supported. "
+            "The 3D setup path is preserved in comments but disabled."
+        )
 
 
     # Create directories, paths, and logs
@@ -91,12 +95,7 @@ def generate_data(
 
     json_path_log = os.path.join(out_path, out_name + ".json")
     h5py_path = out_dir + ".hdf5"
-    if dimension == 2:
-        p_fixed, _, _, _ = get_setup_2d(sim_type, is_test_set, 0)
-    elif dimension == 3:
-        p_fixed, _, _, _ = get_setup_3d(sim_type, is_test_set, 0)
-    else:
-        raise ValueError("Invalid dimension: %d" % dimension)
+    p_fixed, _, _, _ = get_setup(sim_type, is_test_set, 0)
     prepare_data_and_log(json_path_log, h5py_path, p_fixed)
 
     data_id = 0
@@ -108,10 +107,7 @@ def generate_data(
         print("%s SIMULATION %d" % (sim_type.upper(), sim_id))
 
         # Initialize simulation setup and log parameters
-        if dimension == 2:
-            p_fixed, p_varying, stepper, u_next = get_setup_2d(sim_type, is_test_set, sim_id)
-        else:
-            p_fixed, p_varying, stepper, u_next = get_setup_3d(sim_type, is_test_set, sim_id)
+        p_fixed, p_varying, stepper, u_next = get_setup(sim_type, is_test_set, sim_id)
         update_param_log(json_path_log, p_varying, sim_id)
 
         # Simulation loop
@@ -157,17 +153,8 @@ def generate_data(
             with h5py.File(out_dir + ".hdf5", "a") as h5py_file:
                 data = np.stack(data, axis=0)
 
-                if low_res:
-                    # downsample (average pooling)
-                    if len(data.shape) == 4:
-                        data = data.reshape(data.shape[0], data.shape[1], 256, 8, 256, 8).mean(axis=(3, 5))
-                    elif len(data.shape) == 3:
-                        data = data.reshape(data.shape[0], 256, 8, 256, 8).mean(axis=(2, 4))
-                    else:
-                        raise ValueError('Data shape not supported')
 
                 dataset = h5py_file.create_dataset("sims/sim%d" % (data_id), data=data)
-
                 for key in p_fixed["Constants"]:
                     dataset.attrs[key] = p_varying[key]
                 h5py_file.close()
