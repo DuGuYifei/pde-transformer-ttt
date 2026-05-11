@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pdetransformer-ttt"
-version = "0.0.1-rc2"
+version = "0.0.1-rc3"
 description = "PDE-Transformer: Efficient and Versatile Transformers for Physics Simulations"
 readme = "README.md"
 authors = [
