@@ -32,7 +32,7 @@ import jax.numpy as jnp
 #jax.config.update("jax_platform_name", "cpu")
 
 from pdetransformer.data.simulations_apebench.simulation_setups_2d import get_setup_2d
-from pdetransformer.data.simulations_apebench.simulation_setups_3d import get_setup_3d
+# from pdetransformer.data.simulations_apebench.simulation_setups_3d import get_setup_3d
 from pdetransformer.data.simulations_apebench.render import render_trajectory
 
 
