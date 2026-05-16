@@ -1,0 +1,46 @@
+# Server training config for train_ttt_ape_xxl_server.py.
+# Default is the safest continuation path from a Kaggle run copied to ~/working.
+#
+# Recommended first run:
+#   CUDA_VISIBLE_DEVICES=0 python server_example/train_ttt_ape_xxl_server.py --config server_example/train_ttt_ape_xxl_server.yaml
+#
+# Optional 2-GPU run after smoke_2gpu.py succeeds:
+#   set devices: 2
+#   set strategy: ddp
+#   set accumulate_grad_batches: 4
+# This keeps the effective batch size closer to the original 1-GPU Kaggle run.
+
+work_dir: ~/working
+data_dir: null
+run_root: null
+run_name: train_once
+
+max_epochs: 100
+batch_size: 8
+num_workers: 2
+
+# GTX 1080 Ti does not support bf16 well. Use 32-true for the first resumed run.
+devices: 1
+strategy: auto
+precision: 32-true
+accumulate_grad_batches: 8
+seed: 42
+
+resume: false
+auto_resume: true
+checkpoint_path: null
+
+skip_rollout_eval: false
+
+# Data generation is independent from checkpoint resume. Keep false when you
+# copied ~/working/datasets from Kaggle and only want to continue training.
+generate_data: false
+low_res: true
+generation_num_sims_default: 60
+generation_num_sims_gs_small: 10
+generation_num_sims_gs_full: 100
+generation_num_sims_test: 5
+generation_num_sims_gs_test: 3
+generation_gpu_id: "0"
+render_only: false
+force_regenerate_data: false
