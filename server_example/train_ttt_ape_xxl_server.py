@@ -338,6 +338,17 @@ def run_rollout_check(strategy, datamodule, use_ttt_state_cache_inference: bool,
     }
 
 
+def find_latest_last_checkpoint(checkpoint_dir: Path) -> Path:
+    last_checkpoints = sorted(
+        checkpoint_dir.glob("last*.ckpt"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    if last_checkpoints:
+        return last_checkpoints[0]
+    return checkpoint_dir / "last.ckpt"
+
+
 def print_checkpoint_listing(run_root: Path) -> None:
     candidates = [
         run_root / "train_once" / "checkpoints",
@@ -364,10 +375,12 @@ def main() -> None:
     work_dir = args.work_dir.expanduser().resolve()
     data_dir = (args.data_dir or work_dir / "datasets").expanduser().resolve()
     run_root = (args.run_root or work_dir / "ttt_cache_experiments").expanduser().resolve()
+    checkpoint_dir = run_root / args.run_name / "checkpoints"
     checkpoint_path = (
-        args.checkpoint_path
-        or run_root / args.run_name / "checkpoints" / "last.ckpt"
-    ).expanduser().resolve()
+        args.checkpoint_path.expanduser().resolve()
+        if args.checkpoint_path
+        else find_latest_last_checkpoint(checkpoint_dir).expanduser().resolve()
+    )
 
     print("config:", args.config)
     print("work_dir:", work_dir)

@@ -73,13 +73,13 @@ accumulate_grad_batches: 8
 auto_resume: true
 ```
 
-It will resume from:
+It will auto-resume from the newest `last*.ckpt` in:
 
 ```bash
-~/working/ttt_cache_experiments/train_once/checkpoints/last.ckpt
+~/working/ttt_cache_experiments/train_once/checkpoints/
 ```
 
-if that file exists.
+For example, `last-v4.ckpt` is preferred over an older `last.ckpt`.
 
 ## 3. Optional 2-GPU training
 
