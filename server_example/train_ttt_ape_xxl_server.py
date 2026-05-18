@@ -2,7 +2,7 @@
 
 Expected copied layout from Kaggle:
     ~/working/datasets/*.hdf5
-    ~/working/ttt_cache_experiments/train_once/checkpoints/last.ckpt
+    ~/working/ttt_cache_experiments/train_cache_on/checkpoints/last.ckpt
 
 Recommended first run on GTX 1080 Ti:
     CUDA_VISIBLE_DEVICES=0 python train_ttt_ape_xxl_server.py --config train_ttt_ape_xxl_server.yaml
@@ -59,6 +59,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "data_dir": None,
     "run_root": None,
     "run_name": "train_once",
+    "use_ttt_state_cache_train": True,
     "max_epochs": 100,
     "batch_size": 8,
     "num_workers": 2,
@@ -154,6 +155,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--data-dir", type=Path, default=_path_or_none(config["data_dir"]))
     parser.add_argument("--run-root", type=Path, default=_path_or_none(config["run_root"]))
     parser.add_argument("--run-name", type=str, default=config["run_name"])
+    parser.add_argument(
+        "--use-ttt-state-cache-train",
+        action=argparse.BooleanOptionalAction,
+        default=config["use_ttt_state_cache_train"],
+        help="Use TTT state cache during training and validation forward passes.",
+    )
     parser.add_argument("--max-epochs", type=int, default=config["max_epochs"])
     parser.add_argument("--batch-size", type=int, default=config["batch_size"])
     parser.add_argument("--num-workers", type=int, default=config["num_workers"])
@@ -260,7 +267,11 @@ def build_data_module(data_dir: Path, dataset_names: list[str], batch_size: int,
     return MultiDataModule(**params_data)
 
 
-def build_strategy(seed: int, use_ttt_state_cache_inference: bool = False) -> SingleStepSupervised:
+def build_strategy(
+    seed: int,
+    use_ttt_state_cache_inference: bool = False,
+    use_ttt_state_cache_train: bool = True,
+) -> SingleStepSupervised:
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
@@ -283,7 +294,7 @@ def build_strategy(seed: int, use_ttt_state_cache_inference: bool = False) -> Si
         image_key=0,
         optimizer="adamw",
         use_ttt_state_cache_inference=use_ttt_state_cache_inference,
-        use_ttt_state_cache_train=False,
+        use_ttt_state_cache_train=use_ttt_state_cache_train,
     )
     strategy.learning_rate = 4.0e-5
     return strategy
@@ -349,8 +360,9 @@ def find_latest_last_checkpoint(checkpoint_dir: Path) -> Path:
     return checkpoint_dir / "last.ckpt"
 
 
-def print_checkpoint_listing(run_root: Path) -> None:
+def print_checkpoint_listing(run_root: Path, run_name: str) -> None:
     candidates = [
+        run_root / run_name / "checkpoints",
         run_root / "train_once" / "checkpoints",
         run_root / "inference_cache_off" / "checkpoints",
         run_root / "inference_cache_on" / "checkpoints",
@@ -386,6 +398,7 @@ def main() -> None:
     print("work_dir:", work_dir)
     print("data_dir:", data_dir)
     print("run_root:", run_root)
+    print("run_name:", args.run_name)
     print("checkpoint_path:", checkpoint_path)
     print("torch:", torch.__version__)
     print("cuda available:", torch.cuda.is_available())
@@ -393,6 +406,7 @@ def main() -> None:
     print("precision:", args.precision)
     print("devices:", args.devices, "strategy:", args.strategy)
     print("accumulate_grad_batches:", args.accumulate_grad_batches)
+    print("use_ttt_state_cache_train:", args.use_ttt_state_cache_train)
     print("generate_data:", args.generate_data, "low_res:", args.low_res)
 
     run_root.mkdir(parents=True, exist_ok=True)
@@ -404,7 +418,11 @@ def main() -> None:
     data_module = build_data_module(data_dir, FULL_DATASET_NAMES, args.batch_size, args.num_workers)
     data_module.setup(stage="fit")
 
-    strategy = build_strategy(args.seed, use_ttt_state_cache_inference=False)
+    strategy = build_strategy(
+        args.seed,
+        use_ttt_state_cache_inference=False,
+        use_ttt_state_cache_train=args.use_ttt_state_cache_train,
+    )
     trainer = build_trainer(args, run_root)
 
     should_resume = args.resume or (args.auto_resume and checkpoint_path.exists())
@@ -418,7 +436,7 @@ def main() -> None:
     print("last checkpoint:", checkpoint_callback.last_model_path)
     print("best checkpoints:", checkpoint_callback.best_k_models)
     print("validation:", val_metrics)
-    print_checkpoint_listing(run_root)
+    print_checkpoint_listing(run_root, args.run_name)
 
     if args.skip_rollout_eval:
         return

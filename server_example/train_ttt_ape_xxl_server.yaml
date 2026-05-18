@@ -1,5 +1,5 @@
 # Server training config for train_ttt_ape_xxl_server.py.
-# Default is the safest continuation path from a Kaggle run copied to ~/working.
+# Default starts a fresh train-cache-on run from a Kaggle data copy in ~/working.
 #
 # Recommended first run:
 #   CUDA_VISIBLE_DEVICES=0 python server_example/train_ttt_ape_xxl_server.py --config server_example/train_ttt_ape_xxl_server.yaml
@@ -12,8 +12,9 @@
 
 work_dir: ~/working
 data_dir: null
-run_root: null
-run_name: train_once
+run_root: ~/working/ttt_cache_low_res
+run_name: train_cache_on
+use_ttt_state_cache_train: true
 
 max_epochs: 100
 batch_size: 8
