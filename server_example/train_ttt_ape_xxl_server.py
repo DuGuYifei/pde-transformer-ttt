@@ -59,6 +59,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "data_dir": None,
     "run_root": None,
     "run_name": "train_once",
+    "model_type": "PDE-S",
     "use_ttt_state_cache_train": True,
     "max_epochs": 100,
     "batch_size": 8,
@@ -155,6 +156,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--data-dir", type=Path, default=_path_or_none(config["data_dir"]))
     parser.add_argument("--run-root", type=Path, default=_path_or_none(config["run_root"]))
     parser.add_argument("--run-name", type=str, default=config["run_name"])
+    parser.add_argument("--model-type", type=str, choices=("PDE-S", "PDE-B", "PDE-L"), default=config["model_type"])
     parser.add_argument(
         "--use-ttt-state-cache-train",
         action=argparse.BooleanOptionalAction,
@@ -269,6 +271,7 @@ def build_data_module(data_dir: Path, dataset_names: list[str], batch_size: int,
 
 def build_strategy(
     seed: int,
+    model_type: str = "PDE-S",
     use_ttt_state_cache_inference: bool = False,
     use_ttt_state_cache_train: bool = True,
 ) -> SingleStepSupervised:
@@ -280,7 +283,7 @@ def build_strategy(
         sample_size=128,
         in_channels=2,
         out_channels=2,
-        type="PDE-S",
+        type=model_type,
         patch_size=4,
         periodic=True,
         carrier_token_active=False,
@@ -399,6 +402,7 @@ def main() -> None:
     print("data_dir:", data_dir)
     print("run_root:", run_root)
     print("run_name:", args.run_name)
+    print("model_type:", args.model_type)
     print("checkpoint_path:", checkpoint_path)
     print("torch:", torch.__version__)
     print("cuda available:", torch.cuda.is_available())
@@ -420,6 +424,7 @@ def main() -> None:
 
     strategy = build_strategy(
         args.seed,
+        model_type=args.model_type,
         use_ttt_state_cache_inference=False,
         use_ttt_state_cache_train=args.use_ttt_state_cache_train,
     )
