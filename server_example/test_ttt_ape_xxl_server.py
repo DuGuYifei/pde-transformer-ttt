@@ -36,6 +36,7 @@ from train_ttt_ape_xxl_server import (
     FULL_DATASET_NAMES,
     _load_config,
     _path_or_none,
+    apply_sims_split_override,
     build_data_module,
     build_strategy,
 )
@@ -86,6 +87,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=config["batch_size"])
     parser.add_argument("--num-workers", type=int, default=config["num_workers"])
     parser.add_argument("--seed", type=int, default=config["seed"])
+    parser.add_argument("--downsample-factor", type=int, default=config.get("downsample_factor", 2))
+    parser.add_argument("--sample-size", type=int, default=config.get("sample_size", 128))
+    parser.add_argument(
+        "--use-ttt-window-attention",
+        action=argparse.BooleanOptionalAction,
+        default=config.get("use_ttt_window_attention", True),
+        help="Must match how the checkpoint was trained (plain baseline vs TTT).",
+    )
+    parser.set_defaults(
+        sims_split_joint_train=config.get("sims_split_joint_train"),
+        sims_split_joint_test=config.get("sims_split_joint_test"),
+        sims_split_gs_train=config.get("sims_split_gs_train"),
+        sims_split_gs_test=config.get("sims_split_gs_test"),
+    )
 
     parser.add_argument(
         "--cache-mode",
@@ -171,8 +186,9 @@ def evaluate_dataset(
     rollout_steps: int,
     eval_k: list[int],
     max_batches: int | None,
+    downsample_factor: int = 2,
 ) -> dict[str, Any]:
-    dm = build_data_module(data_dir, [pde], batch_size, num_workers)
+    dm = build_data_module(data_dir, [pde], batch_size, num_workers, downsample_factor=downsample_factor)
     dm.setup(stage="test")
     loader = dm.test_dataloader()
     num_trajectories = len(dm.set_test) if dm.set_test is not None else 0
@@ -282,6 +298,7 @@ def run_cache_mode(
             rollout_steps=args.rollout_steps,
             eval_k=args.eval_k,
             max_batches=args.max_batches_per_dataset,
+            downsample_factor=args.downsample_factor,
         )
         per_dataset[pde] = result
         metric_str = "  ".join(
@@ -479,7 +496,8 @@ def main() -> None:
         "use_ttt_state_cache_inference": False,  # toggled per cache mode below
         "use_ttt_state_cache_train": False,
     }
-    if "model_type" in inspect.signature(build_strategy).parameters:
+    build_params = inspect.signature(build_strategy).parameters
+    if "model_type" in build_params:
         build_kwargs["model_type"] = args.model_type
     elif args.model_type != "PDE-S":
         print(
@@ -488,6 +506,27 @@ def main() -> None:
             "non-PDE-S checkpoints; update the train script to support "
             "model_type or rerun with --model-type PDE-S."
         )
+    if "sample_size" in build_params:
+        build_kwargs["sample_size"] = args.sample_size
+    if "use_ttt_window_attention" in build_params:
+        build_kwargs["use_ttt_window_attention"] = args.use_ttt_window_attention
+
+    if any(
+        v is not None
+        for v in (
+            args.sims_split_joint_train,
+            args.sims_split_joint_test,
+            args.sims_split_gs_train,
+            args.sims_split_gs_test,
+        )
+    ):
+        apply_sims_split_override(
+            joint_train=args.sims_split_joint_train,
+            joint_test=args.sims_split_joint_test,
+            gs_train=args.sims_split_gs_train,
+            gs_test=args.sims_split_gs_test,
+        )
+
     strategy = build_strategy(args.seed, **build_kwargs)
 
     print(f"loading state_dict from: {checkpoint_path}")
@@ -520,6 +559,8 @@ def main() -> None:
         "run_root": str(run_root),
         "run_name": args.run_name,
         "model_type": args.model_type,
+        "use_ttt_window_attention": args.use_ttt_window_attention,
+        "downsample_factor": args.downsample_factor,
         "rollout_steps": args.rollout_steps,
         "eval_k": list(args.eval_k),
         "datasets": list(args.datasets),
@@ -535,6 +576,13 @@ def main() -> None:
         "config_path": str(args.config) if args.config else None,
         "output_dir": str(output_dir),
     }
+
+    if not args.use_ttt_window_attention and args.cache_mode != "off":
+        print(
+            "[note] plain baseline has no TTT state; forcing --cache-mode off "
+            f"(was {args.cache_mode!r})."
+        )
+        args.cache_mode = "off"
 
     if args.cache_mode == "off":
         cache_modes = [False]

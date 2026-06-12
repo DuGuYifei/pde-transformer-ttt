@@ -60,10 +60,27 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "run_root": None,
     "run_name": "train_once",
     "model_type": "PDE-S",
+    # False builds the plain PDE-S/B/L without TTT window attention (the
+    # original architecture; verified computationally identical to upstream).
+    "use_ttt_window_attention": True,
     "use_ttt_state_cache_train": True,
     "max_epochs": 100,
     "batch_size": 8,
     "num_workers": 2,
+    # Data resolution: hdf5 files are 256x256; the loader avg-pools by this
+    # factor before batching. 2 = the low-res (128) experiment series, 1 = native 256.
+    "downsample_factor": 2,
+    # Stored in the model config (metadata for diffusers pipelines; supervised
+    # training does not consume it). Keep in sync with the effective input size.
+    "sample_size": 128,
+    # Optional sim-range overrides for the 2D_APE_xxl split, as [start, end).
+    # null keeps the package defaults (joint train [0,50] / test = whole file,
+    # gs_delta-group train [0,80] / test = whole file). For the 600-sims
+    # ape2d-full corpus set e.g. joint [0,500] / [500,600].
+    "sims_split_joint_train": None,
+    "sims_split_joint_test": None,
+    "sims_split_gs_train": None,
+    "sims_split_gs_test": None,
     "devices": 1,
     "strategy": "auto",
     "precision": "32-true",
@@ -158,6 +175,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--run-name", type=str, default=config["run_name"])
     parser.add_argument("--model-type", type=str, choices=("PDE-S", "PDE-B", "PDE-L"), default=config["model_type"])
     parser.add_argument(
+        "--use-ttt-window-attention",
+        action=argparse.BooleanOptionalAction,
+        default=config["use_ttt_window_attention"],
+        help="Build the model with TTT window attention. --no-use-ttt-window-attention trains the plain baseline.",
+    )
+    parser.add_argument(
         "--use-ttt-state-cache-train",
         action=argparse.BooleanOptionalAction,
         default=config["use_ttt_state_cache_train"],
@@ -166,6 +189,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-epochs", type=int, default=config["max_epochs"])
     parser.add_argument("--batch-size", type=int, default=config["batch_size"])
     parser.add_argument("--num-workers", type=int, default=config["num_workers"])
+    parser.add_argument("--downsample-factor", type=int, default=config["downsample_factor"])
+    parser.add_argument("--sample-size", type=int, default=config["sample_size"])
     parser.add_argument("--devices", type=int, default=config["devices"])
     parser.add_argument("--strategy", type=str, default=config["strategy"])
     parser.add_argument("--precision", type=str, default=config["precision"])
@@ -185,6 +210,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--generation-gpu-id", type=str, default=config["generation_gpu_id"])
     parser.add_argument("--render-only", action=argparse.BooleanOptionalAction, default=config["render_only"])
     parser.add_argument("--force-regenerate-data", action=argparse.BooleanOptionalAction, default=config["force_regenerate_data"])
+    # yaml-only keys (list-valued; no CLI flags) still need to land on the namespace
+    parser.set_defaults(
+        sims_split_joint_train=config["sims_split_joint_train"],
+        sims_split_joint_test=config["sims_split_joint_test"],
+        sims_split_gs_train=config["sims_split_gs_train"],
+        sims_split_gs_test=config["sims_split_gs_test"],
+    )
     return parser.parse_args(remaining)
 
 
@@ -250,7 +282,13 @@ def generate_ape_xxl_data(args: argparse.Namespace, data_dir: Path) -> None:
         run_generation(args, data_dir, pde, num_sims=args.generation_num_sims_gs_full)
 
 
-def build_data_module(data_dir: Path, dataset_names: list[str], batch_size: int, num_workers: int) -> MultiDataModule:
+def build_data_module(
+    data_dir: Path,
+    dataset_names: list[str],
+    batch_size: int,
+    num_workers: int,
+    downsample_factor: int = 2,
+) -> MultiDataModule:
     params_data = {
         "path_index": {"2D_APE_xxl": str(data_dir)},
         "dataset_names": dataset_names,
@@ -263,10 +301,133 @@ def build_data_module(data_dir: Path, dataset_names: list[str], batch_size: int,
         "different_resolution_strategy": "none",
         "normalize_data": "mean-std",
         "normalize_const": "mean-std",
-        "downsample_factor": 2,
+        "downsample_factor": downsample_factor,
         "max_channels": 2,
     }
     return MultiDataModule(**params_data)
+
+
+# Datasets the installed package routes through the joint-file branch of
+# ape_2d_xxl_datasets (hardcoded sim splits). Everything else (separate *_test
+# files) is untouched by the override below.
+_JOINT_GS_DATASETS = ("gs_delta", "gs_theta", "gs_iota", "gs_kappa")
+_JOINT_DEFAULT_DATASETS = ("adv", "diff", "adv_diff", "disp", "hyp", "burgers", "kdv", "fisher", "sh")
+
+
+def apply_sims_split_override(
+    joint_train: list[int] | None,
+    joint_test: list[int] | None,
+    gs_train: list[int] | None,
+    gs_test: list[int] | None,
+) -> None:
+    """Make the package's hardcoded 2D_APE_xxl sim splits yaml-configurable.
+
+    The installed pdetransformer wheel hardcodes train sims [0,50) (joint files)
+    and [0,80) (gs_delta group), with the test set spanning the whole file.
+    Rather than forking the wheel, rebind the dataset factory that
+    pbdl_module.get_datasets resolves at call time. Datasets with separate
+    *_test files keep the original code path. Ranges are [start, end).
+    """
+    from pdetransformer.data import pbdl_module
+    from pdetransformer.data.pbdl_datatypes import ape_2d_xxl as _orig
+    from pdetransformer.data.pbdl_dataloader.dataset import Dataset as PBDLDataset
+    from pdetransformer.data.pbdl_datatypes.variable_dt_dataset import VariableDtDataset
+    from torch.utils.data import random_split
+
+    split_seed = 46  # identical to the package's train/val split seed
+
+    def _ranged(bounds: list[int] | None, fallback: tuple[int, int]) -> list[int]:
+        start, end = bounds if bounds is not None else fallback
+        return list(range(start, end))
+
+    def datasets_fn(
+        dataset_name: str,
+        dataset_directory: str,
+        unrolling_steps: int,
+        intermediate_time_steps: bool = True,
+        variable_dt_stride_maximum: int = 1,
+        test_variable_dt_stride_maximum: int = 1,
+        test_unrolling_steps: int | None = None,
+        test_intermediate_time_steps: bool | None = None,
+        normalize_data: str | None = None,
+        normalize_const: str | None = None,
+        **kwargs,
+    ):
+        if dataset_name in _JOINT_GS_DATASETS:
+            train_sims = _ranged(gs_train, (0, 80))
+            test_sims = list(range(*gs_test)) if gs_test is not None else None
+        elif dataset_name in _JOINT_DEFAULT_DATASETS:
+            train_sims = _ranged(joint_train, (0, 50))
+            test_sims = list(range(*joint_test)) if joint_test is not None else None
+        else:
+            # separate-test-file datasets: original behavior, untouched
+            return _orig.ape_2d_xxl_datasets(
+                dataset_name, dataset_directory, unrolling_steps,
+                intermediate_time_steps=intermediate_time_steps,
+                variable_dt_stride_maximum=variable_dt_stride_maximum,
+                test_variable_dt_stride_maximum=test_variable_dt_stride_maximum,
+                test_unrolling_steps=test_unrolling_steps,
+                test_intermediate_time_steps=test_intermediate_time_steps,
+                normalize_data=normalize_data,
+                normalize_const=normalize_const,
+                **kwargs,
+            )
+
+        if test_unrolling_steps is None:
+            test_unrolling_steps = unrolling_steps
+        if test_intermediate_time_steps is None:
+            test_intermediate_time_steps = intermediate_time_steps
+        if test_variable_dt_stride_maximum is None:
+            test_variable_dt_stride_maximum = variable_dt_stride_maximum
+
+        norm_const = normalize_const if "gs_" not in dataset_name else None
+        params_train = {
+            "dset_name": dataset_name,
+            "local_datasets_dir": dataset_directory,
+            "sel_sims": train_sims,
+            "time_steps": unrolling_steps,
+            "intermediate_time_steps": intermediate_time_steps,
+            "normalize_const": norm_const,
+            "normalize_data": normalize_data,
+        }
+        if variable_dt_stride_maximum <= 1:
+            pbdl_all = PBDLDataset(**params_train)
+        else:
+            pbdl_all = VariableDtDataset(
+                **params_train, maximum_dt=variable_dt_stride_maximum, seed=None
+            )
+
+        train, val = random_split(
+            pbdl_all, [0.85, 0.15], generator=torch.Generator().manual_seed(split_seed)
+        )
+        train.indices = sorted(train.indices)
+        val.indices = sorted(val.indices)
+
+        params_test = {
+            "dset_name": dataset_name,
+            "local_datasets_dir": dataset_directory,
+            "time_steps": test_unrolling_steps,
+            "intermediate_time_steps": test_intermediate_time_steps,
+            "normalize_const": norm_const,
+            "normalize_data": normalize_data,
+        }
+        if test_sims is not None:
+            params_test["sel_sims"] = test_sims
+        if test_variable_dt_stride_maximum <= 1:
+            test = PBDLDataset(**params_test)
+        else:
+            test = VariableDtDataset(
+                **params_test, maximum_dt=test_variable_dt_stride_maximum, seed=split_seed
+            )
+
+        return train, val, test
+
+    pbdl_module.ape_2d_xxl_datasets = datasets_fn
+    print(
+        "[data] sims split override active:",
+        f"joint_train={joint_train or [0, 50]} joint_test={joint_test or 'whole-file'}",
+        f"gs_train={gs_train or [0, 80]} gs_test={gs_test or 'whole-file'}",
+    )
 
 
 def build_strategy(
@@ -274,20 +435,22 @@ def build_strategy(
     model_type: str = "PDE-S",
     use_ttt_state_cache_inference: bool = False,
     use_ttt_state_cache_train: bool = True,
+    sample_size: int = 128,
+    use_ttt_window_attention: bool = True,
 ) -> SingleStepSupervised:
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
 
     model = PDETransformer(
-        sample_size=128,
+        sample_size=sample_size,
         in_channels=2,
         out_channels=2,
         type=model_type,
         patch_size=4,
         periodic=True,
         carrier_token_active=False,
-        use_ttt_window_attention=True,
+        use_ttt_window_attention=use_ttt_window_attention,
         ttt_layer_type="linear",
         ttt_mini_batch_size=16,
         ttt_base_lr=1.0,
@@ -410,8 +573,10 @@ def main() -> None:
     print("precision:", args.precision)
     print("devices:", args.devices, "strategy:", args.strategy)
     print("accumulate_grad_batches:", args.accumulate_grad_batches)
+    print("use_ttt_window_attention:", args.use_ttt_window_attention)
     print("use_ttt_state_cache_train:", args.use_ttt_state_cache_train)
     print("generate_data:", args.generate_data, "low_res:", args.low_res)
+    print("downsample_factor:", args.downsample_factor, "sample_size:", args.sample_size)
 
     run_root.mkdir(parents=True, exist_ok=True)
     if args.generate_data:
@@ -419,14 +584,41 @@ def main() -> None:
     if not data_dir.exists():
         raise FileNotFoundError(f"Data directory does not exist: {data_dir}")
 
-    data_module = build_data_module(data_dir, FULL_DATASET_NAMES, args.batch_size, args.num_workers)
+    if any(
+        v is not None
+        for v in (
+            args.sims_split_joint_train,
+            args.sims_split_joint_test,
+            args.sims_split_gs_train,
+            args.sims_split_gs_test,
+        )
+    ):
+        apply_sims_split_override(
+            joint_train=args.sims_split_joint_train,
+            joint_test=args.sims_split_joint_test,
+            gs_train=args.sims_split_gs_train,
+            gs_test=args.sims_split_gs_test,
+        )
+
+    data_module = build_data_module(
+        data_dir, FULL_DATASET_NAMES, args.batch_size, args.num_workers,
+        downsample_factor=args.downsample_factor,
+    )
     data_module.setup(stage="fit")
+
+    if args.use_ttt_state_cache_train and not args.use_ttt_window_attention:
+        raise SystemExit(
+            "use_ttt_state_cache_train=true requires use_ttt_window_attention=true "
+            "(the plain baseline has no TTT state to cache)."
+        )
 
     strategy = build_strategy(
         args.seed,
         model_type=args.model_type,
         use_ttt_state_cache_inference=False,
         use_ttt_state_cache_train=args.use_ttt_state_cache_train,
+        sample_size=args.sample_size,
+        use_ttt_window_attention=args.use_ttt_window_attention,
     )
     trainer = build_trainer(args, run_root)
 
