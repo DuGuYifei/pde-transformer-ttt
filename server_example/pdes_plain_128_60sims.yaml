@@ -1,0 +1,28 @@
+# PDE-S baseline WITHOUT TTT, official APE2D data (60-sims layout), 128 input
+# (256 hdf5 avg-pooled by 2). Control arm isolating the TTT contribution from
+# the May train_cache_on/off runs (same recipe: effective batch 128, 100 epochs).
+work_dir: ~/working
+data_dir: ~/working/datasets_official
+run_root: ~/working/runs_v2
+run_name: pdes_plain_128_60sims
+model_type: PDE-S
+use_ttt_window_attention: false
+use_ttt_state_cache_train: false
+
+max_epochs: 100
+batch_size: 8
+num_workers: 2
+devices: 1
+strategy: auto
+precision: 32-true
+accumulate_grad_batches: 16
+seed: 42
+
+downsample_factor: 2
+sample_size: 128
+
+resume: false
+auto_resume: true
+checkpoint_path: null
+skip_rollout_eval: false
+generate_data: false
