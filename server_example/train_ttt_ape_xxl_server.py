@@ -64,6 +64,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
     # original architecture; verified computationally identical to upstream).
     "use_ttt_window_attention": True,
     "use_ttt_state_cache_train": True,
+    "ttt_layer_type": "linear",
+    "ttt_mini_batch_size": 16,
+    "ttt_base_lr": 1.0,
+    "ttt_use_gate": False,
+    "ttt_scan_checkpoint_group_size": 0,
     "max_epochs": 100,
     "batch_size": 8,
     "num_workers": 2,
@@ -186,6 +191,17 @@ def parse_args() -> argparse.Namespace:
         default=config["use_ttt_state_cache_train"],
         help="Use TTT state cache during training and validation forward passes.",
     )
+    parser.add_argument(
+        "--ttt-layer-type",
+        type=str,
+        choices=("linear", "mlp"),
+        default=config["ttt_layer_type"],
+        help="TTT inner learner type used inside TTT window attention.",
+    )
+    parser.add_argument("--ttt-mini-batch-size", type=int, default=config["ttt_mini_batch_size"])
+    parser.add_argument("--ttt-base-lr", type=float, default=config["ttt_base_lr"])
+    parser.add_argument("--ttt-use-gate", action=argparse.BooleanOptionalAction, default=config["ttt_use_gate"])
+    parser.add_argument("--ttt-scan-checkpoint-group-size", type=int, default=config["ttt_scan_checkpoint_group_size"])
     parser.add_argument("--max-epochs", type=int, default=config["max_epochs"])
     parser.add_argument("--batch-size", type=int, default=config["batch_size"])
     parser.add_argument("--num-workers", type=int, default=config["num_workers"])
@@ -437,6 +453,11 @@ def build_strategy(
     use_ttt_state_cache_train: bool = True,
     sample_size: int = 128,
     use_ttt_window_attention: bool = True,
+    ttt_layer_type: str = "linear",
+    ttt_mini_batch_size: int = 16,
+    ttt_base_lr: float = 1.0,
+    ttt_use_gate: bool = False,
+    ttt_scan_checkpoint_group_size: int = 0,
 ) -> SingleStepSupervised:
     torch.manual_seed(seed)
     if torch.cuda.is_available():
@@ -451,9 +472,11 @@ def build_strategy(
         periodic=True,
         carrier_token_active=False,
         use_ttt_window_attention=use_ttt_window_attention,
-        ttt_layer_type="linear",
-        ttt_mini_batch_size=16,
-        ttt_base_lr=1.0,
+        ttt_layer_type=ttt_layer_type,
+        ttt_mini_batch_size=ttt_mini_batch_size,
+        ttt_base_lr=ttt_base_lr,
+        ttt_use_gate=ttt_use_gate,
+        ttt_scan_checkpoint_group_size=ttt_scan_checkpoint_group_size,
     )
     strategy = SingleStepSupervised(
         model=model,
@@ -575,6 +598,11 @@ def main() -> None:
     print("accumulate_grad_batches:", args.accumulate_grad_batches)
     print("use_ttt_window_attention:", args.use_ttt_window_attention)
     print("use_ttt_state_cache_train:", args.use_ttt_state_cache_train)
+    print("ttt_layer_type:", args.ttt_layer_type)
+    print("ttt_mini_batch_size:", args.ttt_mini_batch_size)
+    print("ttt_base_lr:", args.ttt_base_lr)
+    print("ttt_use_gate:", args.ttt_use_gate)
+    print("ttt_scan_checkpoint_group_size:", args.ttt_scan_checkpoint_group_size)
     print("generate_data:", args.generate_data, "low_res:", args.low_res)
     print("downsample_factor:", args.downsample_factor, "sample_size:", args.sample_size)
 
@@ -619,6 +647,11 @@ def main() -> None:
         use_ttt_state_cache_train=args.use_ttt_state_cache_train,
         sample_size=args.sample_size,
         use_ttt_window_attention=args.use_ttt_window_attention,
+        ttt_layer_type=args.ttt_layer_type,
+        ttt_mini_batch_size=args.ttt_mini_batch_size,
+        ttt_base_lr=args.ttt_base_lr,
+        ttt_use_gate=args.ttt_use_gate,
+        ttt_scan_checkpoint_group_size=args.ttt_scan_checkpoint_group_size,
     )
     trainer = build_trainer(args, run_root)
 

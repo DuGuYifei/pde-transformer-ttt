@@ -95,6 +95,21 @@ def parse_args() -> argparse.Namespace:
         default=config.get("use_ttt_window_attention", True),
         help="Must match how the checkpoint was trained (plain baseline vs TTT).",
     )
+    parser.add_argument(
+        "--ttt-layer-type",
+        type=str,
+        choices=("linear", "mlp"),
+        default=config.get("ttt_layer_type", "linear"),
+        help="TTT inner learner type. Must match the checkpoint.",
+    )
+    parser.add_argument("--ttt-mini-batch-size", type=int, default=config.get("ttt_mini_batch_size", 16))
+    parser.add_argument("--ttt-base-lr", type=float, default=config.get("ttt_base_lr", 1.0))
+    parser.add_argument("--ttt-use-gate", action=argparse.BooleanOptionalAction, default=config.get("ttt_use_gate", False))
+    parser.add_argument(
+        "--ttt-scan-checkpoint-group-size",
+        type=int,
+        default=config.get("ttt_scan_checkpoint_group_size", 0),
+    )
     parser.set_defaults(
         sims_split_joint_train=config.get("sims_split_joint_train"),
         sims_split_joint_test=config.get("sims_split_joint_test"),
@@ -510,6 +525,15 @@ def main() -> None:
         build_kwargs["sample_size"] = args.sample_size
     if "use_ttt_window_attention" in build_params:
         build_kwargs["use_ttt_window_attention"] = args.use_ttt_window_attention
+    for name in (
+        "ttt_layer_type",
+        "ttt_mini_batch_size",
+        "ttt_base_lr",
+        "ttt_use_gate",
+        "ttt_scan_checkpoint_group_size",
+    ):
+        if name in build_params:
+            build_kwargs[name] = getattr(args, name)
 
     if any(
         v is not None
@@ -560,6 +584,11 @@ def main() -> None:
         "run_name": args.run_name,
         "model_type": args.model_type,
         "use_ttt_window_attention": args.use_ttt_window_attention,
+        "ttt_layer_type": args.ttt_layer_type,
+        "ttt_mini_batch_size": args.ttt_mini_batch_size,
+        "ttt_base_lr": args.ttt_base_lr,
+        "ttt_use_gate": args.ttt_use_gate,
+        "ttt_scan_checkpoint_group_size": args.ttt_scan_checkpoint_group_size,
         "downsample_factor": args.downsample_factor,
         "rollout_steps": args.rollout_steps,
         "eval_k": list(args.eval_k),
