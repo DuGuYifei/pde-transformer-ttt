@@ -1,8 +1,9 @@
-# PDE-S WITH TTT-MLP (state cache ON during training), official APE2D data,
-# 128 resolution from 256 hdf5 avg-pooled by 2. Batch 4 x accum 32 keeps the
-# effective batch at 128 while leaving headroom for the larger TTT-MLP state.
+# PDE-S WITH TTT-MLP (state cache ON during training), generated 60-sim
+# training data. Keep official data for eval only. 128 resolution comes from
+# 256 hdf5 avg-pooled by 2. Batch 4 x accum 32 keeps the effective batch at 128
+# while leaving headroom for the larger TTT-MLP state.
 work_dir: ~/working
-data_dir: ~/working/datasets_official
+data_dir: ~/working/datasets
 run_root: ~/working/runs_v2
 run_name: pdes_ttt-mlp-cacheon_128_60sims
 model_type: PDE-S
