@@ -701,7 +701,6 @@ def main() -> None:
         test_unrolling_steps=args.test_unrolling_steps,
         max_channels=args.max_channels,
     )
-    data_module.setup(stage="fit")
 
     if args.use_ttt_state_cache_train and resolved_token_mixer_type == "attention":
         raise SystemExit(
