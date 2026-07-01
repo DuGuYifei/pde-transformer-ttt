@@ -1,0 +1,42 @@
+# PDE-S with the earlier sequence-style TTT window mixer, cache off.
+work_dir: ~/working
+data_dir: ~/working/datasets
+run_root: ~/working/runs_v2
+run_name: pdes_ttt-sequence-linear-cacheoff_256_60sims
+model_type: PDE-S
+in_channels: 2
+out_channels: 2
+patch_size: 4
+periodic: true
+carrier_token_active: false
+
+token_mixer_type: ttt_sequence
+use_ttt_window_attention: true
+use_ttt_state_cache_train: false
+ttt_layer_type: linear
+ttt_mini_batch_size: 16
+ttt_base_lr: 1.0
+ttt_use_gate: false
+ttt_scan_checkpoint_group_size: 0
+
+learning_rate: 4.0e-5
+max_epochs: 100
+batch_size: 2
+num_workers: 2
+devices: 1
+strategy: auto
+precision: 32-true
+accumulate_grad_batches: 64
+seed: 42
+
+downsample_factor: 1
+sample_size: 256
+test_unrolling_steps: 29
+max_channels: 2
+
+resume: false
+auto_resume: true
+checkpoint_path: null
+skip_rollout_eval: false
+generate_data: false
+

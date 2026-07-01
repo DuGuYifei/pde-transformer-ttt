@@ -8,7 +8,7 @@ By default it loads the official mixed-channel small model `thuerey-group/pde-tr
 → subfolder `mc-s` (`config.json` + `diffusion_pytorch_model.safetensors`, ~187 MB).
 
 `test_pretrained_mc_server.py` is **self-contained**: it imports only the installed
-`pdetransformer` package (exactly like `server_example/test_ttt_ape_xxl_server.py`),
+`pdetransformer` package,
 so you can drop the single file into any run directory and run it — no sibling
 `server_example/` folder needed.
 
@@ -109,9 +109,10 @@ Written to `~/working/ttt_cache_low_res/pretrained_eval/mc-s/<timestamp>/`
   `macro_avg` (mean over datasets) and `micro_avg` (mean over trajectories).
 - `summary.json` — aggregates + run metadata.
 
-The schema matches `server_example/test_ttt_ape_xxl_server.py`, so you can diff the
+The schema matches the server model evaluation results, so you can diff the
 `macro_avg` / `micro_avg` rows directly against your own model's
-`results_cache_off.csv` (your TTT model additionally has a `results_cache_on.csv`).
+`results_cache_off.csv`. Sequence-style TTT runs may additionally have
+`results_cache_on.csv`; `attention` and `vittt` runs are cache-off only.
 
 ## Pipeline-parity note (verified)
 

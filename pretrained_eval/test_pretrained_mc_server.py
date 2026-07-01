@@ -1,9 +1,8 @@
 """Evaluate an off-the-shelf pretrained PDE-Transformer on the server dataset.
 
-Self-contained: it imports ONLY the installed ``pdetransformer`` package (exactly
-like ``server_example/test_ttt_ape_xxl_server.py``), so you can drop this single
-file into any run directory (e.g. ``~/test/``) and run it -- no sibling
-``server_example/`` folder required.
+Self-contained: it imports ONLY the installed ``pdetransformer`` package, so you
+can drop this single file into any run directory (e.g. ``~/test/``) and run it --
+no sibling ``server_example/`` folder required.
 
 It reproduces the same nRMSE-per-PDE protocol and the same data pipeline
 (``downsample_factor=2``, ``max_channels=2``, mean-std norm) as your own model's
@@ -56,7 +55,7 @@ from pdetransformer.core.mixed_channels import PDETransformer, SingleStepSupervi
 from pdetransformer.data import MultiDataModule
 
 
-# The 17 APEBench-xxl PDEs, same list/order as the server train+test scripts.
+# The 17 APEBench-xxl PDEs, same list/order as the server training/eval setup.
 DATASET_NAMES = [
     "diff",
     "hyp",
@@ -80,7 +79,7 @@ DATASET_NAMES = [
 DEFAULT_EVAL_K = (1, 10, 20)
 DEFAULT_ROLLOUT_STEPS = 29
 
-# Defaults derived from the server's low-res setup (train_ttt_ape_xxl_server.yaml).
+# Defaults derived from the server low-res pdes_* training configs.
 CONFIG_DEFAULTS: dict[str, Any] = {
     "work_dir": "~/working",
     "data_dir": None,
@@ -146,7 +145,7 @@ def build_data_module(
 
 
 # ---------------------------------------------------------------------------
-# Metrics / helpers -- copied from server_example.test_ttt_ape_xxl_server.
+# Metrics / helpers -- same nRMSE protocol as the server model evaluation.
 # ---------------------------------------------------------------------------
 def _format_million(n: int) -> str:
     return f"{n / 1e6:.2f}M"

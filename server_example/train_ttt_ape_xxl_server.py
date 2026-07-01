@@ -5,10 +5,10 @@ Expected copied layout from Kaggle:
     ~/working/ttt_cache_experiments/train_cache_on/checkpoints/last.ckpt
 
 Recommended first run on GTX 1080 Ti:
-    CUDA_VISIBLE_DEVICES=0 python train_ttt_ape_xxl_server.py --config train_ttt_ape_xxl_server.yaml
+    CUDA_VISIBLE_DEVICES=0 python server_example/train_ttt_ape_xxl_server.py --config server_example/pdes_vittt-cacheoff_128_60sims.yaml
 
 Optional 2-GPU run after smoke_2gpu.py succeeds:
-    CUDA_VISIBLE_DEVICES=0,1 python train_ttt_ape_xxl_server.py --config train_ttt_ape_xxl_server.yaml --devices 2 --strategy ddp --accumulate-grad-batches 4
+    CUDA_VISIBLE_DEVICES=0,1 python server_example/train_ttt_ape_xxl_server.py --config server_example/pdes_vittt-cacheoff_128_60sims.yaml --devices 2 --strategy ddp --accumulate-grad-batches 8
 """
 
 from __future__ import annotations
@@ -60,15 +60,26 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "run_root": None,
     "run_name": "train_once",
     "model_type": "PDE-S",
+    "in_channels": 2,
+    "out_channels": 2,
+    "patch_size": 4,
+    "periodic": True,
+    "carrier_token_active": False,
     # False builds the plain PDE-S/B/L without TTT window attention (the
     # original architecture; verified computationally identical to upstream).
     "use_ttt_window_attention": True,
+    # Preferred explicit mixer selector. null keeps backward compatibility:
+    # use_ttt_window_attention=false -> attention, true -> ttt_sequence.
+    "token_mixer_type": None,
     "use_ttt_state_cache_train": True,
     "ttt_layer_type": "linear",
     "ttt_mini_batch_size": 16,
     "ttt_base_lr": 1.0,
     "ttt_use_gate": False,
     "ttt_scan_checkpoint_group_size": 0,
+    "vittt_inner_lr": 1.0,
+    "vittt_padding_mode": "zero",
+    "learning_rate": 4.0e-5,
     "max_epochs": 100,
     "batch_size": 8,
     "num_workers": 2,
@@ -78,6 +89,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
     # Stored in the model config (metadata for diffusers pipelines; supervised
     # training does not consume it). Keep in sync with the effective input size.
     "sample_size": 128,
+    "test_unrolling_steps": 29,
+    "max_channels": 2,
     # Optional sim-range overrides for the 2D_APE_xxl split, as [start, end).
     # null keeps the package defaults (joint train [0,50] / test = whole file,
     # gs_delta-group train [0,80] / test = whole file). For the 600-sims
@@ -144,6 +157,12 @@ def _path_or_none(value: str | None) -> Path | None:
     return Path(value)
 
 
+def resolve_token_mixer_type(token_mixer_type: str | None, use_ttt_window_attention: bool) -> str:
+    if token_mixer_type is not None:
+        return token_mixer_type
+    return "ttt_sequence" if use_ttt_window_attention else "attention"
+
+
 def _load_config(path: Path | None) -> dict[str, Any]:
     config = dict(DEFAULT_CONFIG)
     if path is None:
@@ -179,11 +198,23 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--run-root", type=Path, default=_path_or_none(config["run_root"]))
     parser.add_argument("--run-name", type=str, default=config["run_name"])
     parser.add_argument("--model-type", type=str, choices=("PDE-S", "PDE-B", "PDE-L"), default=config["model_type"])
+    parser.add_argument("--in-channels", type=int, default=config["in_channels"])
+    parser.add_argument("--out-channels", type=int, default=config["out_channels"])
+    parser.add_argument("--patch-size", type=int, default=config["patch_size"])
+    parser.add_argument("--periodic", action=argparse.BooleanOptionalAction, default=config["periodic"])
+    parser.add_argument("--carrier-token-active", action=argparse.BooleanOptionalAction, default=config["carrier_token_active"])
     parser.add_argument(
         "--use-ttt-window-attention",
         action=argparse.BooleanOptionalAction,
         default=config["use_ttt_window_attention"],
         help="Build the model with TTT window attention. --no-use-ttt-window-attention trains the plain baseline.",
+    )
+    parser.add_argument(
+        "--token-mixer-type",
+        type=str,
+        choices=("attention", "ttt_sequence", "vittt"),
+        default=config["token_mixer_type"],
+        help="Explicit local token mixer. Omit/null for legacy use_ttt_window_attention mapping.",
     )
     parser.add_argument(
         "--use-ttt-state-cache-train",
@@ -202,11 +233,21 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ttt-base-lr", type=float, default=config["ttt_base_lr"])
     parser.add_argument("--ttt-use-gate", action=argparse.BooleanOptionalAction, default=config["ttt_use_gate"])
     parser.add_argument("--ttt-scan-checkpoint-group-size", type=int, default=config["ttt_scan_checkpoint_group_size"])
+    parser.add_argument("--vittt-inner-lr", type=float, default=config["vittt_inner_lr"])
+    parser.add_argument(
+        "--vittt-padding-mode",
+        type=str,
+        choices=("zero", "replicate"),
+        default=config["vittt_padding_mode"],
+    )
+    parser.add_argument("--learning-rate", type=float, default=config["learning_rate"])
     parser.add_argument("--max-epochs", type=int, default=config["max_epochs"])
     parser.add_argument("--batch-size", type=int, default=config["batch_size"])
     parser.add_argument("--num-workers", type=int, default=config["num_workers"])
     parser.add_argument("--downsample-factor", type=int, default=config["downsample_factor"])
     parser.add_argument("--sample-size", type=int, default=config["sample_size"])
+    parser.add_argument("--test-unrolling-steps", type=int, default=config["test_unrolling_steps"])
+    parser.add_argument("--max-channels", type=int, default=config["max_channels"])
     parser.add_argument("--devices", type=int, default=config["devices"])
     parser.add_argument("--strategy", type=str, default=config["strategy"])
     parser.add_argument("--precision", type=str, default=config["precision"])
@@ -304,13 +345,15 @@ def build_data_module(
     batch_size: int,
     num_workers: int,
     downsample_factor: int = 2,
+    test_unrolling_steps: int = 29,
+    max_channels: int = 2,
 ) -> MultiDataModule:
     params_data = {
         "path_index": {"2D_APE_xxl": str(data_dir)},
         "dataset_names": dataset_names,
         "dataset_type": "2D_APE_xxl",
         "unrolling_steps": 1,
-        "test_unrolling_steps": 29,
+        "test_unrolling_steps": test_unrolling_steps,
         "batch_size": batch_size,
         "num_workers": num_workers,
         "cache_strategy": "none",
@@ -318,7 +361,7 @@ def build_data_module(
         "normalize_data": "mean-std",
         "normalize_const": "mean-std",
         "downsample_factor": downsample_factor,
-        "max_channels": 2,
+        "max_channels": max_channels,
     }
     return MultiDataModule(**params_data)
 
@@ -452,12 +495,21 @@ def build_strategy(
     use_ttt_state_cache_inference: bool = False,
     use_ttt_state_cache_train: bool = True,
     sample_size: int = 128,
+    in_channels: int = 2,
+    out_channels: int = 2,
+    patch_size: int = 4,
+    periodic: bool = True,
+    carrier_token_active: bool = False,
     use_ttt_window_attention: bool = True,
+    token_mixer_type: str | None = None,
     ttt_layer_type: str = "linear",
     ttt_mini_batch_size: int = 16,
     ttt_base_lr: float = 1.0,
     ttt_use_gate: bool = False,
     ttt_scan_checkpoint_group_size: int = 0,
+    vittt_inner_lr: float = 1.0,
+    vittt_padding_mode: str = "zero",
+    learning_rate: float = 4.0e-5,
 ) -> SingleStepSupervised:
     torch.manual_seed(seed)
     if torch.cuda.is_available():
@@ -465,18 +517,21 @@ def build_strategy(
 
     model = PDETransformer(
         sample_size=sample_size,
-        in_channels=2,
-        out_channels=2,
+        in_channels=in_channels,
+        out_channels=out_channels,
         type=model_type,
-        patch_size=4,
-        periodic=True,
-        carrier_token_active=False,
+        patch_size=patch_size,
+        periodic=periodic,
+        carrier_token_active=carrier_token_active,
         use_ttt_window_attention=use_ttt_window_attention,
+        token_mixer_type=token_mixer_type,
         ttt_layer_type=ttt_layer_type,
         ttt_mini_batch_size=ttt_mini_batch_size,
         ttt_base_lr=ttt_base_lr,
         ttt_use_gate=ttt_use_gate,
         ttt_scan_checkpoint_group_size=ttt_scan_checkpoint_group_size,
+        vittt_inner_lr=vittt_inner_lr,
+        vittt_padding_mode=vittt_padding_mode,
     )
     strategy = SingleStepSupervised(
         model=model,
@@ -485,7 +540,7 @@ def build_strategy(
         use_ttt_state_cache_inference=use_ttt_state_cache_inference,
         use_ttt_state_cache_train=use_ttt_state_cache_train,
     )
-    strategy.learning_rate = 4.0e-5
+    strategy.learning_rate = learning_rate
     return strategy
 
 
@@ -573,6 +628,7 @@ def print_checkpoint_listing(run_root: Path, run_name: str) -> None:
 
 def main() -> None:
     args = parse_args()
+    resolved_token_mixer_type = resolve_token_mixer_type(args.token_mixer_type, args.use_ttt_window_attention)
     work_dir = args.work_dir.expanduser().resolve()
     data_dir = (args.data_dir or work_dir / "datasets").expanduser().resolve()
     run_root = (args.run_root or work_dir / "ttt_cache_experiments").expanduser().resolve()
@@ -589,6 +645,8 @@ def main() -> None:
     print("run_root:", run_root)
     print("run_name:", args.run_name)
     print("model_type:", args.model_type)
+    print("in_channels:", args.in_channels, "out_channels:", args.out_channels, "patch_size:", args.patch_size)
+    print("periodic:", args.periodic, "carrier_token_active:", args.carrier_token_active)
     print("checkpoint_path:", checkpoint_path)
     print("torch:", torch.__version__)
     print("cuda available:", torch.cuda.is_available())
@@ -597,14 +655,23 @@ def main() -> None:
     print("devices:", args.devices, "strategy:", args.strategy)
     print("accumulate_grad_batches:", args.accumulate_grad_batches)
     print("use_ttt_window_attention:", args.use_ttt_window_attention)
+    print("token_mixer_type:", args.token_mixer_type, "resolved:", resolved_token_mixer_type)
     print("use_ttt_state_cache_train:", args.use_ttt_state_cache_train)
     print("ttt_layer_type:", args.ttt_layer_type)
     print("ttt_mini_batch_size:", args.ttt_mini_batch_size)
     print("ttt_base_lr:", args.ttt_base_lr)
     print("ttt_use_gate:", args.ttt_use_gate)
     print("ttt_scan_checkpoint_group_size:", args.ttt_scan_checkpoint_group_size)
+    print("vittt_inner_lr:", args.vittt_inner_lr)
+    print("vittt_padding_mode:", args.vittt_padding_mode)
+    print("learning_rate:", args.learning_rate)
     print("generate_data:", args.generate_data, "low_res:", args.low_res)
-    print("downsample_factor:", args.downsample_factor, "sample_size:", args.sample_size)
+    print(
+        "downsample_factor:", args.downsample_factor,
+        "sample_size:", args.sample_size,
+        "test_unrolling_steps:", args.test_unrolling_steps,
+        "max_channels:", args.max_channels,
+    )
 
     run_root.mkdir(parents=True, exist_ok=True)
     if args.generate_data:
@@ -631,13 +698,20 @@ def main() -> None:
     data_module = build_data_module(
         data_dir, FULL_DATASET_NAMES, args.batch_size, args.num_workers,
         downsample_factor=args.downsample_factor,
+        test_unrolling_steps=args.test_unrolling_steps,
+        max_channels=args.max_channels,
     )
     data_module.setup(stage="fit")
 
-    if args.use_ttt_state_cache_train and not args.use_ttt_window_attention:
+    if args.use_ttt_state_cache_train and resolved_token_mixer_type == "attention":
         raise SystemExit(
             "use_ttt_state_cache_train=true requires use_ttt_window_attention=true "
             "(the plain baseline has no TTT state to cache)."
+        )
+    if args.use_ttt_state_cache_train and resolved_token_mixer_type == "vittt":
+        raise SystemExit(
+            "use_ttt_state_cache_train=true is invalid for token_mixer_type=vittt. "
+            "PDEViTTTWindowBlock has no cross-step TTT state cache; set use_ttt_state_cache_train=false."
         )
 
     strategy = build_strategy(
@@ -646,12 +720,21 @@ def main() -> None:
         use_ttt_state_cache_inference=False,
         use_ttt_state_cache_train=args.use_ttt_state_cache_train,
         sample_size=args.sample_size,
+        in_channels=args.in_channels,
+        out_channels=args.out_channels,
+        patch_size=args.patch_size,
+        periodic=args.periodic,
+        carrier_token_active=args.carrier_token_active,
         use_ttt_window_attention=args.use_ttt_window_attention,
+        token_mixer_type=args.token_mixer_type,
         ttt_layer_type=args.ttt_layer_type,
         ttt_mini_batch_size=args.ttt_mini_batch_size,
         ttt_base_lr=args.ttt_base_lr,
         ttt_use_gate=args.ttt_use_gate,
         ttt_scan_checkpoint_group_size=args.ttt_scan_checkpoint_group_size,
+        vittt_inner_lr=args.vittt_inner_lr,
+        vittt_padding_mode=args.vittt_padding_mode,
+        learning_rate=args.learning_rate,
     )
     trainer = build_trainer(args, run_root)
 
@@ -672,23 +755,29 @@ def main() -> None:
         return
 
     experiment_results = []
-    for name, use_cache in [("inference_cache_off", False), ("inference_cache_on", True)]:
+    eval_modes = [("inference_cache_off", False)]
+    if resolved_token_mixer_type == "ttt_sequence":
+        eval_modes.append(("inference_cache_on", True))
+    for name, use_cache in eval_modes:
         print(f"\n=== Evaluating {name} ===")
         result = {
             "name": name,
             "checkpoint": trainer.checkpoint_callback.last_model_path,
             "max_epochs": args.max_epochs,
             "val_metrics": val_metrics,
-            **run_rollout_check(strategy, data_module, use_cache, num_frames=29),
+            **run_rollout_check(strategy, data_module, use_cache, num_frames=args.test_unrolling_steps),
         }
         experiment_results.append(result)
         print(json.dumps(result, indent=2))
 
     off = next(r for r in experiment_results if not r["use_ttt_state_cache_inference"])
-    on = next(r for r in experiment_results if r["use_ttt_state_cache_inference"])
     print("cache off rollout mse:", off["rollout_mse"])
-    print("cache on  rollout mse:", on["rollout_mse"])
-    print("prediction shapes:", off["prediction_shape"], on["prediction_shape"])
+    on = next((r for r in experiment_results if r["use_ttt_state_cache_inference"]), None)
+    if on is not None:
+        print("cache on  rollout mse:", on["rollout_mse"])
+        print("prediction shapes:", off["prediction_shape"], on["prediction_shape"])
+    else:
+        print("prediction shape:", off["prediction_shape"])
 
     del strategy, data_module
     gc.collect()

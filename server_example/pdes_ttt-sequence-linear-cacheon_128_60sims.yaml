@@ -1,34 +1,43 @@
-# PDE-S WITH TTT-MLP (state cache ON during training), generated 60-sim
-# training data. Keep official data for eval only. 128 resolution comes from
-# 256 hdf5 avg-pooled by 2. Batch 4 x accum 32 keeps the effective batch at 128
-# while leaving headroom for the larger TTT-MLP state.
+# PDE-S with the earlier sequence-style TTT-Linear window mixer, cache on.
+# This is kept only for reproducing old cache-on runs; it is not a KV-cache speedup.
 work_dir: ~/working
 data_dir: ~/working/datasets
 run_root: ~/working/runs_v2
-run_name: pdes_ttt-mlp-cacheon_128_60sims
+run_name: pdes_ttt-sequence-linear-cacheon_128_60sims
 model_type: PDE-S
+in_channels: 2
+out_channels: 2
+patch_size: 4
+periodic: true
+carrier_token_active: false
+
+token_mixer_type: ttt_sequence
 use_ttt_window_attention: true
 use_ttt_state_cache_train: true
-ttt_layer_type: mlp
+ttt_layer_type: linear
 ttt_mini_batch_size: 16
 ttt_base_lr: 1.0
 ttt_use_gate: false
 ttt_scan_checkpoint_group_size: 0
 
+learning_rate: 4.0e-5
 max_epochs: 100
-batch_size: 4
+batch_size: 8
 num_workers: 2
 devices: 1
 strategy: auto
 precision: 32-true
-accumulate_grad_batches: 32
+accumulate_grad_batches: 16
 seed: 42
 
 downsample_factor: 2
 sample_size: 128
+test_unrolling_steps: 29
+max_channels: 2
 
 resume: false
 auto_resume: true
 checkpoint_path: null
 skip_rollout_eval: false
 generate_data: false
+

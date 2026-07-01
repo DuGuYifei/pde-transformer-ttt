@@ -19,6 +19,7 @@ import torch
 
 from ..mixed_channels.udit import FinalLayer, precompute_freqs_cis_2d, apply_rotary_emb
 from ..mixed_channels.pde_transformer import Mlp
+from ..pde_vittt_window import PDEViTTTWindowBlock
 from ..ttt_window_attention import TTTWindowAttention2DTime
 
 
@@ -412,6 +413,9 @@ class PDEStage(nn.Module):
             ttt_base_lr: float = 1.0,
             ttt_use_gate: bool = False,
             ttt_scan_checkpoint_group_size: int = 0,
+            token_mixer_type: Optional[str] = None,
+            vittt_inner_lr: float = 1.0,
+            vittt_padding_mode: str = "zero",
     ):
         super().__init__()
 
@@ -432,6 +436,9 @@ class PDEStage(nn.Module):
                 ttt_base_lr=ttt_base_lr,
                 ttt_use_gate=ttt_use_gate,
                 ttt_scan_checkpoint_group_size=ttt_scan_checkpoint_group_size,
+                token_mixer_type=token_mixer_type,
+                vittt_inner_lr=vittt_inner_lr,
+                vittt_padding_mode=vittt_padding_mode,
             )
             blocks.append(block)
         self.blocks = nn.ModuleList(blocks)
@@ -985,6 +992,9 @@ class HATDiTBlock(nn.Module):
         ttt_base_lr: float = 1.0,
         ttt_use_gate: bool = False,
         ttt_scan_checkpoint_group_size: int = 0,
+        token_mixer_type: Optional[str] = None,
+        vittt_inner_lr: float = 1.0,
+        vittt_padding_mode: str = "zero",
     ):
         super().__init__()
         """
@@ -1012,10 +1022,16 @@ class HATDiTBlock(nn.Module):
         # self.pos_embed = PosEmbMLPSwinv1D(dim, rank=2)
 
         self.carrier_token_active = use_carrier_tokens
+        self.periodic = periodic
 
         self.cr_window = 1
+        if token_mixer_type is None:
+            token_mixer_type = "ttt_sequence" if use_ttt_window_attention else "attention"
+        if token_mixer_type not in ("attention", "ttt_sequence", "vittt"):
+            raise ValueError(f"Unsupported token_mixer_type: {token_mixer_type}")
+        self.token_mixer_type = token_mixer_type
 
-        if use_ttt_window_attention:
+        if self.token_mixer_type == "ttt_sequence":
             self.attn_spatial = TTTWindowAttention2DTime(
                 dim,
                 num_heads=num_heads,
@@ -1024,6 +1040,15 @@ class HATDiTBlock(nn.Module):
                 mini_batch_size=ttt_mini_batch_size,
                 use_gate=ttt_use_gate,
                 scan_checkpoint_group_size=ttt_scan_checkpoint_group_size,
+            )
+        elif self.token_mixer_type == "vittt":
+            self.attn_spatial = PDEViTTTWindowBlock(
+                dim,
+                num_heads=num_heads,
+                qkv_bias=qkv_bias,
+                inner_lr=vittt_inner_lr,
+                proj_drop=drop,
+                padding_mode=vittt_padding_mode,
             )
         else:
             self.attn_spatial = WindowAttention2DTime(
@@ -1239,7 +1264,34 @@ class HATDiTBlock(nn.Module):
 
         x_msa = self.norm1(x)
         x_msa = x_msa * (1 + msa1_scale) + msa1_shift
-        if return_ttt_state_cache and isinstance(self.attn_spatial, TTTWindowAttention2DTime):
+        if self.token_mixer_type == "vittt":
+            if attn_mask is not None:
+                raise NotImplementedError(
+                    "PDEViTTTWindowBlock does not support non-periodic shifted-window masks yet. "
+                    "For Phase 1, use periodic=True or disable shifted windows for non-periodic cases."
+                )
+            local_token_count = self.window_size * self.window_size
+            if x_msa.shape[2] < local_token_count:
+                raise ValueError(
+                    f"Expected at least {local_token_count} local window tokens, got {x_msa.shape[2]}"
+                )
+            prefix_len = x_msa.shape[2] - local_token_count
+            prefix = x_msa[:, :, :prefix_len] if prefix_len > 0 else None
+            x_window = x_msa[:, :, prefix_len:]
+            bw, dc, tokens, dim = x_window.shape
+            x_window = x_window.reshape(bw * dc, tokens, dim)
+            x_window = self.attn_spatial(
+                x_window,
+                h=self.window_size,
+                w=self.window_size,
+                periodic=self.periodic,
+            )
+            x_window = x_window.reshape(bw, dc, tokens, dim)
+            if prefix is not None:
+                x_msa = torch.cat([torch.zeros_like(prefix), x_window], dim=2)
+            else:
+                x_msa = x_window
+        elif return_ttt_state_cache and isinstance(self.attn_spatial, TTTWindowAttention2DTime):
             if ttt_state_cache is None:
                 ttt_state_cache = {}
             cache_key = self.attn_spatial.cache_key
@@ -1343,6 +1395,9 @@ class PDEImpl(nn.Module):
             ttt_base_lr: float = 1.0,
             ttt_use_gate: bool = False,
             ttt_scan_checkpoint_group_size: int = 0,
+            token_mixer_type: Optional[str] = None,
+            vittt_inner_lr: float = 1.0,
+            vittt_padding_mode: str = "zero",
             **kwargs
     ):
         super().__init__()
@@ -1373,6 +1428,9 @@ class PDEImpl(nn.Module):
             'ttt_base_lr': ttt_base_lr,
             'ttt_use_gate': ttt_use_gate,
             'ttt_scan_checkpoint_group_size': ttt_scan_checkpoint_group_size,
+            'token_mixer_type': token_mixer_type,
+            'vittt_inner_lr': vittt_inner_lr,
+            'vittt_padding_mode': vittt_padding_mode,
         }
 
         self.use_carrier_tokens = use_carrier_tokens
@@ -1715,6 +1773,9 @@ class PDETransformer(ModelMixin, ConfigMixin):
             ttt_base_lr: float = 1.0,
             ttt_use_gate: bool = False,
             ttt_scan_checkpoint_group_size: int = 0,
+            token_mixer_type: Optional[str] = None,
+            vittt_inner_lr: float = 1.0,
+            vittt_padding_mode: str = "zero",
     ):
         super(PDETransformer, self).__init__()
         args = { 'num_timesteps': num_timesteps, 'patch_size': patch_size, 'learn_sigma': False,
@@ -1722,7 +1783,10 @@ class PDETransformer(ModelMixin, ConfigMixin):
                  'use_ttt_window_attention': use_ttt_window_attention, 'ttt_layer_type': ttt_layer_type,
                  'ttt_mini_batch_size': ttt_mini_batch_size, 'ttt_base_lr': ttt_base_lr,
                  'ttt_use_gate': ttt_use_gate,
-                 'ttt_scan_checkpoint_group_size': ttt_scan_checkpoint_group_size}
+                 'ttt_scan_checkpoint_group_size': ttt_scan_checkpoint_group_size,
+                 'token_mixer_type': token_mixer_type,
+                 'vittt_inner_lr': vittt_inner_lr,
+                 'vittt_padding_mode': vittt_padding_mode}
 
         self.model: PDEImpl = PDE_models[type](**args)
         self.sample_size = sample_size
