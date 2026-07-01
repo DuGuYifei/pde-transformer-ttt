@@ -43,7 +43,7 @@ Confirmed server layout (from inspection):
 | thing | location |
 |---|---|
 | data | `~/working/datasets/` (all `*.hdf5` present) |
-| venv (py3.12, has `pdetransformer-ttt 0.0.1rc4`, `diffusers`, `huggingface_hub`) | `~/venv` |
+| venv (py3.12, has `pdetransformer-ttt`, `diffusers`, `huggingface_hub`) | `~/venv` |
 | your low-res run root | `~/working/ttt_cache_low_res/` |
 | this script (already copied) | `~/test/test_pretrained_mc_server.py` |
 
