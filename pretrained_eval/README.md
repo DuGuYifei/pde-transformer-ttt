@@ -1,60 +1,78 @@
-# Pretrained-model evaluation
+# Unified official-data evaluation
 
-Evaluate an **off-the-shelf pretrained PDE-Transformer** on the *same* dataset
-your server model is tested on, using the *same* nRMSE protocol — so you can put
-the published model's numbers next to your own TTT-trained model's numbers.
+`test_pretrained_mc_server.py` is the single evaluation entry point for the
+official-data report. It supports both model formats we use:
 
-By default it loads the official mixed-channel small model `thuerey-group/pde-transformer`
-→ subfolder `mc-s` (`config.json` + `diffusion_pytorch_model.safetensors`, ~187 MB).
+- local Lightning checkpoints trained from `server_example/*.yaml`;
+- official PDE-Transformer `safetensors` loaded by `PDETransformer.from_pretrained`.
 
-`test_pretrained_mc_server.py` is **self-contained**: it imports only the installed
-`pdetransformer` package,
-so you can drop the single file into any run directory and run it — no sibling
-`server_example/` folder needed.
+The output schema matches the previous official-eval files:
 
-## Why this is a fair, drop-in comparison
+- `results_cache_off.json` / `results_cache_off.csv`
+- optional `results_cache_on.json` / `results_cache_on.csv`
+- `summary.json`
 
-The official `mc-s` model is the **same architecture** your server model uses
-(`in=2, out=2, sample_size=128, PDE-S, patch_size=4, periodic, no carrier token`),
-the only difference being your model adds TTT window attention. `from_pretrained`
-reads the published `config.json`, builds the plain (no-TTT) net, and loads the
-weights with no missing/unexpected keys. Because there is no TTT state, this runs
-**cache OFF only**.
+By default the script reports nRMSE at `k=1,10,20,29`, so the final evaluated
+step is included.
 
-The data pipeline params are identical to the server test (`downsample_factor=2`,
-`max_channels=2`, `mean-std` norm), so both models see the same test inputs.
+## Important data rule
 
-## ⚠️ Read before comparing numbers
+The YAML files in `server_example/` describe training runs, and their `data_dir`
+usually points to `~/working/datasets`. For the official report, explicitly pass
+the official test directory:
 
-The official model was trained at **full resolution** (`downsample_factor=1`) on
-standard-resolution APEBench. Your server data is generated **low-res** and the
-data module **downsamples by 2**. Keeping your pipeline means the pretrained model
-is evaluated **zero-shot / out of distribution** on your low-res data — that's the
-"does the off-the-shelf model already work on my data?" question, but it also means
-these nRMSE values are **not** comparable to the paper's headline numbers
-(paper MC-S: nRMSE1 ≈ 0.044, nRMSE10 ≈ 0.36 on full-res pretraining data).
+```bash
+--data-dir ~/working/datasets_official
+```
 
----
+Do not rely on the YAML `data_dir` when writing numbers into
+`train-history/official_data_eval_report.md`.
 
-## Running it on `cube4.pbs.cit.tum.de`
+## Cache modes
 
-Confirmed server layout (from inspection):
+- `attention`: cache off only.
+- `vittt`: ViTTT-style cache off only. `PDEViTTTWindowBlock` has no cross-step state cache.
+- `ttt_sequence`: `--cache-mode auto` runs both cache off and cache on.
+- official `from_pretrained` safetensors: cache off only.
 
-| thing | location |
-|---|---|
-| data | `~/working/datasets/` (all `*.hdf5` present) |
-| venv (py3.12, has `pdetransformer-ttt`, `diffusers`, `huggingface_hub`) | `~/venv` |
-| your low-res run root | `~/working/ttt_cache_low_res/` |
-| this script (already copied) | `~/test/test_pretrained_mc_server.py` |
+Use `--cache-mode off`, `--cache-mode on`, or `--cache-mode both` to override the
+auto behavior for sequence-style TTT checkpoints.
 
-> ⚠️ Re-copy the script. The `~/test/` copy is the old import-based version. Push the
-> current self-contained `test_pretrained_mc_server.py` to `~/test/` before running.
+## Local checkpoint from a server YAML
 
-### Step 1 — pre-download the model on the **login node**
+Example for the ViTTT-style 128 run:
 
-The HF cache does not exist yet (`~/.cache/huggingface` is absent), and PBS compute
-nodes often have no internet. Download once on the login node (which does have
-internet), into a folder under `~/working`:
+```bash
+source ~/venv/bin/activate
+cd ~/server_06_vittt
+
+CUDA_VISIBLE_DEVICES=0 python pretrained_eval/test_pretrained_mc_server.py \
+    --config server_example/pdes_vittt-cacheoff_128_60sims.yaml \
+    --data-dir ~/working/datasets_official \
+    --checkpoint-path ~/working/runs_v2/pdes_vittt-cacheoff_128_60sims/checkpoints/epoch-epoch=099.ckpt \
+    --cache-mode off \
+    --output-dir ~/working/runs_v2/pdes_vittt-cacheoff_128_60sims/test_results/official_best
+```
+
+The same script supports all current `server_example/*.yaml` files, including
+plain attention, sequence TTT linear/MLP, cache-on/off configs, 128, and 256.
+
+Quick smoke test:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python pretrained_eval/test_pretrained_mc_server.py \
+    --config server_example/pdes_vittt-cacheoff_128_60sims.yaml \
+    --data-dir ~/working/datasets_official \
+    --checkpoint-path ~/working/runs_v2/pdes_vittt-cacheoff_128_60sims/checkpoints/epoch-epoch=099.ckpt \
+    --datasets burgers \
+    --max-batches-per-dataset 2 \
+    --cache-mode off
+```
+
+## Official safetensors
+
+The official model has no Lightning `.ckpt`; load it with `from_pretrained`.
+If the compute node has no internet, download on the login node first:
 
 ```bash
 source ~/venv/bin/activate
@@ -62,63 +80,21 @@ hf download thuerey-group/pde-transformer --include "mc-s/*" \
     --local-dir ~/working/pretrained_weights/pde-transformer
 ```
 
-(`huggingface-cli` is deprecated/non-functional in this hub version — use `hf`,
-same flags.) This creates:
-
-```
-~/working/pretrained_weights/pde-transformer/mc-s/config.json
-~/working/pretrained_weights/pde-transformer/mc-s/diffusion_pytorch_model.safetensors
-```
-
-(Python fallback, if `hf` misbehaves:
-`python -c "from huggingface_hub import snapshot_download; snapshot_download('thuerey-group/pde-transformer', allow_patterns='mc-s/*', local_dir='$HOME/working/pretrained_weights/pde-transformer')"`)
-
-### Step 2 — run the evaluation
+Then evaluate:
 
 ```bash
-source ~/venv/bin/activate
-cd ~/test
-CUDA_VISIBLE_DEVICES=0 python test_pretrained_mc_server.py \
+CUDA_VISIBLE_DEVICES=0 python pretrained_eval/test_pretrained_mc_server.py \
     --model-source ~/working/pretrained_weights/pde-transformer \
-    --subfolder mc-s
+    --subfolder mc-s \
+    --data-dir ~/working/datasets_official \
+    --output-dir ~/working/runs_v2/pretrained_mc-s/test_results/official
 ```
 
-Defaults already point at `~/working/datasets` for data and
-`~/working/ttt_cache_low_res` as the output root — no `--config` needed.
+If `--model-source` already points at the leaf folder containing
+`config.json` and `diffusion_pytorch_model.safetensors`, pass `--subfolder ""`.
 
-**Quick smoke test first** (one PDE, 2 batches, ~a minute):
+## Notes
 
-```bash
-CUDA_VISIBLE_DEVICES=0 python test_pretrained_mc_server.py \
-    --model-source ~/working/pretrained_weights/pde-transformer --subfolder mc-s \
-    --datasets burgers --max-batches-per-dataset 2
-```
-
-If the compute node *does* have internet you can skip Step 1 and drop
-`--model-source` entirely (it auto-downloads to the HF cache).
-
-Other published sizes: `--subfolder mc-b` or `mc-l` (download those subfolders the
-same way).
-
-## Output
-
-Written to `~/working/ttt_cache_low_res/pretrained_eval/mc-s/<timestamp>/`
-(override with `--output-dir`):
-
-- `results_cache_off.json` / `results_cache_off.csv` — per-dataset nRMSE_1/10/20 +
-  `macro_avg` (mean over datasets) and `micro_avg` (mean over trajectories).
-- `summary.json` — aggregates + run metadata.
-
-The schema matches the server model evaluation results, so you can diff the
-`macro_avg` / `micro_avg` rows directly against your own model's
-`results_cache_off.csv`. Sequence-style TTT runs may additionally have
-`results_cache_on.csv`; `attention` and `vittt` runs are cache-off only.
-
-## Pipeline-parity note (verified)
-
-The inlined `build_data_module` here matches `server_example/train_ttt_ape_xxl_server.py`.
-Verified via git (`git log -S "downsample_factor"`): the `downsample_factor=2` /
-`max_channels=2` data params were set in the **initial** server commit (`b28f399`)
-and have **never changed since** — so this pipeline is identical to the one your
-`server_01`/`server_02` test runs used. The only later edits to that script added
-PDE-B `model_type` plumbing, which does not touch the data pipeline.
+The official pretrained model was trained on the original full-resolution
+APEBench distribution. Evaluating it on our official test folder is useful as a
+baseline, but it is not the same as the paper's original benchmark setting.
