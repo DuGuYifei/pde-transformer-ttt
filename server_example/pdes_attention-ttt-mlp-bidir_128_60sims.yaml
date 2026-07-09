@@ -1,0 +1,48 @@
+# PDE-S video-dit style: original local window attention followed by gated bidirectional TTT-MLP.
+# This keeps the attention branch and inserts TTT after attention:
+#   X' = attention(LN(X)); Z = X' + tanh(alpha) * TTT(X');
+#   Z' = Z + tanh(beta) * reverse_TTT(Z); Y = X + Z'.
+# The TTT is local to each PDE window in this implementation, not global over the full grid.
+work_dir: ~/working
+data_dir: ~/working/datasets
+run_root: ~/working/runs_v2
+run_name: pdes_attention-ttt-mlp-bidir_128_60sims
+model_type: PDE-S
+in_channels: 2
+out_channels: 2
+patch_size: 4
+periodic: true
+carrier_token_active: false
+
+token_mixer_type: attention_ttt
+use_ttt_window_attention: false
+use_ttt_state_cache_train: false
+ttt_layer_type: mlp
+ttt_mini_batch_size: 64
+ttt_base_lr: 1.0
+ttt_use_gate: false
+ttt_scan_checkpoint_group_size: 0
+attention_ttt_type: ttt_sequence
+attention_ttt_gate_init: 0.1
+attention_ttt_bidirectional: true
+
+learning_rate: 4.0e-5
+max_epochs: 100
+batch_size: 4
+num_workers: 2
+devices: 1
+strategy: auto
+precision: 32-true
+accumulate_grad_batches: 32
+seed: 42
+
+downsample_factor: 2
+sample_size: 128
+test_unrolling_steps: 29
+max_channels: 2
+
+resume: false
+auto_resume: true
+checkpoint_path: null
+skip_rollout_eval: false
+generate_data: false

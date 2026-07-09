@@ -79,6 +79,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "ttt_scan_checkpoint_group_size": 0,
     "vittt_inner_lr": 1.0,
     "vittt_padding_mode": "zero",
+    "attention_ttt_type": "ttt_sequence",
+    "attention_ttt_gate_init": 0.1,
+    "attention_ttt_bidirectional": True,
     "learning_rate": 4.0e-5,
     "max_epochs": 100,
     "batch_size": 8,
@@ -212,7 +215,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--token-mixer-type",
         type=str,
-        choices=("attention", "ttt_sequence", "vittt"),
+        choices=("attention", "ttt_sequence", "vittt", "attention_ttt"),
         default=config["token_mixer_type"],
         help="Explicit local token mixer. Omit/null for legacy use_ttt_window_attention mapping.",
     )
@@ -239,6 +242,20 @@ def parse_args() -> argparse.Namespace:
         type=str,
         choices=("zero", "replicate"),
         default=config["vittt_padding_mode"],
+    )
+    parser.add_argument(
+        "--attention-ttt-type",
+        type=str,
+        choices=("ttt_sequence", "vittt"),
+        default=config["attention_ttt_type"],
+        help="Post-attention TTT branch used when token_mixer_type=attention_ttt.",
+    )
+    parser.add_argument("--attention-ttt-gate-init", type=float, default=config["attention_ttt_gate_init"])
+    parser.add_argument(
+        "--attention-ttt-bidirectional",
+        action=argparse.BooleanOptionalAction,
+        default=config["attention_ttt_bidirectional"],
+        help="Apply reverse TTT after forward TTT, matching video-dit style.",
     )
     parser.add_argument("--learning-rate", type=float, default=config["learning_rate"])
     parser.add_argument("--max-epochs", type=int, default=config["max_epochs"])
@@ -509,6 +526,9 @@ def build_strategy(
     ttt_scan_checkpoint_group_size: int = 0,
     vittt_inner_lr: float = 1.0,
     vittt_padding_mode: str = "zero",
+    attention_ttt_type: str = "ttt_sequence",
+    attention_ttt_gate_init: float = 0.1,
+    attention_ttt_bidirectional: bool = True,
     learning_rate: float = 4.0e-5,
 ) -> SingleStepSupervised:
     torch.manual_seed(seed)
@@ -532,6 +552,9 @@ def build_strategy(
         ttt_scan_checkpoint_group_size=ttt_scan_checkpoint_group_size,
         vittt_inner_lr=vittt_inner_lr,
         vittt_padding_mode=vittt_padding_mode,
+        attention_ttt_type=attention_ttt_type,
+        attention_ttt_gate_init=attention_ttt_gate_init,
+        attention_ttt_bidirectional=attention_ttt_bidirectional,
     )
     strategy = SingleStepSupervised(
         model=model,
@@ -664,6 +687,9 @@ def main() -> None:
     print("ttt_scan_checkpoint_group_size:", args.ttt_scan_checkpoint_group_size)
     print("vittt_inner_lr:", args.vittt_inner_lr)
     print("vittt_padding_mode:", args.vittt_padding_mode)
+    print("attention_ttt_type:", args.attention_ttt_type)
+    print("attention_ttt_gate_init:", args.attention_ttt_gate_init)
+    print("attention_ttt_bidirectional:", args.attention_ttt_bidirectional)
     print("learning_rate:", args.learning_rate)
     print("generate_data:", args.generate_data, "low_res:", args.low_res)
     print(
@@ -707,10 +733,10 @@ def main() -> None:
             "use_ttt_state_cache_train=true requires use_ttt_window_attention=true "
             "(the plain baseline has no TTT state to cache)."
         )
-    if args.use_ttt_state_cache_train and resolved_token_mixer_type == "vittt":
+    if args.use_ttt_state_cache_train and resolved_token_mixer_type in ("vittt", "attention_ttt"):
         raise SystemExit(
-            "use_ttt_state_cache_train=true is invalid for token_mixer_type=vittt. "
-            "PDEViTTTWindowBlock has no cross-step TTT state cache; set use_ttt_state_cache_train=false."
+            f"use_ttt_state_cache_train=true is invalid for token_mixer_type={resolved_token_mixer_type}. "
+            "This experiment has no cross-step TTT state cache; set use_ttt_state_cache_train=false."
         )
 
     strategy = build_strategy(
@@ -733,6 +759,9 @@ def main() -> None:
         ttt_scan_checkpoint_group_size=args.ttt_scan_checkpoint_group_size,
         vittt_inner_lr=args.vittt_inner_lr,
         vittt_padding_mode=args.vittt_padding_mode,
+        attention_ttt_type=args.attention_ttt_type,
+        attention_ttt_gate_init=args.attention_ttt_gate_init,
+        attention_ttt_bidirectional=args.attention_ttt_bidirectional,
         learning_rate=args.learning_rate,
     )
     trainer = build_trainer(args, run_root)

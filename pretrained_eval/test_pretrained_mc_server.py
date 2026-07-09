@@ -72,6 +72,9 @@ CONFIG_DEFAULTS: dict[str, Any] = {
     "ttt_scan_checkpoint_group_size": 0,
     "vittt_inner_lr": 1.0,
     "vittt_padding_mode": "zero",
+    "attention_ttt_type": "ttt_sequence",
+    "attention_ttt_gate_init": 0.1,
+    "attention_ttt_bidirectional": True,
     "batch_size": 8,
     "num_workers": 2,
     "seed": 42,
@@ -192,7 +195,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--token-mixer-type",
-        choices=("attention", "ttt_sequence", "vittt"),
+        choices=("attention", "ttt_sequence", "vittt", "attention_ttt"),
         default=cfg.get("token_mixer_type"),
         help="Local checkpoint mixer type. Ignored for from_pretrained models.",
     )
@@ -223,6 +226,18 @@ def parse_args() -> argparse.Namespace:
         choices=("zero", "replicate"),
         default=cfg["vittt_padding_mode"],
     )
+    parser.add_argument(
+        "--attention-ttt-type",
+        choices=("ttt_sequence", "vittt"),
+        default=cfg["attention_ttt_type"],
+        help="Post-attention TTT branch used when token_mixer_type=attention_ttt.",
+    )
+    parser.add_argument("--attention-ttt-gate-init", type=float, default=cfg["attention_ttt_gate_init"])
+    parser.add_argument(
+        "--attention-ttt-bidirectional",
+        action=argparse.BooleanOptionalAction,
+        default=cfg["attention_ttt_bidirectional"],
+    )
 
     parser.add_argument("--batch-size", type=int, default=cfg["batch_size"])
     parser.add_argument("--num-workers", type=int, default=cfg["num_workers"])
@@ -238,7 +253,7 @@ def parse_args() -> argparse.Namespace:
         default="auto",
         help=(
             "TTT state cache mode during inference. auto means both for "
-            "ttt_sequence checkpoints, off for attention/vittt/pretrained."
+            "ttt_sequence checkpoints, off for attention/vittt/attention_ttt/pretrained."
         ),
     )
     parser.add_argument("--rollout-steps", type=int, default=DEFAULT_ROLLOUT_STEPS)
@@ -326,6 +341,9 @@ def build_checkpoint_strategy(args: argparse.Namespace, checkpoint_path: Path) -
         ttt_scan_checkpoint_group_size=args.ttt_scan_checkpoint_group_size,
         vittt_inner_lr=args.vittt_inner_lr,
         vittt_padding_mode=args.vittt_padding_mode,
+        attention_ttt_type=args.attention_ttt_type,
+        attention_ttt_gate_init=args.attention_ttt_gate_init,
+        attention_ttt_bidirectional=args.attention_ttt_bidirectional,
     )
     strategy = SingleStepSupervised(
         model=model,
@@ -725,6 +743,9 @@ def main() -> None:
         "ttt_scan_checkpoint_group_size": args.ttt_scan_checkpoint_group_size,
         "vittt_inner_lr": args.vittt_inner_lr,
         "vittt_padding_mode": args.vittt_padding_mode,
+        "attention_ttt_type": args.attention_ttt_type,
+        "attention_ttt_gate_init": args.attention_ttt_gate_init,
+        "attention_ttt_bidirectional": args.attention_ttt_bidirectional,
         "downsample_factor": args.downsample_factor,
         "sample_size": args.sample_size,
         "test_unrolling_steps": args.test_unrolling_steps,

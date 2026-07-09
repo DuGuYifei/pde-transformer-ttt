@@ -369,6 +369,9 @@ class PDEStage(nn.Module):
             token_mixer_type: Optional[str] = None,
             vittt_inner_lr: float = 1.0,
             vittt_padding_mode: str = "zero",
+            attention_ttt_type: str = "ttt_sequence",
+            attention_ttt_gate_init: float = 0.1,
+            attention_ttt_bidirectional: bool = True,
     ):
         super().__init__()
 
@@ -392,6 +395,9 @@ class PDEStage(nn.Module):
                 token_mixer_type=token_mixer_type,
                 vittt_inner_lr=vittt_inner_lr,
                 vittt_padding_mode=vittt_padding_mode,
+                attention_ttt_type=attention_ttt_type,
+                attention_ttt_gate_init=attention_ttt_gate_init,
+                attention_ttt_bidirectional=attention_ttt_bidirectional,
                 periodic=periodic,
             )
             blocks.append(block)
@@ -825,6 +831,9 @@ class PDEBlock(nn.Module):
         token_mixer_type: Optional[str] = None,
         vittt_inner_lr: float = 1.0,
         vittt_padding_mode: str = "zero",
+        attention_ttt_type: str = "ttt_sequence",
+        attention_ttt_gate_init: float = 0.1,
+        attention_ttt_bidirectional: bool = True,
     ):
         super().__init__()
         """
@@ -854,9 +863,15 @@ class PDEBlock(nn.Module):
         self.cr_window = 1
         if token_mixer_type is None:
             token_mixer_type = "ttt_sequence" if use_ttt_window_attention else "attention"
-        if token_mixer_type not in ("attention", "ttt_sequence", "vittt"):
+        if token_mixer_type not in ("attention", "ttt_sequence", "vittt", "attention_ttt"):
             raise ValueError(f"Unsupported token_mixer_type: {token_mixer_type}")
+        if attention_ttt_type not in ("ttt_sequence", "vittt"):
+            raise ValueError(f"Unsupported attention_ttt_type: {attention_ttt_type}")
+        if token_mixer_type == "attention_ttt" and attention_ttt_bidirectional and attention_ttt_type != "ttt_sequence":
+            raise ValueError("attention_ttt_bidirectional=true currently requires attention_ttt_type=ttt_sequence")
         self.token_mixer_type = token_mixer_type
+        self.attention_ttt_type = attention_ttt_type
+        self.attention_ttt_bidirectional = attention_ttt_bidirectional
 
         if self.token_mixer_type == "ttt_sequence":
             self.attn = TTTWindowAttention2DTime(
@@ -877,6 +892,44 @@ class PDEBlock(nn.Module):
                 proj_drop=drop,
                 padding_mode=vittt_padding_mode,
             )
+        elif self.token_mixer_type == "attention_ttt":
+            self.attn = WindowAttention2DTime(
+                dim,
+                num_heads=num_heads,
+                qkv_bias=qkv_bias,
+                qk_scale=qk_scale,
+                attn_drop=attn_drop,
+                proj_drop=drop,
+                resolution=window_size,
+            )
+            if self.attention_ttt_type == "ttt_sequence":
+                self.post_ttt = TTTWindowAttention2DTime(
+                    dim,
+                    num_heads=num_heads,
+                    ttt_layer_type=ttt_layer_type,
+                    ttt_base_lr=ttt_base_lr,
+                    mini_batch_size=ttt_mini_batch_size,
+                    use_gate=False,
+                    scan_checkpoint_group_size=ttt_scan_checkpoint_group_size,
+                )
+            else:
+                self.post_ttt = PDEViTTTWindowBlock(
+                    dim,
+                    num_heads=num_heads,
+                    qkv_bias=qkv_bias,
+                    inner_lr=vittt_inner_lr,
+                    proj_drop=drop,
+                    padding_mode=vittt_padding_mode,
+                )
+            self.attention_ttt_alpha = nn.Parameter(
+                torch.full((dim,), float(attention_ttt_gate_init))
+            )
+            if self.attention_ttt_bidirectional:
+                self.attention_ttt_beta = nn.Parameter(
+                    torch.full((dim,), float(attention_ttt_gate_init))
+                )
+            else:
+                self.register_parameter("attention_ttt_beta", None)
         else:
             self.attn = WindowAttention2DTime(
                 dim,
@@ -930,6 +983,37 @@ class PDEBlock(nn.Module):
         # keep track for the last block to explicitly add carrier tokens to feature maps
         self.last = last
         self.do_propagation = do_propagation
+
+    def _apply_vittt_window(self, module: PDEViTTTWindowBlock, x: torch.Tensor) -> torch.Tensor:
+        local_token_count = self.window_size * self.window_size
+        if x.shape[1] < local_token_count:
+            raise ValueError(
+                f"Expected at least {local_token_count} local window tokens, got {x.shape[1]}"
+            )
+        prefix_len = x.shape[1] - local_token_count
+        prefix = x[:, :prefix_len] if prefix_len > 0 else None
+        x_window = module(
+            x[:, prefix_len:],
+            h=self.window_size,
+            w=self.window_size,
+            periodic=self.periodic,
+        )
+        if prefix is not None:
+            return torch.cat([torch.zeros_like(prefix), x_window], dim=1)
+        return x_window
+
+    def _apply_attention_ttt(self, x: torch.Tensor, reverse: bool = False) -> torch.Tensor:
+        if self.attention_ttt_type == "vittt":
+            if reverse:
+                raise ValueError("reverse attention_ttt is only supported for attention_ttt_type=ttt_sequence")
+            return self._apply_vittt_window(self.post_ttt, x)
+
+        if reverse:
+            x = torch.flip(x, dims=(1,))
+        x = self.post_ttt(x)
+        if reverse:
+            x = torch.flip(x, dims=(1,))
+        return x
 
     def forward(self, x, carrier_tokens,
                 timestep: Optional[torch.LongTensor] = None,
@@ -1004,23 +1088,19 @@ class PDEBlock(nn.Module):
                     "PDEViTTTWindowBlock does not support non-periodic shifted-window masks yet. "
                     "For Phase 1, use periodic=True or disable shifted windows for non-periodic cases."
                 )
-            local_token_count = self.window_size * self.window_size
-            if x_msa.shape[1] < local_token_count:
-                raise ValueError(
-                    f"Expected at least {local_token_count} local window tokens, got {x_msa.shape[1]}"
+            x_msa = self._apply_vittt_window(self.attn, x_msa)
+        elif self.token_mixer_type == "attention_ttt":
+            if attn_mask is not None:
+                raise NotImplementedError(
+                    "attention_ttt post-TTT does not support shifted-window masks yet; "
+                    "use periodic=True for this experiment."
                 )
-            prefix_len = x_msa.shape[1] - local_token_count
-            prefix = x_msa[:, :prefix_len] if prefix_len > 0 else None
-            x_window = self.attn(
-                x_msa[:, prefix_len:],
-                h=self.window_size,
-                w=self.window_size,
-                periodic=self.periodic,
-            )
-            if prefix is not None:
-                x_msa = torch.cat([torch.zeros_like(prefix), x_window], dim=1)
-            else:
-                x_msa = x_window
+            x_msa = self.attn(x_msa, attn_mask=attn_mask)
+            ttt_out = self._apply_attention_ttt(x_msa)
+            x_msa = x_msa + torch.tanh(self.attention_ttt_alpha).view(1, 1, -1) * ttt_out
+            if self.attention_ttt_bidirectional:
+                ttt_rev = self._apply_attention_ttt(x_msa, reverse=True)
+                x_msa = x_msa + torch.tanh(self.attention_ttt_beta).view(1, 1, -1) * ttt_rev
         elif return_ttt_state_cache and isinstance(self.attn, TTTWindowAttention2DTime):
             if ttt_state_cache is None:
                 ttt_state_cache = {}
@@ -1258,6 +1338,9 @@ class PDEImpl(nn.Module):
             token_mixer_type: Optional[str] = None,
             vittt_inner_lr: float = 1.0,
             vittt_padding_mode: str = "zero",
+            attention_ttt_type: str = "ttt_sequence",
+            attention_ttt_gate_init: float = 0.1,
+            attention_ttt_bidirectional: bool = True,
             **kwargs
     ):
         super().__init__()
@@ -1291,6 +1374,9 @@ class PDEImpl(nn.Module):
             'token_mixer_type': token_mixer_type,
             'vittt_inner_lr': vittt_inner_lr,
             'vittt_padding_mode': vittt_padding_mode,
+            'attention_ttt_type': attention_ttt_type,
+            'attention_ttt_gate_init': attention_ttt_gate_init,
+            'attention_ttt_bidirectional': attention_ttt_bidirectional,
         }
 
         if patch_size is not None:
@@ -1539,6 +1625,9 @@ class PDETransformer(ModelMixin, ConfigMixin):
             token_mixer_type: Optional[str] = None,
             vittt_inner_lr: float = 1.0,
             vittt_padding_mode: str = "zero",
+            attention_ttt_type: str = "ttt_sequence",
+            attention_ttt_gate_init: float = 0.1,
+            attention_ttt_bidirectional: bool = True,
             **kwargs
     ):
         super(PDETransformer, self).__init__()
@@ -1549,7 +1638,10 @@ class PDETransformer(ModelMixin, ConfigMixin):
                 'ttt_use_gate': ttt_use_gate,
                 'ttt_scan_checkpoint_group_size': ttt_scan_checkpoint_group_size,
                 'token_mixer_type': token_mixer_type, 'vittt_inner_lr': vittt_inner_lr,
-                'vittt_padding_mode': vittt_padding_mode}
+                'vittt_padding_mode': vittt_padding_mode,
+                'attention_ttt_type': attention_ttt_type,
+                'attention_ttt_gate_init': attention_ttt_gate_init,
+                'attention_ttt_bidirectional': attention_ttt_bidirectional}
 
         args.update(kwargs)
 
