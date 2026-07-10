@@ -82,6 +82,10 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "attention_ttt_type": "ttt_sequence",
     "attention_ttt_gate_init": 0.1,
     "attention_ttt_bidirectional": True,
+    "global_ttt_stage_names": [],
+    "global_ttt_inner_lr": 1.0,
+    "global_ttt_gate_init": 0.0,
+    "global_ttt_key_norm": True,
     "learning_rate": 4.0e-5,
     "max_epochs": 100,
     "batch_size": 8,
@@ -110,6 +114,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "resume": False,
     "auto_resume": True,
     "checkpoint_path": None,
+    "init_checkpoint_path": None,
     "skip_rollout_eval": False,
     "generate_data": False,
     "low_res": True,
@@ -257,6 +262,13 @@ def parse_args() -> argparse.Namespace:
         default=config["attention_ttt_bidirectional"],
         help="Apply reverse TTT after forward TTT, matching video-dit style.",
     )
+    parser.add_argument("--global-ttt-inner-lr", type=float, default=config["global_ttt_inner_lr"])
+    parser.add_argument("--global-ttt-gate-init", type=float, default=config["global_ttt_gate_init"])
+    parser.add_argument(
+        "--global-ttt-key-norm",
+        action=argparse.BooleanOptionalAction,
+        default=config["global_ttt_key_norm"],
+    )
     parser.add_argument("--learning-rate", type=float, default=config["learning_rate"])
     parser.add_argument("--max-epochs", type=int, default=config["max_epochs"])
     parser.add_argument("--batch-size", type=int, default=config["batch_size"])
@@ -273,6 +285,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--resume", action=argparse.BooleanOptionalAction, default=config["resume"], help="Resume from --checkpoint-path.")
     parser.add_argument("--auto-resume", action=argparse.BooleanOptionalAction, default=config["auto_resume"], help="Resume if --checkpoint-path exists.")
     parser.add_argument("--checkpoint-path", type=Path, default=_path_or_none(config["checkpoint_path"]))
+    parser.add_argument(
+        "--init-checkpoint-path",
+        type=Path,
+        default=_path_or_none(config["init_checkpoint_path"]),
+        help="Initialize matching weights without restoring optimizer or epoch state.",
+    )
     parser.add_argument("--skip-rollout-eval", action=argparse.BooleanOptionalAction, default=config["skip_rollout_eval"])
     parser.add_argument("--generate-data", action=argparse.BooleanOptionalAction, default=config["generate_data"])
     parser.add_argument("--low-res", action=argparse.BooleanOptionalAction, default=config["low_res"])
@@ -290,6 +308,7 @@ def parse_args() -> argparse.Namespace:
         sims_split_joint_test=config["sims_split_joint_test"],
         sims_split_gs_train=config["sims_split_gs_train"],
         sims_split_gs_test=config["sims_split_gs_test"],
+        global_ttt_stage_names=config["global_ttt_stage_names"],
     )
     return parser.parse_args(remaining)
 
@@ -529,6 +548,10 @@ def build_strategy(
     attention_ttt_type: str = "ttt_sequence",
     attention_ttt_gate_init: float = 0.1,
     attention_ttt_bidirectional: bool = True,
+    global_ttt_stage_names: list[str] | None = None,
+    global_ttt_inner_lr: float = 1.0,
+    global_ttt_gate_init: float = 0.0,
+    global_ttt_key_norm: bool = True,
     learning_rate: float = 4.0e-5,
 ) -> SingleStepSupervised:
     torch.manual_seed(seed)
@@ -555,6 +578,10 @@ def build_strategy(
         attention_ttt_type=attention_ttt_type,
         attention_ttt_gate_init=attention_ttt_gate_init,
         attention_ttt_bidirectional=attention_ttt_bidirectional,
+        global_ttt_stage_names=global_ttt_stage_names,
+        global_ttt_inner_lr=global_ttt_inner_lr,
+        global_ttt_gate_init=global_ttt_gate_init,
+        global_ttt_key_norm=global_ttt_key_norm,
     )
     strategy = SingleStepSupervised(
         model=model,
@@ -589,6 +616,21 @@ def build_trainer(args: argparse.Namespace, run_root: Path) -> L.Trainer:
         enable_progress_bar=False,
         log_every_n_steps=10,
     )
+
+
+def initialize_matching_weights(strategy: SingleStepSupervised, checkpoint_path: Path) -> None:
+    checkpoint_path = checkpoint_path.expanduser().resolve()
+    print("initializing matching weights from:", checkpoint_path)
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    state_dict = checkpoint.get("state_dict", checkpoint)
+    missing, unexpected = strategy.load_state_dict(state_dict, strict=False)
+    invalid_missing = [key for key in missing if ".global_ttt." not in key]
+    if invalid_missing or unexpected:
+        raise RuntimeError(
+            "Initialization checkpoint does not match the base architecture: "
+            f"invalid_missing={invalid_missing[:5]} unexpected={unexpected[:5]}"
+        )
+    print(f"initialized base model; new global TTT parameters: {len(missing)}")
 
 
 def run_rollout_check(strategy, datamodule, use_ttt_state_cache_inference: bool, num_frames: int = 29) -> dict:
@@ -690,6 +732,10 @@ def main() -> None:
     print("attention_ttt_type:", args.attention_ttt_type)
     print("attention_ttt_gate_init:", args.attention_ttt_gate_init)
     print("attention_ttt_bidirectional:", args.attention_ttt_bidirectional)
+    print("global_ttt_stage_names:", args.global_ttt_stage_names)
+    print("global_ttt_inner_lr:", args.global_ttt_inner_lr)
+    print("global_ttt_gate_init:", args.global_ttt_gate_init)
+    print("global_ttt_key_norm:", args.global_ttt_key_norm)
     print("learning_rate:", args.learning_rate)
     print("generate_data:", args.generate_data, "low_res:", args.low_res)
     print(
@@ -762,12 +808,18 @@ def main() -> None:
         attention_ttt_type=args.attention_ttt_type,
         attention_ttt_gate_init=args.attention_ttt_gate_init,
         attention_ttt_bidirectional=args.attention_ttt_bidirectional,
+        global_ttt_stage_names=args.global_ttt_stage_names,
+        global_ttt_inner_lr=args.global_ttt_inner_lr,
+        global_ttt_gate_init=args.global_ttt_gate_init,
+        global_ttt_key_norm=args.global_ttt_key_norm,
         learning_rate=args.learning_rate,
     )
     trainer = build_trainer(args, run_root)
 
     should_resume = args.resume or (args.auto_resume and checkpoint_path.exists())
     ckpt_path = str(checkpoint_path) if should_resume else None
+    if not should_resume and args.init_checkpoint_path is not None:
+        initialize_matching_weights(strategy, args.init_checkpoint_path)
     print("resuming from checkpoint:" if ckpt_path else "starting fresh training run", ckpt_path or "")
 
     trainer.fit(strategy, datamodule=data_module, ckpt_path=ckpt_path)

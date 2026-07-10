@@ -17,6 +17,7 @@ import torch
 
 from .udit import FinalLayer, precompute_freqs_cis_2d, apply_rotary_emb
 from ..pde_vittt_window import PDEViTTTWindowBlock
+from ..pde_global_ttt import PDEGlobalViTTT2D
 from ..ttt_window_attention import TTTWindowAttention2DTime
 
 
@@ -372,6 +373,10 @@ class PDEStage(nn.Module):
             attention_ttt_type: str = "ttt_sequence",
             attention_ttt_gate_init: float = 0.1,
             attention_ttt_bidirectional: bool = True,
+            global_ttt_enabled: bool = False,
+            global_ttt_inner_lr: float = 1.0,
+            global_ttt_gate_init: float = 0.0,
+            global_ttt_key_norm: bool = True,
     ):
         super().__init__()
 
@@ -405,6 +410,18 @@ class PDEStage(nn.Module):
         self.blocks = nn.ModuleList(blocks)
         self.periodic = periodic
         self.window_size = window_size
+        self.global_ttt = (
+            PDEGlobalViTTT2D(
+                dim=dim,
+                num_heads=num_heads,
+                inner_lr=global_ttt_inner_lr,
+                gate_init=global_ttt_gate_init,
+                padding_mode=vittt_padding_mode,
+                key_instance_norm=global_ttt_key_norm,
+            )
+            if global_ttt_enabled
+            else None
+        )
 
         self.shift_size = window_size // 2
 
@@ -515,6 +532,9 @@ class PDEStage(nn.Module):
                                                    dims=(1, 2))
 
             hidden_states = torch.permute(hidden_states, (0, 3, 1, 2))
+
+        if self.global_ttt is not None:
+            hidden_states = self.global_ttt(hidden_states, periodic=self.periodic)
 
         if return_ttt_state_cache:
             return hidden_states, ttt_state_cache
@@ -1341,6 +1361,10 @@ class PDEImpl(nn.Module):
             attention_ttt_type: str = "ttt_sequence",
             attention_ttt_gate_init: float = 0.1,
             attention_ttt_bidirectional: bool = True,
+            global_ttt_stage_names: Optional[list[str]] = None,
+            global_ttt_inner_lr: float = 1.0,
+            global_ttt_gate_init: float = 0.0,
+            global_ttt_key_norm: bool = True,
             **kwargs
     ):
         super().__init__()
@@ -1354,6 +1378,15 @@ class PDEImpl(nn.Module):
         self.num_classes = num_classes
         self.num_heads = num_heads
         self.periodic = periodic
+        global_ttt_stage_names = set(global_ttt_stage_names or [])
+        valid_stage_names = {
+            *(f"encoder_{i}" for i in range(self.num_encoder_layers)),
+            "latent",
+            *(f"decoder_{i}" for i in range(self.num_encoder_layers)),
+        }
+        unknown_global_stages = global_ttt_stage_names - valid_stage_names
+        if unknown_global_stages:
+            raise ValueError(f"Unknown global TTT stages: {sorted(unknown_global_stages)}")
 
         self.use_carrier_tokens = carrier_token_active
         self.max_hidden_size = max_hidden_size
@@ -1379,6 +1412,15 @@ class PDEImpl(nn.Module):
             'attention_ttt_bidirectional': attention_ttt_bidirectional,
         }
 
+        def stage_args(name: str) -> dict:
+            return {
+                **dit_stage_args,
+                "global_ttt_enabled": name in global_ttt_stage_names,
+                "global_ttt_inner_lr": global_ttt_inner_lr,
+                "global_ttt_gate_init": global_ttt_gate_init,
+                "global_ttt_key_norm": global_ttt_key_norm,
+            }
+
         if patch_size is not None:
             self.x_embedder = SimplePatchEmbed(in_channels, hidden_size, patch_size, bias=True)
             self.patch_size = patch_size
@@ -1397,7 +1439,7 @@ class PDEImpl(nn.Module):
         for i in range(self.num_encoder_layers):
             hidden_size_layer = min(hidden_size * 2 ** i, max_hidden_size)
             self.__setattr__(f"encoder_level_{i}", PDEStage(dim=hidden_size_layer, num_heads=num_heads,
-                                            window_size=window_size, depth=depth[i], **dit_stage_args))
+                                            window_size=window_size, depth=depth[i], **stage_args(f"encoder_{i}")))
             if hidden_size_layer == max_hidden_size:
                 keep_dim = True
             else:
@@ -1407,7 +1449,7 @@ class PDEImpl(nn.Module):
         # latent
         hidden_size_latent = min(hidden_size * 2 ** self.num_encoder_layers, max_hidden_size)
         self.latent = PDEStage(dim=hidden_size_latent, num_heads=num_heads,
-                                            window_size=window_size, depth=depth[self.num_encoder_layers], **dit_stage_args)
+                                            window_size=window_size, depth=depth[self.num_encoder_layers], **stage_args("latent"))
 
         hidden_size_layer0 = min(hidden_size * 2, max_hidden_size)
         if hidden_size_layer0 >= max_hidden_size:
@@ -1419,7 +1461,7 @@ class PDEImpl(nn.Module):
         self.__setattr__("up1_0", Upsample(hidden_size_layer0, keep_dim=keep_dim))
         self.__setattr__("reduce_chan_level0", nn.Conv2d(2 * min(hidden_size, max_hidden_size), hidden_size_layer0, kernel_size=1, bias=True))
         self.__setattr__("decoder_level_0", PDEStage(dim=hidden_size_layer0, num_heads=num_heads,
-                                        window_size=window_size, depth=depth[self.num_encoder_layers + 1], **dit_stage_args))
+                                        window_size=window_size, depth=depth[self.num_encoder_layers + 1], **stage_args("decoder_0")))
 
         # decoder layers 1 - num_encoder_layers
         for i in range(1, self.num_encoder_layers):
@@ -1435,7 +1477,7 @@ class PDEImpl(nn.Module):
             self.__setattr__(f"up{i+1}_{i}", Upsample(hidden_size_upsample, keep_dim=keep_dim))
             self.__setattr__(f"reduce_chan_level{i}", nn.Conv2d(hidden_size_layer * 2, hidden_size_layer, kernel_size=1, bias=True))
             self.__setattr__(f"decoder_level_{i}", PDEStage(dim=hidden_size_layer, num_heads=num_heads,
-                                            window_size=window_size, depth=depth[self.num_encoder_layers + i + 1], **dit_stage_args))
+                                            window_size=window_size, depth=depth[self.num_encoder_layers + i + 1], **stage_args(f"decoder_{i}")))
 
         hidden_size_out = min(2 * hidden_size, max_hidden_size)
         self.output = nn.Conv2d(hidden_size_out, hidden_size_out, kernel_size=3, stride=1, padding=1,
@@ -1628,6 +1670,10 @@ class PDETransformer(ModelMixin, ConfigMixin):
             attention_ttt_type: str = "ttt_sequence",
             attention_ttt_gate_init: float = 0.1,
             attention_ttt_bidirectional: bool = True,
+            global_ttt_stage_names: Optional[list[str]] = None,
+            global_ttt_inner_lr: float = 1.0,
+            global_ttt_gate_init: float = 0.0,
+            global_ttt_key_norm: bool = True,
             **kwargs
     ):
         super(PDETransformer, self).__init__()
@@ -1641,7 +1687,11 @@ class PDETransformer(ModelMixin, ConfigMixin):
                 'vittt_padding_mode': vittt_padding_mode,
                 'attention_ttt_type': attention_ttt_type,
                 'attention_ttt_gate_init': attention_ttt_gate_init,
-                'attention_ttt_bidirectional': attention_ttt_bidirectional}
+                'attention_ttt_bidirectional': attention_ttt_bidirectional,
+                'global_ttt_stage_names': global_ttt_stage_names,
+                'global_ttt_inner_lr': global_ttt_inner_lr,
+                'global_ttt_gate_init': global_ttt_gate_init,
+                'global_ttt_key_norm': global_ttt_key_norm}
 
         args.update(kwargs)
 

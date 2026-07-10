@@ -20,6 +20,7 @@ class PDEViTTTWindowBlock(nn.Module):
         inner_lr: float = 1.0,
         proj_drop: float = 0.0,
         padding_mode: str = "zero",
+        key_instance_norm: bool = False,
     ):
         super().__init__()
         if dim % num_heads != 0:
@@ -32,6 +33,7 @@ class PDEViTTTWindowBlock(nn.Module):
         self.head_dim = dim // num_heads
         self.inner_lr = inner_lr
         self.padding_mode = padding_mode
+        self.key_instance_norm = key_instance_norm
 
         self.qkv = nn.Linear(dim, dim * 3 + self.head_dim * 3, bias=qkv_bias)
         self.w1 = nn.Parameter(torch.zeros(1, num_heads, self.head_dim, self.head_dim))
@@ -139,6 +141,10 @@ class PDEViTTTWindowBlock(nn.Module):
         q1 = q1.reshape(batch, num_tokens, self.num_heads, head_dim).transpose(1, 2)
         k1 = k1.reshape(batch, num_tokens, self.num_heads, head_dim).transpose(1, 2)
         v1 = v1.reshape(batch, num_tokens, self.num_heads, head_dim).transpose(1, 2)
+        if self.key_instance_norm:
+            k1_mean = k1.mean(dim=2, keepdim=True)
+            k1_var = k1.var(dim=2, keepdim=True, unbiased=False)
+            k1 = (k1 - k1_mean) * torch.rsqrt(k1_var + 1e-6)
         w1, w2 = self.inner_train_simplified_swiglu(k1, v1, self.w1, self.w2, lr=self.inner_lr)
         x1 = (q1 @ w1) * F.silu(q1 @ w2)
         x1 = x1.transpose(1, 2).reshape(batch, num_tokens, dim)
@@ -146,6 +152,8 @@ class PDEViTTTWindowBlock(nn.Module):
         q2 = q2.reshape(batch, h, w, head_dim).permute(0, 3, 1, 2)
         k2 = k2.reshape(batch, h, w, head_dim).permute(0, 3, 1, 2)
         v2 = v2.reshape(batch, h, w, head_dim).permute(0, 3, 1, 2)
+        if self.key_instance_norm:
+            k2 = F.instance_norm(k2)
         w3 = self.inner_train_3x3dwc(
             k2,
             v2,

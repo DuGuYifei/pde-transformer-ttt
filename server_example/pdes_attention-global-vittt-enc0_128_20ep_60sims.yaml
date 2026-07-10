@@ -1,0 +1,47 @@
+# PDE-S pilot: retain all original local attention blocks and add one global
+# ViTTT update over the complete highest-resolution encoder feature map.
+work_dir: ~/working
+data_dir: ~/working/datasets
+run_root: ~/working/runs_v2
+run_name: pdes_attention-global-vittt-enc0_128_20ep_60sims
+model_type: PDE-S
+in_channels: 2
+out_channels: 2
+patch_size: 4
+periodic: true
+carrier_token_active: false
+
+token_mixer_type: attention
+use_ttt_window_attention: false
+use_ttt_state_cache_train: false
+
+global_ttt_stage_names:
+  - encoder_0
+global_ttt_inner_lr: 1.0
+global_ttt_gate_init: 0.0
+global_ttt_key_norm: true
+vittt_padding_mode: zero
+
+# Start from the best matching 128 attention checkpoint. This initializes only
+# model weights; optimizer and epoch counters start from zero.
+init_checkpoint_path: ~/working/runs_v2/pdes_plain_128_60sims/checkpoints/epoch-epoch=096.ckpt
+checkpoint_path: null
+resume: false
+auto_resume: false
+
+learning_rate: 1.0e-5
+max_epochs: 20
+batch_size: 4
+num_workers: 2
+devices: 2
+strategy: ddp
+precision: 32-true
+accumulate_grad_batches: 16
+seed: 42
+
+downsample_factor: 2
+sample_size: 128
+test_unrolling_steps: 29
+max_channels: 2
+skip_rollout_eval: false
+generate_data: false

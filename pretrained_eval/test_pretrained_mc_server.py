@@ -75,6 +75,10 @@ CONFIG_DEFAULTS: dict[str, Any] = {
     "attention_ttt_type": "ttt_sequence",
     "attention_ttt_gate_init": 0.1,
     "attention_ttt_bidirectional": True,
+    "global_ttt_stage_names": [],
+    "global_ttt_inner_lr": 1.0,
+    "global_ttt_gate_init": 0.0,
+    "global_ttt_key_norm": True,
     "batch_size": 8,
     "num_workers": 2,
     "seed": 42,
@@ -238,6 +242,13 @@ def parse_args() -> argparse.Namespace:
         action=argparse.BooleanOptionalAction,
         default=cfg["attention_ttt_bidirectional"],
     )
+    parser.add_argument("--global-ttt-inner-lr", type=float, default=cfg["global_ttt_inner_lr"])
+    parser.add_argument("--global-ttt-gate-init", type=float, default=cfg["global_ttt_gate_init"])
+    parser.add_argument(
+        "--global-ttt-key-norm",
+        action=argparse.BooleanOptionalAction,
+        default=cfg["global_ttt_key_norm"],
+    )
 
     parser.add_argument("--batch-size", type=int, default=cfg["batch_size"])
     parser.add_argument("--num-workers", type=int, default=cfg["num_workers"])
@@ -267,6 +278,7 @@ def parse_args() -> argparse.Namespace:
         help="Do not fail on missing/unexpected checkpoint keys.",
     )
 
+    parser.set_defaults(global_ttt_stage_names=cfg["global_ttt_stage_names"])
     return parser.parse_args(remaining)
 
 
@@ -344,6 +356,10 @@ def build_checkpoint_strategy(args: argparse.Namespace, checkpoint_path: Path) -
         attention_ttt_type=args.attention_ttt_type,
         attention_ttt_gate_init=args.attention_ttt_gate_init,
         attention_ttt_bidirectional=args.attention_ttt_bidirectional,
+        global_ttt_stage_names=args.global_ttt_stage_names,
+        global_ttt_inner_lr=args.global_ttt_inner_lr,
+        global_ttt_gate_init=args.global_ttt_gate_init,
+        global_ttt_key_norm=args.global_ttt_key_norm,
     )
     strategy = SingleStepSupervised(
         model=model,
