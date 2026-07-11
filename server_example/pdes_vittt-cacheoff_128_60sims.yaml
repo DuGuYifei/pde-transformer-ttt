@@ -14,6 +14,10 @@ carrier_token_active: false
 token_mixer_type: vittt
 use_ttt_window_attention: false
 use_ttt_state_cache_train: false
+training_mode: single_step
+train_unrolling_steps: 1
+train_step_size: 1
+temporal_ttt_enabled: false
 vittt_inner_lr: 1.0
 vittt_padding_mode: zero
 
@@ -37,4 +41,3 @@ auto_resume: true
 checkpoint_path: null
 skip_rollout_eval: false
 generate_data: false
-

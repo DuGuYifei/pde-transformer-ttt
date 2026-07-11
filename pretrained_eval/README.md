@@ -33,6 +33,7 @@ Do not rely on the YAML `data_dir` when writing numbers into
 - `attention`: cache off only.
 - `vittt`: ViTTT-style cache off only. `PDEViTTTWindowBlock` has no cross-step state cache.
 - `ttt_sequence`: `--cache-mode auto` runs both cache off and cache on.
+- causal temporal TTT: `--cache-mode auto` evaluates persistent state only.
 - official `from_pretrained` safetensors: cache off only.
 
 Use `--cache-mode off`, `--cache-mode on`, or `--cache-mode both` to override the
@@ -55,7 +56,8 @@ CUDA_VISIBLE_DEVICES=0 python pretrained_eval/test_pretrained_mc_server.py \
 ```
 
 The same script supports all current `server_example/*.yaml` files, including
-plain attention, sequence TTT linear/MLP, cache-on/off configs, 128, and 256.
+plain attention, sequence TTT linear/MLP, ViTTT-style, causal temporal TTT,
+cache-on/off configs, 128, and 256.
 
 Quick smoke test:
 

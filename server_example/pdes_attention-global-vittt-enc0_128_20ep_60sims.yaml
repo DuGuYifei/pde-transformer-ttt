@@ -14,6 +14,10 @@ carrier_token_active: false
 token_mixer_type: attention
 use_ttt_window_attention: false
 use_ttt_state_cache_train: false
+training_mode: single_step
+train_unrolling_steps: 1
+train_step_size: 1
+temporal_ttt_enabled: false
 
 global_ttt_stage_names:
   - encoder_0

@@ -17,6 +17,10 @@ carrier_token_active: false
 token_mixer_type: attention_ttt
 use_ttt_window_attention: false
 use_ttt_state_cache_train: false
+training_mode: single_step
+train_unrolling_steps: 1
+train_step_size: 1
+temporal_ttt_enabled: false
 ttt_layer_type: mlp
 ttt_mini_batch_size: 64
 ttt_base_lr: 1.0

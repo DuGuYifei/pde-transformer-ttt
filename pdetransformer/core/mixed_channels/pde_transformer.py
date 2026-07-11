@@ -18,6 +18,7 @@ import torch
 from .udit import FinalLayer, precompute_freqs_cis_2d, apply_rotary_emb
 from ..pde_vittt_window import PDEViTTTWindowBlock
 from ..pde_global_ttt import PDEGlobalViTTT2D
+from ..pde_temporal_ttt import PDETemporalTTT2D
 from ..ttt_window_attention import TTTWindowAttention2DTime
 
 
@@ -1365,6 +1366,13 @@ class PDEImpl(nn.Module):
             global_ttt_inner_lr: float = 1.0,
             global_ttt_gate_init: float = 0.0,
             global_ttt_key_norm: bool = True,
+            temporal_ttt_enabled: bool = False,
+            temporal_ttt_layer_type: str = "mlp",
+            temporal_ttt_mini_batch_size: int = 64,
+            temporal_ttt_base_lr: float = 1.0,
+            temporal_ttt_gate_init: float = 0.1,
+            temporal_ttt_use_output_gate: bool = False,
+            temporal_ttt_scan_checkpoint_group_size: int = 0,
             **kwargs
     ):
         super().__init__()
@@ -1450,6 +1458,20 @@ class PDEImpl(nn.Module):
         hidden_size_latent = min(hidden_size * 2 ** self.num_encoder_layers, max_hidden_size)
         self.latent = PDEStage(dim=hidden_size_latent, num_heads=num_heads,
                                             window_size=window_size, depth=depth[self.num_encoder_layers], **stage_args("latent"))
+        self.temporal_ttt = (
+            PDETemporalTTT2D(
+                dim=hidden_size_latent,
+                num_heads=num_heads,
+                layer_type=temporal_ttt_layer_type,
+                mini_batch_size=temporal_ttt_mini_batch_size,
+                base_lr=temporal_ttt_base_lr,
+                gate_init=temporal_ttt_gate_init,
+                use_output_gate=temporal_ttt_use_output_gate,
+                scan_checkpoint_group_size=temporal_ttt_scan_checkpoint_group_size,
+            )
+            if temporal_ttt_enabled
+            else None
+        )
 
         hidden_size_layer0 = min(hidden_size * 2, max_hidden_size)
         if hidden_size_layer0 >= max_hidden_size:
@@ -1585,6 +1607,15 @@ class PDEImpl(nn.Module):
         else:
             x = self.latent(x, c)
 
+        if self.temporal_ttt is not None:
+            temporal_state = None
+            if ttt_state_cache is not None:
+                temporal_state = ttt_state_cache.get("temporal_latent")
+            x, next_temporal_state = self.temporal_ttt(x, state=temporal_state)
+            if return_ttt_state_cache:
+                ttt_state_cache = dict(ttt_state_cache or {})
+                ttt_state_cache["temporal_latent"] = next_temporal_state
+
         for i, (residual, emb) in enumerate(zip(residuals_list[1:][::-1], emb_list[1:-1][::-1])):
             # decoder
             x = self.__getattr__(f"up{self.num_encoder_layers - i}_{self.num_encoder_layers - i - 1}")(x)
@@ -1674,6 +1705,13 @@ class PDETransformer(ModelMixin, ConfigMixin):
             global_ttt_inner_lr: float = 1.0,
             global_ttt_gate_init: float = 0.0,
             global_ttt_key_norm: bool = True,
+            temporal_ttt_enabled: bool = False,
+            temporal_ttt_layer_type: str = "mlp",
+            temporal_ttt_mini_batch_size: int = 64,
+            temporal_ttt_base_lr: float = 1.0,
+            temporal_ttt_gate_init: float = 0.1,
+            temporal_ttt_use_output_gate: bool = False,
+            temporal_ttt_scan_checkpoint_group_size: int = 0,
             **kwargs
     ):
         super(PDETransformer, self).__init__()
@@ -1691,7 +1729,14 @@ class PDETransformer(ModelMixin, ConfigMixin):
                 'global_ttt_stage_names': global_ttt_stage_names,
                 'global_ttt_inner_lr': global_ttt_inner_lr,
                 'global_ttt_gate_init': global_ttt_gate_init,
-                'global_ttt_key_norm': global_ttt_key_norm}
+                'global_ttt_key_norm': global_ttt_key_norm,
+                'temporal_ttt_enabled': temporal_ttt_enabled,
+                'temporal_ttt_layer_type': temporal_ttt_layer_type,
+                'temporal_ttt_mini_batch_size': temporal_ttt_mini_batch_size,
+                'temporal_ttt_base_lr': temporal_ttt_base_lr,
+                'temporal_ttt_gate_init': temporal_ttt_gate_init,
+                'temporal_ttt_use_output_gate': temporal_ttt_use_output_gate,
+                'temporal_ttt_scan_checkpoint_group_size': temporal_ttt_scan_checkpoint_group_size}
 
         args.update(kwargs)
 

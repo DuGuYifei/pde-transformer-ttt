@@ -79,6 +79,13 @@ CONFIG_DEFAULTS: dict[str, Any] = {
     "global_ttt_inner_lr": 1.0,
     "global_ttt_gate_init": 0.0,
     "global_ttt_key_norm": True,
+    "temporal_ttt_enabled": False,
+    "temporal_ttt_layer_type": "mlp",
+    "temporal_ttt_mini_batch_size": 64,
+    "temporal_ttt_base_lr": 1.0,
+    "temporal_ttt_gate_init": 0.1,
+    "temporal_ttt_use_output_gate": False,
+    "temporal_ttt_scan_checkpoint_group_size": 0,
     "batch_size": 8,
     "num_workers": 2,
     "seed": 42,
@@ -249,6 +256,33 @@ def parse_args() -> argparse.Namespace:
         action=argparse.BooleanOptionalAction,
         default=cfg["global_ttt_key_norm"],
     )
+    parser.add_argument(
+        "--temporal-ttt-enabled",
+        action=argparse.BooleanOptionalAction,
+        default=cfg["temporal_ttt_enabled"],
+    )
+    parser.add_argument(
+        "--temporal-ttt-layer-type",
+        choices=("linear", "mlp"),
+        default=cfg["temporal_ttt_layer_type"],
+    )
+    parser.add_argument(
+        "--temporal-ttt-mini-batch-size",
+        type=int,
+        default=cfg["temporal_ttt_mini_batch_size"],
+    )
+    parser.add_argument("--temporal-ttt-base-lr", type=float, default=cfg["temporal_ttt_base_lr"])
+    parser.add_argument("--temporal-ttt-gate-init", type=float, default=cfg["temporal_ttt_gate_init"])
+    parser.add_argument(
+        "--temporal-ttt-use-output-gate",
+        action=argparse.BooleanOptionalAction,
+        default=cfg["temporal_ttt_use_output_gate"],
+    )
+    parser.add_argument(
+        "--temporal-ttt-scan-checkpoint-group-size",
+        type=int,
+        default=cfg["temporal_ttt_scan_checkpoint_group_size"],
+    )
 
     parser.add_argument("--batch-size", type=int, default=cfg["batch_size"])
     parser.add_argument("--num-workers", type=int, default=cfg["num_workers"])
@@ -360,6 +394,13 @@ def build_checkpoint_strategy(args: argparse.Namespace, checkpoint_path: Path) -
         global_ttt_inner_lr=args.global_ttt_inner_lr,
         global_ttt_gate_init=args.global_ttt_gate_init,
         global_ttt_key_norm=args.global_ttt_key_norm,
+        temporal_ttt_enabled=args.temporal_ttt_enabled,
+        temporal_ttt_layer_type=args.temporal_ttt_layer_type,
+        temporal_ttt_mini_batch_size=args.temporal_ttt_mini_batch_size,
+        temporal_ttt_base_lr=args.temporal_ttt_base_lr,
+        temporal_ttt_gate_init=args.temporal_ttt_gate_init,
+        temporal_ttt_use_output_gate=args.temporal_ttt_use_output_gate,
+        temporal_ttt_scan_checkpoint_group_size=args.temporal_ttt_scan_checkpoint_group_size,
     )
     strategy = SingleStepSupervised(
         model=model,
@@ -632,8 +673,12 @@ def run_cache_mode(
 
 
 def select_cache_modes(args: argparse.Namespace, resolved_token_mixer: str, is_pretrained: bool) -> list[bool]:
-    cache_capable = (not is_pretrained) and resolved_token_mixer == "ttt_sequence"
+    cache_capable = (not is_pretrained) and (
+        resolved_token_mixer == "ttt_sequence" or args.temporal_ttt_enabled
+    )
     if args.cache_mode == "auto":
+        if args.temporal_ttt_enabled:
+            return [True]
         return [False, True] if cache_capable else [False]
     if not cache_capable and args.cache_mode != "off":
         print(
@@ -709,6 +754,7 @@ def main() -> None:
     print(f"output_dir:        {output_dir}")
     print(f"model_type:        {args.model_type}")
     print(f"token_mixer_type:  {args.token_mixer_type} resolved={resolved_token_mixer}")
+    print(f"temporal_ttt:      {args.temporal_ttt_enabled}")
     print(f"sample_size:       {args.sample_size}")
     print(f"downsample_factor: {args.downsample_factor}")
     print(f"test_unroll_steps: {args.test_unrolling_steps}")
@@ -762,6 +808,11 @@ def main() -> None:
         "attention_ttt_type": args.attention_ttt_type,
         "attention_ttt_gate_init": args.attention_ttt_gate_init,
         "attention_ttt_bidirectional": args.attention_ttt_bidirectional,
+        "temporal_ttt_enabled": args.temporal_ttt_enabled,
+        "temporal_ttt_layer_type": args.temporal_ttt_layer_type,
+        "temporal_ttt_mini_batch_size": args.temporal_ttt_mini_batch_size,
+        "temporal_ttt_base_lr": args.temporal_ttt_base_lr,
+        "temporal_ttt_gate_init": args.temporal_ttt_gate_init,
         "downsample_factor": args.downsample_factor,
         "sample_size": args.sample_size,
         "test_unrolling_steps": args.test_unrolling_steps,

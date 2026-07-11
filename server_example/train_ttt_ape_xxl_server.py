@@ -29,7 +29,11 @@ from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.loggers import CSVLogger
 from omegaconf import OmegaConf
 
-from pdetransformer.core.mixed_channels import PDETransformer, SingleStepSupervised
+from pdetransformer.core.mixed_channels import (
+    PDETransformer,
+    SingleStepSupervised,
+    TemporalRolloutSupervised,
+)
 from pdetransformer.data import MultiDataModule
 
 
@@ -86,6 +90,18 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "global_ttt_inner_lr": 1.0,
     "global_ttt_gate_init": 0.0,
     "global_ttt_key_norm": True,
+    "training_mode": "single_step",
+    "train_unrolling_steps": 1,
+    "train_step_size": 1,
+    "tbptt_chunk_size": 4,
+    "temporal_ttt_enabled": False,
+    "temporal_ttt_layer_type": "mlp",
+    "temporal_ttt_mini_batch_size": 64,
+    "temporal_ttt_base_lr": 1.0,
+    "temporal_ttt_gate_init": 0.1,
+    "temporal_ttt_learning_rate": 1.0e-4,
+    "temporal_ttt_use_output_gate": False,
+    "temporal_ttt_scan_checkpoint_group_size": 0,
     "learning_rate": 4.0e-5,
     "max_epochs": 100,
     "batch_size": 8,
@@ -269,6 +285,46 @@ def parse_args() -> argparse.Namespace:
         action=argparse.BooleanOptionalAction,
         default=config["global_ttt_key_norm"],
     )
+    parser.add_argument(
+        "--training-mode",
+        choices=("single_step", "temporal_rollout"),
+        default=config["training_mode"],
+    )
+    parser.add_argument("--train-unrolling-steps", type=int, default=config["train_unrolling_steps"])
+    parser.add_argument("--train-step-size", type=int, default=config["train_step_size"])
+    parser.add_argument("--tbptt-chunk-size", type=int, default=config["tbptt_chunk_size"])
+    parser.add_argument(
+        "--temporal-ttt-enabled",
+        action=argparse.BooleanOptionalAction,
+        default=config["temporal_ttt_enabled"],
+    )
+    parser.add_argument(
+        "--temporal-ttt-layer-type",
+        choices=("linear", "mlp"),
+        default=config["temporal_ttt_layer_type"],
+    )
+    parser.add_argument(
+        "--temporal-ttt-mini-batch-size",
+        type=int,
+        default=config["temporal_ttt_mini_batch_size"],
+    )
+    parser.add_argument("--temporal-ttt-base-lr", type=float, default=config["temporal_ttt_base_lr"])
+    parser.add_argument("--temporal-ttt-gate-init", type=float, default=config["temporal_ttt_gate_init"])
+    parser.add_argument(
+        "--temporal-ttt-learning-rate",
+        type=float,
+        default=config["temporal_ttt_learning_rate"],
+    )
+    parser.add_argument(
+        "--temporal-ttt-use-output-gate",
+        action=argparse.BooleanOptionalAction,
+        default=config["temporal_ttt_use_output_gate"],
+    )
+    parser.add_argument(
+        "--temporal-ttt-scan-checkpoint-group-size",
+        type=int,
+        default=config["temporal_ttt_scan_checkpoint_group_size"],
+    )
     parser.add_argument("--learning-rate", type=float, default=config["learning_rate"])
     parser.add_argument("--max-epochs", type=int, default=config["max_epochs"])
     parser.add_argument("--batch-size", type=int, default=config["batch_size"])
@@ -381,6 +437,8 @@ def build_data_module(
     batch_size: int,
     num_workers: int,
     downsample_factor: int = 2,
+    train_unrolling_steps: int = 1,
+    train_step_size: int = 1,
     test_unrolling_steps: int = 29,
     max_channels: int = 2,
 ) -> MultiDataModule:
@@ -388,7 +446,8 @@ def build_data_module(
         "path_index": {"2D_APE_xxl": str(data_dir)},
         "dataset_names": dataset_names,
         "dataset_type": "2D_APE_xxl",
-        "unrolling_steps": 1,
+        "unrolling_steps": train_unrolling_steps,
+        "train_step_size": train_step_size,
         "test_unrolling_steps": test_unrolling_steps,
         "batch_size": batch_size,
         "num_workers": num_workers,
@@ -448,6 +507,7 @@ def apply_sims_split_override(
         normalize_const: str | None = None,
         **kwargs,
     ):
+        train_step_size = kwargs.pop("train_step_size", None)
         if dataset_name in _JOINT_GS_DATASETS:
             train_sims = _ranged(gs_train, (0, 80))
             test_sims = list(range(*gs_test)) if gs_test is not None else None
@@ -458,6 +518,7 @@ def apply_sims_split_override(
             # separate-test-file datasets: original behavior, untouched
             return _orig.ape_2d_xxl_datasets(
                 dataset_name, dataset_directory, unrolling_steps,
+                train_step_size=train_step_size,
                 intermediate_time_steps=intermediate_time_steps,
                 variable_dt_stride_maximum=variable_dt_stride_maximum,
                 test_variable_dt_stride_maximum=test_variable_dt_stride_maximum,
@@ -481,6 +542,7 @@ def apply_sims_split_override(
             "local_datasets_dir": dataset_directory,
             "sel_sims": train_sims,
             "time_steps": unrolling_steps,
+            "step_size": train_step_size,
             "intermediate_time_steps": intermediate_time_steps,
             "normalize_const": norm_const,
             "normalize_data": normalize_data,
@@ -552,8 +614,20 @@ def build_strategy(
     global_ttt_inner_lr: float = 1.0,
     global_ttt_gate_init: float = 0.0,
     global_ttt_key_norm: bool = True,
+    training_mode: str = "single_step",
+    train_unrolling_steps: int = 1,
+    tbptt_chunk_size: int = 4,
+    gradient_accumulation_batches: int = 1,
+    temporal_ttt_enabled: bool = False,
+    temporal_ttt_layer_type: str = "mlp",
+    temporal_ttt_mini_batch_size: int = 64,
+    temporal_ttt_base_lr: float = 1.0,
+    temporal_ttt_gate_init: float = 0.1,
+    temporal_ttt_learning_rate: float = 1.0e-4,
+    temporal_ttt_use_output_gate: bool = False,
+    temporal_ttt_scan_checkpoint_group_size: int = 0,
     learning_rate: float = 4.0e-5,
-) -> SingleStepSupervised:
+) -> SingleStepSupervised | TemporalRolloutSupervised:
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
@@ -582,14 +656,34 @@ def build_strategy(
         global_ttt_inner_lr=global_ttt_inner_lr,
         global_ttt_gate_init=global_ttt_gate_init,
         global_ttt_key_norm=global_ttt_key_norm,
+        temporal_ttt_enabled=temporal_ttt_enabled,
+        temporal_ttt_layer_type=temporal_ttt_layer_type,
+        temporal_ttt_mini_batch_size=temporal_ttt_mini_batch_size,
+        temporal_ttt_base_lr=temporal_ttt_base_lr,
+        temporal_ttt_gate_init=temporal_ttt_gate_init,
+        temporal_ttt_use_output_gate=temporal_ttt_use_output_gate,
+        temporal_ttt_scan_checkpoint_group_size=temporal_ttt_scan_checkpoint_group_size,
     )
-    strategy = SingleStepSupervised(
-        model=model,
-        image_key=0,
-        optimizer="adamw",
-        use_ttt_state_cache_inference=use_ttt_state_cache_inference,
-        use_ttt_state_cache_train=use_ttt_state_cache_train,
-    )
+    if training_mode == "temporal_rollout":
+        strategy = TemporalRolloutSupervised(
+            model=model,
+            image_key=0,
+            optimizer="adamw",
+            train_unrolling_steps=train_unrolling_steps,
+            tbptt_chunk_size=tbptt_chunk_size,
+            gradient_accumulation_batches=gradient_accumulation_batches,
+            temporal_ttt_learning_rate=temporal_ttt_learning_rate,
+        )
+    elif training_mode == "single_step":
+        strategy = SingleStepSupervised(
+            model=model,
+            image_key=0,
+            optimizer="adamw",
+            use_ttt_state_cache_inference=use_ttt_state_cache_inference,
+            use_ttt_state_cache_train=use_ttt_state_cache_train,
+        )
+    else:
+        raise ValueError(f"Unsupported training_mode: {training_mode}")
     strategy.learning_rate = learning_rate
     return strategy
 
@@ -610,7 +704,7 @@ def build_trainer(args: argparse.Namespace, run_root: Path) -> L.Trainer:
         devices=args.devices if torch.cuda.is_available() else 1,
         strategy=args.strategy,
         precision=args.precision,
-        accumulate_grad_batches=args.accumulate_grad_batches,
+        accumulate_grad_batches=1 if args.training_mode == "temporal_rollout" else args.accumulate_grad_batches,
         callbacks=[checkpoint_callback, EpochPrintCallback()],
         logger=CSVLogger(save_dir=str(run_root), name=args.run_name),
         enable_progress_bar=False,
@@ -624,7 +718,8 @@ def initialize_matching_weights(strategy: SingleStepSupervised, checkpoint_path:
     checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     state_dict = checkpoint.get("state_dict", checkpoint)
     missing, unexpected = strategy.load_state_dict(state_dict, strict=False)
-    invalid_missing = [key for key in missing if ".global_ttt." not in key]
+    new_module_markers = (".global_ttt.", ".temporal_ttt.")
+    invalid_missing = [key for key in missing if not any(marker in key for marker in new_module_markers)]
     if invalid_missing or unexpected:
         raise RuntimeError(
             "Initialization checkpoint does not match the base architecture: "
@@ -736,6 +831,16 @@ def main() -> None:
     print("global_ttt_inner_lr:", args.global_ttt_inner_lr)
     print("global_ttt_gate_init:", args.global_ttt_gate_init)
     print("global_ttt_key_norm:", args.global_ttt_key_norm)
+    print("training_mode:", args.training_mode)
+    print("train_unrolling_steps:", args.train_unrolling_steps)
+    print("train_step_size:", args.train_step_size)
+    print("tbptt_chunk_size:", args.tbptt_chunk_size)
+    print("temporal_ttt_enabled:", args.temporal_ttt_enabled)
+    print("temporal_ttt_layer_type:", args.temporal_ttt_layer_type)
+    print("temporal_ttt_mini_batch_size:", args.temporal_ttt_mini_batch_size)
+    print("temporal_ttt_base_lr:", args.temporal_ttt_base_lr)
+    print("temporal_ttt_gate_init:", args.temporal_ttt_gate_init)
+    print("temporal_ttt_learning_rate:", args.temporal_ttt_learning_rate)
     print("learning_rate:", args.learning_rate)
     print("generate_data:", args.generate_data, "low_res:", args.low_res)
     print(
@@ -770,9 +875,24 @@ def main() -> None:
     data_module = build_data_module(
         data_dir, FULL_DATASET_NAMES, args.batch_size, args.num_workers,
         downsample_factor=args.downsample_factor,
+        train_unrolling_steps=args.train_unrolling_steps,
+        train_step_size=args.train_step_size,
         test_unrolling_steps=args.test_unrolling_steps,
         max_channels=args.max_channels,
     )
+
+    if args.training_mode == "temporal_rollout":
+        if not args.temporal_ttt_enabled:
+            raise SystemExit("training_mode=temporal_rollout requires temporal_ttt_enabled=true")
+        if args.train_unrolling_steps < 2:
+            raise SystemExit("temporal rollout training requires train_unrolling_steps >= 2")
+        if args.use_ttt_state_cache_train:
+            raise SystemExit(
+                "temporal rollout owns its persistent state; set the legacy "
+                "use_ttt_state_cache_train=false"
+            )
+    elif args.train_unrolling_steps != 1:
+        raise SystemExit("single_step training requires train_unrolling_steps=1")
 
     if args.use_ttt_state_cache_train and resolved_token_mixer_type == "attention":
         raise SystemExit(
@@ -812,6 +932,18 @@ def main() -> None:
         global_ttt_inner_lr=args.global_ttt_inner_lr,
         global_ttt_gate_init=args.global_ttt_gate_init,
         global_ttt_key_norm=args.global_ttt_key_norm,
+        training_mode=args.training_mode,
+        train_unrolling_steps=args.train_unrolling_steps,
+        tbptt_chunk_size=args.tbptt_chunk_size,
+        gradient_accumulation_batches=args.accumulate_grad_batches,
+        temporal_ttt_enabled=args.temporal_ttt_enabled,
+        temporal_ttt_layer_type=args.temporal_ttt_layer_type,
+        temporal_ttt_mini_batch_size=args.temporal_ttt_mini_batch_size,
+        temporal_ttt_base_lr=args.temporal_ttt_base_lr,
+        temporal_ttt_gate_init=args.temporal_ttt_gate_init,
+        temporal_ttt_learning_rate=args.temporal_ttt_learning_rate,
+        temporal_ttt_use_output_gate=args.temporal_ttt_use_output_gate,
+        temporal_ttt_scan_checkpoint_group_size=args.temporal_ttt_scan_checkpoint_group_size,
         learning_rate=args.learning_rate,
     )
     trainer = build_trainer(args, run_root)
@@ -835,8 +967,11 @@ def main() -> None:
         return
 
     experiment_results = []
-    eval_modes = [("inference_cache_off", False)]
-    if resolved_token_mixer_type == "ttt_sequence":
+    if args.temporal_ttt_enabled:
+        eval_modes = [("inference_persistent_temporal_state", True)]
+    else:
+        eval_modes = [("inference_cache_off", False)]
+    if resolved_token_mixer_type == "ttt_sequence" and not args.temporal_ttt_enabled:
         eval_modes.append(("inference_cache_on", True))
     for name, use_cache in eval_modes:
         print(f"\n=== Evaluating {name} ===")
