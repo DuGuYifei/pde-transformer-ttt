@@ -694,10 +694,11 @@ def build_strategy(
 
 
 def build_trainer(args: argparse.Namespace, run_root: Path) -> L.Trainer:
+    checkpoint_monitor = "val/loss" if args.training_mode == "temporal_rollout" else "val/loss_epoch"
     checkpoint_callback = ModelCheckpoint(
         dirpath=run_root / args.run_name / "checkpoints",
         filename="epoch-{epoch:03d}",
-        monitor="val/loss_epoch",
+        monitor=checkpoint_monitor,
         mode="min",
         save_last=True,
         save_top_k=3,
