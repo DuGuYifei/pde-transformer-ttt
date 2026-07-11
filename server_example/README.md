@@ -53,6 +53,14 @@ CUDA_VISIBLE_DEVICES=0,1 python server_example/train_ttt_ape_xxl_server.py \
   --config server_example/pdes_attention-temporal-ttt-mlp_128_20ep_60sims.yaml
 ```
 
+Before the full run, validate real data and two-GPU manual TBPTT with:
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1 python smoke_test/smoke_test_temporal_training_server.py \
+  --data-dir ~/working/datasets \
+  --init-checkpoint-path ~/working/runs_v2/pdes_plain_128_60sims/checkpoints/epoch-epoch=096.ckpt
+```
+
 The YAMLs expect the generated training data under:
 
 ```bash
