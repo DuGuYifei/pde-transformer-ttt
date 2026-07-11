@@ -994,14 +994,19 @@ def main() -> None:
         experiment_results.append(result)
         print(json.dumps(result, indent=2))
 
-    off = next(r for r in experiment_results if not r["use_ttt_state_cache_inference"])
-    print("cache off rollout mse:", off["rollout_mse"])
+    off = next((r for r in experiment_results if not r["use_ttt_state_cache_inference"]), None)
     on = next((r for r in experiment_results if r["use_ttt_state_cache_inference"]), None)
+    if off is not None:
+        print("cache off rollout mse:", off["rollout_mse"])
     if on is not None:
-        print("cache on  rollout mse:", on["rollout_mse"])
+        label = "persistent temporal state" if args.temporal_ttt_enabled else "cache on"
+        print(f"{label} rollout mse:", on["rollout_mse"])
+    if off is not None and on is not None:
         print("prediction shapes:", off["prediction_shape"], on["prediction_shape"])
-    else:
+    elif off is not None:
         print("prediction shape:", off["prediction_shape"])
+    elif on is not None:
+        print("prediction shape:", on["prediction_shape"])
 
     del strategy, data_module
     gc.collect()
