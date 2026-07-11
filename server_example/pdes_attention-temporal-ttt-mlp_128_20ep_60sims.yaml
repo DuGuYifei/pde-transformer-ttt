@@ -47,7 +47,7 @@ test_unrolling_steps: 29
 max_channels: 2
 
 devices: 2
-strategy: ddp
+strategy: ddp_find_unused_parameters_true
 precision: 32-true
 # TemporalRolloutSupervised performs this accumulation itself; the Trainer is
 # forced to one because Lightning automatic accumulation is incompatible with

@@ -29,6 +29,11 @@ from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.loggers import CSVLogger
 from omegaconf import OmegaConf
 
+# Server folders may also have an older wheel installed in the active venv.
+# Always resolve project imports from the source tree containing this script.
+REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT))
+
 from pdetransformer.core.mixed_channels import (
     PDETransformer,
     SingleStepSupervised,
@@ -698,11 +703,14 @@ def build_trainer(args: argparse.Namespace, run_root: Path) -> L.Trainer:
         save_top_k=3,
         every_n_epochs=1,
     )
+    trainer_strategy = args.strategy
+    if args.training_mode == "temporal_rollout" and trainer_strategy == "ddp":
+        trainer_strategy = "ddp_find_unused_parameters_true"
     return L.Trainer(
         max_epochs=args.max_epochs,
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
         devices=args.devices if torch.cuda.is_available() else 1,
-        strategy=args.strategy,
+        strategy=trainer_strategy,
         precision=args.precision,
         accumulate_grad_batches=1 if args.training_mode == "temporal_rollout" else args.accumulate_grad_batches,
         callbacks=[checkpoint_callback, EpochPrintCallback()],

@@ -74,7 +74,11 @@ def main() -> None:
         max_epochs=1,
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
         devices=args.devices if torch.cuda.is_available() else 1,
-        strategy="ddp" if torch.cuda.is_available() and args.devices > 1 else "auto",
+        strategy=(
+            "ddp_find_unused_parameters_true"
+            if torch.cuda.is_available() and args.devices > 1
+            else "auto"
+        ),
         precision="32-true",
         logger=False,
         enable_checkpointing=False,

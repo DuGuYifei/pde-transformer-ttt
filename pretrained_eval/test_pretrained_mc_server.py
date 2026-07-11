@@ -19,6 +19,7 @@ import argparse
 import csv
 import gc
 import json
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -26,6 +27,9 @@ from typing import Any
 
 import numpy as np
 import torch
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT))
 
 from pdetransformer.core.mixed_channels import PDETransformer, SingleStepSupervised
 from pdetransformer.data import MultiDataModule
