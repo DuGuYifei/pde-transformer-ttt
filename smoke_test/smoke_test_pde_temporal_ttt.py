@@ -18,6 +18,7 @@ from pdetransformer.core.mixed_channels.train_supervised import (
     _detach_state_tree,
 )
 from pdetransformer.core.pde_temporal_ttt import PDETemporalTTT2D
+from pdetransformer.data.pbdl_dataloader.dataset import count_temporal_windows
 
 
 def test_temporal_module() -> None:
@@ -123,6 +124,12 @@ def test_sequence_validation() -> None:
         raise AssertionError("short sequences must be rejected")
 
 
+def test_temporal_window_count() -> None:
+    assert count_temporal_windows(30, 29, 0, 0, 29) == 1
+    assert count_temporal_windows(100, 29, 0, 0, 29) == 3
+    assert count_temporal_windows(100, 29, 0, 0, 1) == 71
+
+
 class _ToySequenceDataset(Dataset):
     def __len__(self) -> int:
         return 2
@@ -191,5 +198,6 @@ if __name__ == "__main__":
     test_temporal_module()
     test_full_model_checkpoint_compatibility()
     test_sequence_validation()
+    test_temporal_window_count()
     test_lightning_tbptt_step()
     print("PDE temporal TTT smoke test passed")

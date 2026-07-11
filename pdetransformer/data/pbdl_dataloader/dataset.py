@@ -53,6 +53,23 @@ def datasets():
     return list((global_index | local_index).keys())
 
 
+def count_temporal_windows(
+    num_frames: int,
+    time_steps: int,
+    trim_start: int,
+    trim_end: int,
+    step_size: int,
+) -> int:
+    num_valid_starts = num_frames - time_steps - trim_start - trim_end
+    if num_valid_starts <= 0:
+        raise ValueError(
+            "No valid temporal window: "
+            f"num_frames={num_frames}, time_steps={time_steps}, "
+            f"trim_start={trim_start}, trim_end={trim_end}"
+        )
+    return (num_valid_starts + step_size - 1) // step_size
+
+
 class Dataset:
     def __init__(
         self,
@@ -156,9 +173,13 @@ class Dataset:
             else:
                 self.num_frames = group.shape[0]
 
-            self.samples_per_sim = (
-                self.num_frames - self.time_steps - self.trim_start - self.trim_end
-            ) // self.step_size
+            self.samples_per_sim = count_temporal_windows(
+                self.num_frames,
+                self.time_steps,
+                self.trim_start,
+                self.trim_end,
+                self.step_size,
+            )
 
         success(
             f"Loaded { self.dset_name } with { self.num_sims } simulations "
@@ -450,9 +471,13 @@ class Dataset3D(Dataset):
         group = self.dset["sims"][f'{next(iter(self.dset["sims"]))}']
         self.num_frames = len(group)
 
-        self.samples_per_sim = (
-                    self.num_frames - self.time_steps - self.trim_start - self.trim_end
-                    ) // self.step_size
+        self.samples_per_sim = count_temporal_windows(
+            self.num_frames,
+            self.time_steps,
+            self.trim_start,
+            self.trim_end,
+            self.step_size,
+        )
 
 
     def __getitem__(self, idx):
