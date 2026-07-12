@@ -1,0 +1,52 @@
+# Continue the frozen-backbone temporal TTT run from 20 to 100 total epochs.
+work_dir: ~/working
+data_dir: ~/working/datasets
+run_root: ~/working/runs_v3
+run_name: pdes_attention-temporal-ttt-mlp-frozenbase_128_100ep_60sims
+model_type: PDE-S
+in_channels: 2
+out_channels: 2
+patch_size: 4
+periodic: true
+carrier_token_active: false
+
+use_ttt_window_attention: false
+token_mixer_type: attention
+use_ttt_state_cache_train: false
+global_ttt_stage_names: []
+
+training_mode: temporal_rollout
+train_unrolling_steps: 29
+train_step_size: 29
+tbptt_chunk_size: 4
+temporal_ttt_enabled: true
+temporal_ttt_layer_type: mlp
+temporal_ttt_mini_batch_size: 64
+temporal_ttt_base_lr: 1.0
+temporal_ttt_gate_init: 0.1
+temporal_ttt_learning_rate: 1.0e-4
+temporal_ttt_use_output_gate: false
+temporal_ttt_scan_checkpoint_group_size: 0
+
+init_checkpoint_path: null
+checkpoint_path: ~/working/runs_v3/pdes_attention-temporal-ttt-mlp-frozenbase_128_20ep_60sims/checkpoints/last.ckpt
+auto_resume: true
+resume: true
+
+learning_rate: 0.0
+max_epochs: 100
+batch_size: 1
+num_workers: 2
+downsample_factor: 2
+sample_size: 128
+test_unrolling_steps: 29
+max_channels: 2
+
+devices: 2
+strategy: ddp_find_unused_parameters_true
+precision: 32-true
+accumulate_grad_batches: 8
+seed: 42
+skip_rollout_eval: false
+generate_data: false
+low_res: true
