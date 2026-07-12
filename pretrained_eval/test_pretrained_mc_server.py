@@ -287,6 +287,15 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=cfg["temporal_ttt_scan_checkpoint_group_size"],
     )
+    parser.add_argument(
+        "--bypass-temporal-ttt",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Load the complete temporal-TTT checkpoint, then zero its residual "
+            "gate for a backbone-drift ablation."
+        ),
+    )
 
     parser.add_argument("--batch-size", type=int, default=cfg["batch_size"])
     parser.add_argument("--num-workers", type=int, default=cfg["num_workers"])
@@ -771,6 +780,19 @@ def main() -> None:
         if is_pretrained
         else build_checkpoint_strategy(args, checkpoint_path)
     )
+    temporal_gate_before_bypass = None
+    if args.bypass_temporal_ttt:
+        impl = getattr(strategy.model, "model", None)
+        temporal_ttt = getattr(impl, "temporal_ttt", None)
+        if temporal_ttt is None:
+            raise SystemExit("--bypass-temporal-ttt requires a temporal TTT checkpoint.")
+        temporal_gate_before_bypass = float(temporal_ttt.gate.detach().abs().mean())
+        with torch.no_grad():
+            temporal_ttt.gate.zero_()
+        print(
+            "bypassing temporal TTT residual; "
+            f"loaded gate mean_abs={temporal_gate_before_bypass:.6g}"
+        )
     strategy = strategy.to(device)
     strategy.eval()
 
@@ -817,6 +839,8 @@ def main() -> None:
         "temporal_ttt_mini_batch_size": args.temporal_ttt_mini_batch_size,
         "temporal_ttt_base_lr": args.temporal_ttt_base_lr,
         "temporal_ttt_gate_init": args.temporal_ttt_gate_init,
+        "temporal_ttt_bypassed": args.bypass_temporal_ttt,
+        "temporal_ttt_gate_before_bypass_mean_abs": temporal_gate_before_bypass,
         "downsample_factor": args.downsample_factor,
         "sample_size": args.sample_size,
         "test_unrolling_steps": args.test_unrolling_steps,

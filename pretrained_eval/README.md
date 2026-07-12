@@ -71,6 +71,19 @@ CUDA_VISIBLE_DEVICES=0 python pretrained_eval/test_pretrained_mc_server.py \
     --cache-mode off
 ```
 
+To isolate temporal residual effects from backbone drift, load the full
+checkpoint and zero only the temporal TTT residual gate:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python pretrained_eval/test_pretrained_mc_server.py \
+    --config server_example/pdes_attention-temporal-ttt-mlp_128_100ep_60sims.yaml \
+    --data-dir ~/working/datasets_official \
+    --checkpoint-path ~/working/runs_v3/pdes_attention-temporal-ttt-mlp_128_100ep_60sims/checkpoints/epoch-epoch=087.ckpt \
+    --bypass-temporal-ttt \
+    --rollout-steps 2 \
+    --eval-k 1
+```
+
 ## Official safetensors
 
 The official model has no Lightning `.ckpt`; load it with `from_pretrained`.
