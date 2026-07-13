@@ -21,7 +21,7 @@ class DepthwiseCPE2D(nn.Module):
 
 
 class RotaryEmbedding2D(nn.Module):
-    """Resolution-independent implementation of the H-ViT^3 2D RoPE."""
+    """Resolution-independent implementation of the official H-ViT^3 RoPE."""
 
     def __init__(self, dim: int, base: float = 10000.0):
         super().__init__()
@@ -55,9 +55,108 @@ class RotaryEmbedding2D(nn.Module):
             raise ValueError(
                 f"Expected [B, H, W, {self.dim}] input for 2D RoPE, got {tuple(x.shape)}."
             )
+        input_dtype = x.dtype
         x_complex = torch.view_as_complex(x.float().reshape(*x.shape[:-1], -1, 2))
         rotated = self._rotations(x.shape[1], x.shape[2], x.device) * x_complex
-        return torch.view_as_real(rotated).flatten(-2)
+        return torch.view_as_real(rotated).flatten(-2).to(dtype=input_dtype)
+
+
+class PeriodicRotaryEmbedding2D(nn.Module):
+    """Two-dimensional RoPE using representations of the cyclic grid axes."""
+
+    def __init__(self, dim: int):
+        super().__init__()
+        if dim % 4 != 0:
+            raise ValueError(f"2D RoPE requires a dimension divisible by 4, got {dim}.")
+        self.dim = dim
+
+    @staticmethod
+    def _axis_angles(length: int, count: int, device: torch.device) -> torch.Tensor:
+        if length <= 0:
+            raise ValueError(f"Periodic axis length must be positive, got {length}.")
+        coordinates = torch.arange(length, device=device, dtype=torch.float32)
+        # Integer harmonics are the complex irreducible representations of Z_length.
+        nontrivial_harmonics = max(length - 1, 1)
+        harmonics = (
+            torch.arange(count, device=device, dtype=torch.float32)
+            .remainder(nontrivial_harmonics)
+            .add(1.0)
+        )
+        return coordinates[:, None] * harmonics[None, :] * (2.0 * torch.pi / length)
+
+    def _rotations(self, height: int, width: int, device: torch.device) -> torch.Tensor:
+        frequency_count = self.dim // 4
+        height_angles = self._axis_angles(height, frequency_count, device)
+        width_angles = self._axis_angles(width, frequency_count, device)
+        angles = torch.cat(
+            [
+                height_angles[:, None, :].expand(height, width, frequency_count),
+                width_angles[None, :, :].expand(height, width, frequency_count),
+            ],
+            dim=-1,
+        )
+        return torch.polar(torch.ones_like(angles), angles)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if x.ndim != 4 or x.shape[-1] != self.dim:
+            raise ValueError(
+                f"Expected [B, H, W, {self.dim}] input for periodic 2D RoPE, "
+                f"got {tuple(x.shape)}."
+            )
+        input_dtype = x.dtype
+        x_complex = torch.view_as_complex(x.float().reshape(*x.shape[:-1], -1, 2))
+        rotated = self._rotations(x.shape[1], x.shape[2], x.device) * x_complex
+        return torch.view_as_real(rotated).flatten(-2).to(dtype=input_dtype)
+
+
+class ConvEnhancedMlp(nn.Module):
+    """H-ViT^3 MLP adapted to use whole-domain PDE boundary conditions."""
+
+    def __init__(
+        self,
+        in_features: int,
+        hidden_features: int | None = None,
+        out_features: int | None = None,
+        act_layer: type[nn.Module] = nn.GELU,
+        drop: float = 0.0,
+    ):
+        super().__init__()
+        hidden_features = hidden_features or in_features
+        out_features = out_features or in_features
+        self.fc1 = nn.Linear(in_features, hidden_features)
+        self.act = act_layer()
+        self.dwc = nn.Conv2d(
+            hidden_features,
+            hidden_features,
+            kernel_size=3,
+            groups=hidden_features,
+        )
+        self.fc2 = nn.Linear(hidden_features, out_features)
+        self.drop = nn.Dropout(drop)
+
+    def reset_official_parameters(self) -> None:
+        trunc_normal_(self.fc1.weight, std=0.02)
+        trunc_normal_(self.fc2.weight, std=0.02)
+        nn.init.zeros_(self.fc1.bias)
+        nn.init.zeros_(self.fc2.bias)
+        self.dwc.reset_parameters()
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        height: int,
+        width: int,
+        periodic: bool,
+    ) -> torch.Tensor:
+        x = self.drop(self.act(self.fc1(x)))
+        spatial = x.reshape(x.shape[0], height, width, x.shape[-1]).permute(0, 3, 1, 2)
+        spatial = F.pad(
+            spatial,
+            (1, 1, 1, 1),
+            mode="circular" if periodic else "constant",
+        )
+        x = x + self.dwc(spatial).flatten(2).transpose(1, 2)
+        return self.drop(self.fc2(self.act(x)))
 
 
 class GlobalViTTTMixer(nn.Module):
@@ -69,7 +168,7 @@ class GlobalViTTTMixer(nn.Module):
         num_heads: int,
         qkv_bias: bool = True,
         inner_lr: float = 1.0,
-        use_rope: bool = False,
+        rope_type: str = "none",
     ):
         super().__init__()
         if dim % num_heads != 0:
@@ -79,7 +178,12 @@ class GlobalViTTTMixer(nn.Module):
         self.num_heads = num_heads
         self.head_dim = dim // num_heads
         self.inner_lr = inner_lr
-        self.use_rope = use_rope
+        if rope_type not in {"none", "standard", "periodic"}:
+            raise ValueError(
+                f"Unsupported rope_type={rope_type!r}; expected none, standard, or periodic."
+            )
+        self.rope_type = rope_type
+        self.use_rope = rope_type != "none"
 
         self.qkv = nn.Linear(dim, dim * 3 + self.head_dim * 3, bias=qkv_bias)
         self.w1 = nn.Parameter(
@@ -95,7 +199,12 @@ class GlobalViTTTMixer(nn.Module):
 
         self.proj = nn.Linear(dim + self.head_dim, dim)
         self.scale = 9**-0.5
-        self.rope = RotaryEmbedding2D(dim) if use_rope else None
+        if rope_type == "standard":
+            self.rope = RotaryEmbedding2D(dim)
+        elif rope_type == "periodic":
+            self.rope = PeriodicRotaryEmbedding2D(dim)
+        else:
+            self.rope = None
 
     def reset_official_projection_parameters(self) -> None:
         trunc_normal_(self.qkv.weight, std=0.02)
@@ -222,5 +331,5 @@ class GlobalViTTTMixer(nn.Module):
     def extra_repr(self) -> str:
         return (
             f"dim={self.dim}, num_heads={self.num_heads}, "
-            f"inner_lr={self.inner_lr}, use_rope={self.use_rope}"
+            f"inner_lr={self.inner_lr}, rope_type={self.rope_type}"
         )

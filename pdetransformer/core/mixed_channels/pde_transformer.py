@@ -16,7 +16,7 @@ from timm.models.layers import DropPath
 import torch
 
 from .udit import FinalLayer, precompute_freqs_cis_2d, apply_rotary_emb
-from ..pde_vittt_global import DepthwiseCPE2D, GlobalViTTTMixer
+from ..pde_vittt_global import ConvEnhancedMlp, DepthwiseCPE2D, GlobalViTTTMixer
 
 
 SUPPORTED_TOKEN_MIXERS = {"attention", "global_vittt", "global_h_vittt"}
@@ -358,6 +358,7 @@ class PDEStage(nn.Module):
             drop_path: float = 0.0,
             token_mixer_type: str = "attention",
             vittt_inner_lr: float = 1.0,
+            vittt_head_dim: int = 32,
     ):
         super().__init__()
 
@@ -384,6 +385,7 @@ class PDEStage(nn.Module):
                 periodic=periodic,
                 token_mixer_type=token_mixer_type,
                 vittt_inner_lr=vittt_inner_lr,
+                vittt_head_dim=vittt_head_dim,
             )
             blocks.append(block)
 
@@ -811,6 +813,7 @@ class PDEBlock(nn.Module):
         periodic=False,
         token_mixer_type="attention",
         vittt_inner_lr=1.0,
+        vittt_head_dim=32,
     ):
         super().__init__()
         """
@@ -858,24 +861,41 @@ class PDEBlock(nn.Module):
                 resolution=window_size,
             )
         else:
+            if vittt_head_dim <= 0 or dim % vittt_head_dim != 0:
+                raise ValueError(
+                    f"Global ViTTT dim={dim} must be divisible by "
+                    f"vittt_head_dim={vittt_head_dim}."
+                )
             self.cpe = DepthwiseCPE2D(dim)
             self.attn = GlobalViTTTMixer(
                 dim,
-                num_heads=num_heads,
+                num_heads=dim // vittt_head_dim,
                 qkv_bias=True,
                 inner_lr=vittt_inner_lr,
-                use_rope=token_mixer_type == "global_h_vittt",
+                rope_type=(
+                    ("periodic" if periodic else "standard")
+                    if token_mixer_type == "global_h_vittt"
+                    else "none"
+                ),
             )
 
         self.drop_path = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
         self.norm2 = norm_layer(dim)
         mlp_hidden_dim = int(dim * mlp_ratio)
-        self.mlp = Mlp(
-            in_features=dim,
-            hidden_features=mlp_hidden_dim,
-            act_layer=act_layer,
-            drop=drop,
-        )
+        if token_mixer_type == "global_h_vittt":
+            self.mlp = ConvEnhancedMlp(
+                in_features=dim,
+                hidden_features=mlp_hidden_dim,
+                act_layer=act_layer,
+                drop=drop,
+            )
+        else:
+            self.mlp = Mlp(
+                in_features=dim,
+                hidden_features=mlp_hidden_dim,
+                act_layer=act_layer,
+                drop=drop,
+            )
         self.window_size = window_size
 
         self.adain_2 = AdaLayerNormZero(dim, num_embeddings=None, norm_type="layer_norm")
@@ -991,7 +1011,10 @@ class PDEBlock(nn.Module):
         x_mlp = self.norm2(x)
 
         x_mlp = x_mlp * (1 + mlp_scale[:, None]) + mlp_shift[:, None]
-        x_mlp = self.mlp(x_mlp)
+        if self.token_mixer_type == "global_h_vittt":
+            x_mlp = self.mlp(x_mlp, height=H, width=W, periodic=self.periodic)
+        else:
+            x_mlp = self.mlp(x_mlp)
         x_mlp = x_mlp * (1 + mlp_gate[:, None])
         x = x + self.drop_path(x_mlp)
 
@@ -1199,6 +1222,7 @@ class PDEImpl(nn.Module):
             carrier_token_active: bool = False,
             token_mixer_type: str = "attention",
             vittt_inner_lr: float = 1.0,
+            vittt_head_dim: int = 32,
             **kwargs
     ):
         super().__init__()
@@ -1225,6 +1249,7 @@ class PDEImpl(nn.Module):
             'mlp_ratio': mlp_ratio,
             'token_mixer_type': token_mixer_type,
             'vittt_inner_lr': vittt_inner_lr,
+            'vittt_head_dim': vittt_head_dim,
         }
 
         if patch_size is not None:
@@ -1309,6 +1334,8 @@ class PDEImpl(nn.Module):
             if isinstance(module, GlobalViTTTMixer):
                 module.reset_official_projection_parameters()
             elif isinstance(module, DepthwiseCPE2D):
+                module.reset_official_parameters()
+            elif isinstance(module, ConvEnhancedMlp):
                 module.reset_official_parameters()
 
         # Initialize patch_embed like nn.Linear (instead of nn.Conv2d):

@@ -9,6 +9,7 @@ periodic: true
 carrier_token_active: false
 token_mixer_type: attention
 vittt_inner_lr: 1.0
+vittt_head_dim: 32
 learning_rate: 4.0e-5
 max_epochs: 20
 batch_size: 8

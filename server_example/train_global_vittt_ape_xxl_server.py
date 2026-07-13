@@ -61,6 +61,7 @@ REQUIRED_CONFIG_KEYS = {
     "carrier_token_active",
     "token_mixer_type",
     "vittt_inner_lr",
+    "vittt_head_dim",
     "learning_rate",
     "max_epochs",
     "batch_size",
@@ -167,6 +168,7 @@ def build_training_module(config: dict) -> SingleStepSupervised:
         carrier_token_active=config["carrier_token_active"],
         token_mixer_type=config["token_mixer_type"],
         vittt_inner_lr=config["vittt_inner_lr"],
+        vittt_head_dim=config["vittt_head_dim"],
     )
     training_module = SingleStepSupervised(
         model=model,
