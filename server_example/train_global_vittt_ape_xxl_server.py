@@ -248,10 +248,15 @@ def main():
         datamodule=data_module,
         ckpt_path=str(resume_checkpoint) if resume_checkpoint else None,
     )
-    validation = trainer.validate(module, datamodule=data_module, verbose=False)
+    validation = trainer.validate(
+        module,
+        datamodule=data_module,
+        ckpt_path="best",
+        verbose=False,
+    )
     print(f"last_checkpoint: {checkpoint.last_model_path}")
     print(f"best_checkpoint: {checkpoint.best_model_path}")
-    print(f"validation: {validation}")
+    print(f"best_validation: {validation}")
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ import sys
 import types
 from collections import Counter
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 import torch
@@ -109,6 +110,63 @@ def assert_attention_regression_parity():
     torch.testing.assert_close(actual, expected, atol=0.0, rtol=0.0)
 
 
+def assert_pretrained_round_trip():
+    model_type = "PDE-TINY-VITTT-SAVE-LOAD"
+
+    def build_tiny_model(**kwargs):
+        return pde_module.PDEImpl(
+            hidden_size=32,
+            max_hidden_size=128,
+            num_heads=4,
+            depth=[1, 1, 1],
+            mlp_ratio=2,
+            **kwargs,
+        )
+
+    pde_module.PDE_models[model_type] = build_tiny_model
+    try:
+        model = PDETransformer(
+            sample_size=32,
+            in_channels=2,
+            out_channels=2,
+            type=model_type,
+            periodic=True,
+            carrier_token_active=False,
+            token_mixer_type="global_h_vittt",
+            vittt_inner_lr=0.375,
+            vittt_head_dim=16,
+        ).eval()
+        with TemporaryDirectory() as directory:
+            model.save_pretrained(directory, safe_serialization=True)
+            loaded = PDETransformer.from_pretrained(directory).eval()
+
+        expected_config = {
+            "token_mixer_type": "global_h_vittt",
+            "vittt_inner_lr": 0.375,
+            "vittt_head_dim": 16,
+        }
+        for name, value in expected_config.items():
+            assert getattr(loaded.config, name) == value
+
+        loaded_mixers = [
+            module for module in loaded.modules() if isinstance(module, GlobalViTTTMixer)
+        ]
+        assert loaded_mixers
+        assert all(module.head_dim == 16 for module in loaded_mixers)
+        assert all(module.inner_lr == 0.375 for module in loaded_mixers)
+        assert all(module.rope_type == "periodic" for module in loaded_mixers)
+
+        expected_state = model.state_dict()
+        loaded_state = loaded.state_dict()
+        assert expected_state.keys() == loaded_state.keys()
+        for name in expected_state:
+            torch.testing.assert_close(
+                loaded_state[name], expected_state[name], atol=0.0, rtol=0.0
+            )
+    finally:
+        del pde_module.PDE_models[model_type]
+
+
 def assert_fair_training_configs():
     loaded = {
         mixer: OmegaConf.to_container(OmegaConf.load(path), resolve=True)
@@ -196,6 +254,23 @@ def assert_periodic_rope_boundary_phase():
     width_seam_step = width_rotations[0, 0] * width_rotations[0, -1].conj()
     width_regular_step = width_rotations[0, 1] * width_rotations[0, 0].conj()
     torch.testing.assert_close(width_seam_step, width_regular_step)
+
+
+def assert_rope_rotation_cache():
+    rope = PeriodicRotaryEmbedding2D(dim=16)
+    x = torch.randn(2, 4, 5, 16)
+    with patch.object(rope, "_rotations", wraps=rope._rotations) as rotations:
+        expected = rope(x)
+        actual = rope(x.clone())
+        assert rotations.call_count == 1
+
+        rope(torch.randn(1, 3, 5, 16))
+        assert rotations.call_count == 2
+
+    torch.testing.assert_close(actual, expected, atol=0.0, rtol=0.0)
+    assert len(rope._rotation_cache) == 2
+    rope.to(torch.device("cpu"))
+    assert not rope._rotation_cache
 
 
 def assert_h_mlp_official_parity():
@@ -350,9 +425,11 @@ def assert_full_model_uses_global_tokens(token_mixer_type: str):
 def main():
     checks = [
         ("upstream Attention regression parity", assert_attention_regression_parity),
+        ("Diffusers save/load round trip", assert_pretrained_round_trip),
         ("official zero-padding parity", assert_official_zero_padding_parity),
         ("per-forward fast-weight reset", assert_fast_weights_reset_per_forward),
         ("periodic RoPE boundary phase", assert_periodic_rope_boundary_phase),
+        ("RoPE rotation cache", assert_rope_rotation_cache),
         ("H-style MLP official parity", assert_h_mlp_official_parity),
         ("H-style MLP periodic boundary", assert_h_mlp_periodic_boundary),
         ("RoPE true half precision", assert_rope_true_half_precision),

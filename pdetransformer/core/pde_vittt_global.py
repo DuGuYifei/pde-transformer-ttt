@@ -4,6 +4,30 @@ import torch.nn.functional as F
 from timm.models.layers import trunc_normal_
 
 
+class _CachedRotaryEmbedding2D(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self._rotation_cache = {}
+
+    def _cached_rotations(
+        self,
+        height: int,
+        width: int,
+        device: torch.device,
+    ) -> torch.Tensor:
+        device_index = device.index if device.index is not None else -1
+        key = (height, width, device.type, device_index)
+        rotations = self._rotation_cache.get(key)
+        if rotations is None:
+            rotations = self._rotations(height, width, device)
+            self._rotation_cache[key] = rotations
+        return rotations
+
+    def _apply(self, fn, recurse=True):
+        self._rotation_cache.clear()
+        return super()._apply(fn, recurse=recurse)
+
+
 class DepthwiseCPE2D(nn.Module):
     """Per-block conditional positional encoding on the complete feature map."""
 
@@ -20,7 +44,7 @@ class DepthwiseCPE2D(nn.Module):
         self.proj.reset_parameters()
 
 
-class RotaryEmbedding2D(nn.Module):
+class RotaryEmbedding2D(_CachedRotaryEmbedding2D):
     """Resolution-independent implementation of the official H-ViT^3 RoPE."""
 
     def __init__(self, dim: int, base: float = 10000.0):
@@ -57,11 +81,11 @@ class RotaryEmbedding2D(nn.Module):
             )
         input_dtype = x.dtype
         x_complex = torch.view_as_complex(x.float().reshape(*x.shape[:-1], -1, 2))
-        rotated = self._rotations(x.shape[1], x.shape[2], x.device) * x_complex
+        rotated = self._cached_rotations(x.shape[1], x.shape[2], x.device) * x_complex
         return torch.view_as_real(rotated).flatten(-2).to(dtype=input_dtype)
 
 
-class PeriodicRotaryEmbedding2D(nn.Module):
+class PeriodicRotaryEmbedding2D(_CachedRotaryEmbedding2D):
     """Two-dimensional RoPE using representations of the cyclic grid axes."""
 
     def __init__(self, dim: int):
@@ -105,7 +129,7 @@ class PeriodicRotaryEmbedding2D(nn.Module):
             )
         input_dtype = x.dtype
         x_complex = torch.view_as_complex(x.float().reshape(*x.shape[:-1], -1, 2))
-        rotated = self._rotations(x.shape[1], x.shape[2], x.device) * x_complex
+        rotated = self._cached_rotations(x.shape[1], x.shape[2], x.device) * x_complex
         return torch.view_as_real(rotated).flatten(-2).to(dtype=input_dtype)
 
 

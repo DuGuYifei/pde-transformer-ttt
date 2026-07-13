@@ -1473,11 +1473,16 @@ class PDETransformer(ModelMixin, ConfigMixin):
             carrier_token_active: bool = False,
             window_size: int = 8,
             patch_size: Optional[int] = 4,
+            token_mixer_type: str = "attention",
+            vittt_inner_lr: float = 1.0,
+            vittt_head_dim: int = 32,
             **kwargs
     ):
         super(PDETransformer, self).__init__()
         args = {'in_channels': in_channels, 'out_channels': out_channels, 'patch_size': patch_size,
-                'periodic': periodic, 'carrier_token_active': carrier_token_active, 'window_size': window_size}
+                'periodic': periodic, 'carrier_token_active': carrier_token_active, 'window_size': window_size,
+                'token_mixer_type': token_mixer_type, 'vittt_inner_lr': vittt_inner_lr,
+                'vittt_head_dim': vittt_head_dim}
 
         args.update(kwargs)
 
