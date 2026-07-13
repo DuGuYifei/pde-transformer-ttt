@@ -16,6 +16,10 @@ from timm.models.layers import DropPath
 import torch
 
 from .udit import FinalLayer, precompute_freqs_cis_2d, apply_rotary_emb
+from ..pde_vittt_global import DepthwiseCPE2D, GlobalViTTTMixer
+
+
+SUPPORTED_TOKEN_MIXERS = {"attention", "global_vittt", "global_h_vittt"}
 
 ###############################
 # We need to create subclass of Swinv2PreTrainedModel because it sets use_mask_token=True
@@ -352,10 +356,21 @@ class PDEStage(nn.Module):
             periodic=False, carrier_token_active: bool = True,
             mlp_ratio: float = 4.0,
             drop_path: float = 0.0,
+            token_mixer_type: str = "attention",
+            vittt_inner_lr: float = 1.0,
     ):
         super().__init__()
 
+        if token_mixer_type not in SUPPORTED_TOKEN_MIXERS:
+            raise ValueError(
+                f"Unsupported token_mixer_type={token_mixer_type!r}. "
+                f"Expected one of {sorted(SUPPORTED_TOKEN_MIXERS)}."
+            )
+        if token_mixer_type != "attention" and carrier_token_active:
+            raise ValueError("Global ViTTT variants do not support carrier tokens.")
+
         self.dim = dim
+        self.token_mixer_type = token_mixer_type
         blocks = []
         for i in range(depth):
 
@@ -366,6 +381,9 @@ class PDEStage(nn.Module):
                 mlp_ratio=mlp_ratio,
                 carrier_token_active=carrier_token_active,
                 drop_path=drop_path,
+                periodic=periodic,
+                token_mixer_type=token_mixer_type,
+                vittt_inner_lr=vittt_inner_lr,
             )
             blocks.append(block)
 
@@ -430,6 +448,19 @@ class PDEStage(nn.Module):
                 class_labels: Optional[torch.LongTensor] = None, ):
 
         B, C, H, W = hidden_states.shape
+
+        if self.token_mixer_type != "attention":
+            for block in self.blocks:
+                hidden_states = hidden_states.permute(0, 2, 3, 1)
+                hidden_states, _ = block(
+                    hidden_states,
+                    None,
+                    timestep=timestep,
+                    class_labels=class_labels,
+                    emb=cond,
+                )
+                hidden_states = hidden_states.reshape(B, H, W, C).permute(0, 3, 1, 2)
+            return hidden_states
 
         # precompute attention mask
         attn_mask_precomputed = self.get_attn_mask(self.window_size // 2, H, W, hidden_states.dtype,
@@ -777,6 +808,9 @@ class PDEBlock(nn.Module):
         last=False,
         do_propagation=False,
         carrier_token_active=True,
+        periodic=False,
+        token_mixer_type="attention",
+        vittt_inner_lr=1.0,
     ):
         super().__init__()
         """
@@ -797,21 +831,41 @@ class PDEBlock(nn.Module):
             carrier_token_active: bool argument to indicate if carrier tokens are used.
         """
 
-        # positional encoding for windowed attention tokens
+        if token_mixer_type not in SUPPORTED_TOKEN_MIXERS:
+            raise ValueError(
+                f"Unsupported token_mixer_type={token_mixer_type!r}. "
+                f"Expected one of {sorted(SUPPORTED_TOKEN_MIXERS)}."
+            )
+
+        self.token_mixer_type = token_mixer_type
+        self.periodic = periodic
+
+        # Conditional AdaLN and residual gates are shared by all token mixers.
         self.norm1 = norm_layer(dim)
 
         self.carrier_token_active = carrier_token_active
 
         self.cr_window = 1
-        self.attn = WindowAttention2DTime(
-            dim,
-            num_heads=num_heads,
-            qkv_bias=qkv_bias,
-            qk_scale=qk_scale,
-            attn_drop=attn_drop,
-            proj_drop=drop,
-            resolution=window_size,
-        )
+        if token_mixer_type == "attention":
+            self.cpe = None
+            self.attn = WindowAttention2DTime(
+                dim,
+                num_heads=num_heads,
+                qkv_bias=qkv_bias,
+                qk_scale=qk_scale,
+                attn_drop=attn_drop,
+                proj_drop=drop,
+                resolution=window_size,
+            )
+        else:
+            self.cpe = DepthwiseCPE2D(dim)
+            self.attn = GlobalViTTTMixer(
+                dim,
+                num_heads=num_heads,
+                qkv_bias=True,
+                inner_lr=vittt_inner_lr,
+                use_rope=token_mixer_type == "global_h_vittt",
+            )
 
         self.drop_path = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
         self.norm2 = norm_layer(dim)
@@ -865,7 +919,12 @@ class PDEBlock(nn.Module):
         B, H, W, N = x.shape
         ct = carrier_tokens
 
-        x = x.view(B, H * W, N)
+        if self.cpe is not None:
+            x_spatial = x.permute(0, 3, 1, 2)
+            x_spatial = x_spatial + self.cpe(x_spatial, periodic=self.periodic)
+            x = x_spatial.permute(0, 2, 3, 1).reshape(B, H * W, N)
+        else:
+            x = x.reshape(B, H * W, N)
 
         Bc = emb.shape[0]
 
@@ -921,7 +980,10 @@ class PDEBlock(nn.Module):
 
         x_msa = x_msa * (1 + msa_scale[:, None]) + msa_shift[:, None]
 
-        x_msa = self.attn(x_msa, attn_mask=attn_mask)
+        if self.token_mixer_type == "attention":
+            x_msa = self.attn(x_msa, attn_mask=attn_mask)
+        else:
+            x_msa = self.attn(x_msa, height=H, width=W, periodic=self.periodic)
         x_msa = x_msa * (1 + msa_gate[:, None])
 
         x = x + self.drop_path(x_msa)
@@ -1135,6 +1197,8 @@ class PDEImpl(nn.Module):
             num_classes=1000,
             periodic=True,
             carrier_token_active: bool = False,
+            token_mixer_type: str = "attention",
+            vittt_inner_lr: float = 1.0,
             **kwargs
     ):
         super().__init__()
@@ -1159,6 +1223,8 @@ class PDEImpl(nn.Module):
             "periodic": periodic,
             'carrier_token_active': carrier_token_active,
             'mlp_ratio': mlp_ratio,
+            'token_mixer_type': token_mixer_type,
+            'vittt_inner_lr': vittt_inner_lr,
         }
 
         if patch_size is not None:
@@ -1236,6 +1302,14 @@ class PDEImpl(nn.Module):
                     nn.init.constant_(module.bias, 0)
 
         self.apply(_basic_init)
+
+        # Keep the newly introduced ViTTT components aligned with their
+        # official initialization without changing the original PDE layers.
+        for module in self.modules():
+            if isinstance(module, GlobalViTTTMixer):
+                module.reset_official_projection_parameters()
+            elif isinstance(module, DepthwiseCPE2D):
+                module.reset_official_parameters()
 
         # Initialize patch_embed like nn.Linear (instead of nn.Conv2d):
         w = self.x_embedder.proj.weight.data
