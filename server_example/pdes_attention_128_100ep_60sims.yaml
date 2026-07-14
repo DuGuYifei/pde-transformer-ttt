@@ -1,13 +1,13 @@
 data_dir: ~/working/datasets
 run_root: ~/working/runs_global_vittt
-run_name: pdes_global-h-vittt_128_60sims_100ep
+run_name: pdes_attention_128_60sims_100ep
 model_type: PDE-S
 in_channels: 2
 out_channels: 2
 patch_size: 4
 periodic: true
 carrier_token_active: false
-token_mixer_type: global_h_vittt
+token_mixer_type: attention
 vittt_inner_lr: 1.0
 vittt_head_dim: 32
 learning_rate: 4.0e-5
