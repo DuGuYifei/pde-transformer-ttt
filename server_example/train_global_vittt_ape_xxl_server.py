@@ -78,6 +78,7 @@ REQUIRED_CONFIG_KEYS = {
     "max_channels",
     "auto_resume",
 }
+OPTIONAL_CONFIG_KEYS = {"init_checkpoint"}
 
 
 class EpochSummary(L.Callback):
@@ -121,7 +122,7 @@ def load_config(path: Path) -> dict:
     if not isinstance(config, dict):
         raise ValueError(f"Expected a mapping in {path}.")
     missing = sorted(REQUIRED_CONFIG_KEYS - set(config))
-    unknown = sorted(set(config) - REQUIRED_CONFIG_KEYS)
+    unknown = sorted(set(config) - REQUIRED_CONFIG_KEYS - OPTIONAL_CONFIG_KEYS)
     if missing or unknown:
         raise ValueError(f"Invalid config: missing={missing}, unknown={unknown}")
     if config["token_mixer_type"] not in {
@@ -189,6 +190,12 @@ def find_resume_checkpoint(checkpoint_dir: Path) -> Path | None:
     return candidates[0] if candidates else None
 
 
+def load_initial_weights(module: SingleStepSupervised, checkpoint_path: Path) -> None:
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    state_dict = checkpoint.get("state_dict", checkpoint)
+    module.load_state_dict(state_dict, strict=True)
+
+
 def main():
     args = parse_args()
     config = load_config(args.config.expanduser().resolve())
@@ -239,9 +246,16 @@ def main():
     resume_checkpoint = None
     if config["auto_resume"] and not args.fresh:
         resume_checkpoint = find_resume_checkpoint(checkpoint_dir)
+    init_checkpoint = None
+    if resume_checkpoint is None and config.get("init_checkpoint"):
+        init_checkpoint = Path(config["init_checkpoint"]).expanduser().resolve()
+        if not init_checkpoint.is_file():
+            raise FileNotFoundError(f"Initialization checkpoint does not exist: {init_checkpoint}")
+        load_initial_weights(module, init_checkpoint)
     print(OmegaConf.to_yaml(OmegaConf.create(config), resolve=True))
     print(f"parameters: {parameter_count:,}")
     print(f"resume_checkpoint: {resume_checkpoint}")
+    print(f"init_checkpoint: {init_checkpoint}")
 
     trainer.fit(
         module,
