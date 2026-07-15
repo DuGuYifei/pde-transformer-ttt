@@ -180,6 +180,9 @@ def assert_fair_training_configs():
         config = dict(config)
         config.pop("run_name")
         config.pop("token_mixer_type")
+        # These YAMLs record the 20-epoch screen and later 100-epoch runs.
+        # Duration is intentionally checked by each experiment-specific test.
+        config.pop("max_epochs")
         comparable.append(config)
     assert comparable[0] == comparable[1] == comparable[2]
 

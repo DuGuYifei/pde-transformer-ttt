@@ -16,10 +16,20 @@ from timm.models.layers import DropPath
 import torch
 
 from .udit import FinalLayer, precompute_freqs_cis_2d, apply_rotary_emb
-from ..pde_vittt_global import ConvEnhancedMlp, DepthwiseCPE2D, GlobalViTTTMixer
+from ..pde_vittt_global import (
+    ConvEnhancedMlp,
+    DepthwiseCPE2D,
+    GlobalViTTTMixer,
+)
+from ..pde_vittt_global_linear import GlobalLinearTTTMixer
 
 
-SUPPORTED_TOKEN_MIXERS = {"attention", "global_vittt", "global_h_vittt"}
+SUPPORTED_TOKEN_MIXERS = {
+    "attention",
+    "global_vittt",
+    "global_h_vittt",
+    "global_linear_ttt",
+}
 
 ###############################
 # We need to create subclass of Swinv2PreTrainedModel because it sets use_mask_token=True
@@ -867,17 +877,25 @@ class PDEBlock(nn.Module):
                     f"vittt_head_dim={vittt_head_dim}."
                 )
             self.cpe = DepthwiseCPE2D(dim)
-            self.attn = GlobalViTTTMixer(
-                dim,
-                num_heads=dim // vittt_head_dim,
-                qkv_bias=True,
-                inner_lr=vittt_inner_lr,
-                rope_type=(
-                    ("periodic" if periodic else "standard")
-                    if token_mixer_type == "global_h_vittt"
-                    else "none"
-                ),
-            )
+            if token_mixer_type == "global_linear_ttt":
+                self.attn = GlobalLinearTTTMixer(
+                    dim,
+                    num_heads=dim // vittt_head_dim,
+                    qkv_bias=True,
+                    inner_lr=vittt_inner_lr,
+                )
+            else:
+                self.attn = GlobalViTTTMixer(
+                    dim,
+                    num_heads=dim // vittt_head_dim,
+                    qkv_bias=True,
+                    inner_lr=vittt_inner_lr,
+                    rope_type=(
+                        ("periodic" if periodic else "standard")
+                        if token_mixer_type == "global_h_vittt"
+                        else "none"
+                    ),
+                )
 
         self.drop_path = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
         self.norm2 = norm_layer(dim)
@@ -1333,6 +1351,8 @@ class PDEImpl(nn.Module):
         for module in self.modules():
             if isinstance(module, GlobalViTTTMixer):
                 module.reset_official_projection_parameters()
+            elif isinstance(module, GlobalLinearTTTMixer):
+                module.reset_ttt_parameters()
             elif isinstance(module, DepthwiseCPE2D):
                 module.reset_official_parameters()
             elif isinstance(module, ConvEnhancedMlp):

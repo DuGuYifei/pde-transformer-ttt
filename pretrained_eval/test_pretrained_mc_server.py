@@ -213,7 +213,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--token-mixer-type",
-        choices=("attention", "global_vittt", "global_h_vittt"),
+        choices=(
+            "attention",
+            "global_vittt",
+            "global_h_vittt",
+            "global_linear_ttt",
+        ),
         default=cfg.get("token_mixer_type"),
         help="Local checkpoint mixer type. Ignored for from_pretrained models.",
     )
