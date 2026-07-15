@@ -33,6 +33,11 @@ def expand(path: Path) -> Path:
     return path.expanduser().resolve()
 
 
+def expand_executable(path: Path) -> Path:
+    # Keep a virtualenv's python symlink intact so Python can locate pyvenv.cfg.
+    return path.expanduser().absolute()
+
+
 def process_matches(pid: int, marker: str) -> bool:
     try:
         command = Path(f"/proc/{pid}/cmdline").read_bytes().replace(b"\0", b" ").decode()
@@ -97,7 +102,7 @@ def main() -> None:
     train_log = expand(args.train_log)
     config = expand(args.config)
     data_dir = expand(args.data_dir)
-    python = expand(args.python)
+    python = expand_executable(args.python)
     status_path = run_dir / "official_eval_watcher.json"
 
     while process_matches(args.pid, args.process_marker):
