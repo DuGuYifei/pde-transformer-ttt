@@ -64,3 +64,19 @@ pdetransformer/core/mixed_channels/pde_transformer.py
 server_example/train_global_vittt_ape_xxl_server.py
 server_example/*.yaml
 ```
+
+## Global Linear TTT with temporal adaptation
+
+`train_global_linear_temporal_server.py` trains one persistent TTT-MLP after
+the `8x8x384` latent stage of a pretrained Global Linear TTT backbone. The
+matched configuration is
+`pdes_global-linear-temporal-ttt-frozenbase_128_100ep_60sims.yaml`.
+
+The 22 spatial Global Linear TTT blocks remain frozen and reset their fast
+weights on every PDE model call. Only the latent temporal TTT is trainable;
+its state persists for all 29 rollout steps. `tbptt_chunk_size: 4` detaches
+the backward graph every four steps without resetting that state.
+
+Set `temporal_ttt_enabled: false` for a pure G-L model. A model constructed
+with the temporal module can also bypass it per call with
+`use_temporal_ttt=False`, preserving the original G-L tensor path.

@@ -22,6 +22,7 @@ from ..pde_vittt_global import (
     GlobalViTTTMixer,
 )
 from ..pde_vittt_global_linear import GlobalLinearTTTMixer
+from ..pde_temporal_ttt import PDETemporalTTT2D
 
 
 SUPPORTED_TOKEN_MIXERS = {
@@ -1241,6 +1242,13 @@ class PDEImpl(nn.Module):
             token_mixer_type: str = "attention",
             vittt_inner_lr: float = 1.0,
             vittt_head_dim: int = 32,
+            temporal_ttt_enabled: bool = False,
+            temporal_ttt_layer_type: str = "mlp",
+            temporal_ttt_mini_batch_size: int = 64,
+            temporal_ttt_base_lr: float = 1.0,
+            temporal_ttt_gate_init: float = 0.1,
+            temporal_ttt_use_output_gate: bool = False,
+            temporal_ttt_scan_checkpoint_group_size: int = 0,
             **kwargs
     ):
         super().__init__()
@@ -1299,6 +1307,20 @@ class PDEImpl(nn.Module):
         hidden_size_latent = min(hidden_size * 2 ** self.num_encoder_layers, max_hidden_size)
         self.latent = PDEStage(dim=hidden_size_latent, num_heads=num_heads,
                                             window_size=window_size, depth=depth[self.num_encoder_layers], **dit_stage_args)
+        self.temporal_ttt = (
+            PDETemporalTTT2D(
+                dim=hidden_size_latent,
+                num_heads=num_heads,
+                layer_type=temporal_ttt_layer_type,
+                mini_batch_size=temporal_ttt_mini_batch_size,
+                base_lr=temporal_ttt_base_lr,
+                gate_init=temporal_ttt_gate_init,
+                use_output_gate=temporal_ttt_use_output_gate,
+                scan_checkpoint_group_size=temporal_ttt_scan_checkpoint_group_size,
+            )
+            if temporal_ttt_enabled
+            else None
+        )
 
         hidden_size_layer0 = min(hidden_size * 2, max_hidden_size)
         if hidden_size_layer0 >= max_hidden_size:
@@ -1395,7 +1417,15 @@ class PDEImpl(nn.Module):
         nn.init.constant_(self.final_layer.out_proj.weight, 0)
         nn.init.constant_(self.final_layer.out_proj.bias, 0)
 
-    def forward(self, x, t, y):
+    def forward(
+        self,
+        x,
+        t,
+        y,
+        ttt_state_cache: Optional[dict[str, Any]] = None,
+        return_ttt_state_cache: bool = False,
+        use_temporal_ttt: Optional[bool] = None,
+    ):
         """
         Forward pass of PDE transformer.
         x: (N, C, H, W) tensor of spatial inputs (images or latent representations of images)
@@ -1435,6 +1465,16 @@ class PDEImpl(nn.Module):
         c = emb_list[-1]
         x = self.latent(x, c)
 
+        temporal_active = self.temporal_ttt is not None if use_temporal_ttt is None else use_temporal_ttt
+        if temporal_active and self.temporal_ttt is None:
+            raise ValueError("use_temporal_ttt=True requires temporal_ttt_enabled=True")
+
+        next_state_cache = dict(ttt_state_cache or {})
+        if temporal_active:
+            temporal_state = next_state_cache.get("temporal_latent")
+            x, next_temporal_state = self.temporal_ttt(x, state=temporal_state)
+            next_state_cache["temporal_latent"] = next_temporal_state
+
         for i, (residual, emb) in enumerate(zip(residuals_list[1:][::-1], emb_list[1:-1][::-1])):
             # decoder
             x = self.__getattr__(f"up{self.num_encoder_layers - i}_{self.num_encoder_layers - i - 1}")(x)
@@ -1466,6 +1506,8 @@ class PDEImpl(nn.Module):
             shape=(-1, self.out_channels, height * self.patch_size, width * self.patch_size)
         )
 
+        if return_ttt_state_cache:
+            return x, next_state_cache
         return x
 
 @dataclass
@@ -1479,6 +1521,7 @@ class PDEOutput(BaseOutput):
     """
 
     sample: torch.Tensor
+    ttt_state_cache: Optional[dict[str, Any]] = None
 
 class PDETransformer(ModelMixin, ConfigMixin):
 
@@ -1496,13 +1539,27 @@ class PDETransformer(ModelMixin, ConfigMixin):
             token_mixer_type: str = "attention",
             vittt_inner_lr: float = 1.0,
             vittt_head_dim: int = 32,
+            temporal_ttt_enabled: bool = False,
+            temporal_ttt_layer_type: str = "mlp",
+            temporal_ttt_mini_batch_size: int = 64,
+            temporal_ttt_base_lr: float = 1.0,
+            temporal_ttt_gate_init: float = 0.1,
+            temporal_ttt_use_output_gate: bool = False,
+            temporal_ttt_scan_checkpoint_group_size: int = 0,
             **kwargs
     ):
         super(PDETransformer, self).__init__()
         args = {'in_channels': in_channels, 'out_channels': out_channels, 'patch_size': patch_size,
                 'periodic': periodic, 'carrier_token_active': carrier_token_active, 'window_size': window_size,
                 'token_mixer_type': token_mixer_type, 'vittt_inner_lr': vittt_inner_lr,
-                'vittt_head_dim': vittt_head_dim}
+                'vittt_head_dim': vittt_head_dim,
+                'temporal_ttt_enabled': temporal_ttt_enabled,
+                'temporal_ttt_layer_type': temporal_ttt_layer_type,
+                'temporal_ttt_mini_batch_size': temporal_ttt_mini_batch_size,
+                'temporal_ttt_base_lr': temporal_ttt_base_lr,
+                'temporal_ttt_gate_init': temporal_ttt_gate_init,
+                'temporal_ttt_use_output_gate': temporal_ttt_use_output_gate,
+                'temporal_ttt_scan_checkpoint_group_size': temporal_ttt_scan_checkpoint_group_size}
 
         args.update(kwargs)
 
@@ -1519,14 +1576,29 @@ class PDETransformer(ModelMixin, ConfigMixin):
             class_labels: Optional[torch.LongTensor] = None,
             cross_attention_kwargs: Dict[str, Any] = None,
             return_dict: bool = True,
+            ttt_state_cache: Optional[dict[str, Any]] = None,
+            return_ttt_state_cache: bool = False,
+            use_temporal_ttt: Optional[bool] = None,
     ):
 
-        output = self.model.forward(hidden_states, timestep, class_labels)
+        model_output = self.model.forward(
+            hidden_states,
+            timestep,
+            class_labels,
+            ttt_state_cache=ttt_state_cache,
+            return_ttt_state_cache=return_ttt_state_cache,
+            use_temporal_ttt=use_temporal_ttt,
+        )
+        if return_ttt_state_cache:
+            output, next_state_cache = model_output
+        else:
+            output = model_output
+            next_state_cache = None
 
         if not return_dict:
-            return (output,)
+            return (output, next_state_cache) if return_ttt_state_cache else (output,)
 
-        return PDEOutput(sample=output)
+        return PDEOutput(sample=output, ttt_state_cache=next_state_cache)
 
 #################################################################################
 #                            PDE Transformer Configs                            #

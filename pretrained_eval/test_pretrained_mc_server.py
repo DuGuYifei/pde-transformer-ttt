@@ -86,6 +86,13 @@ CONFIG_DEFAULTS: dict[str, Any] = {
     "vittt_inner_lr": 1.0,
     "vittt_head_dim": 32,
     "vittt_padding_mode": "zero",
+    "temporal_ttt_enabled": False,
+    "temporal_ttt_layer_type": "mlp",
+    "temporal_ttt_mini_batch_size": 64,
+    "temporal_ttt_base_lr": 1.0,
+    "temporal_ttt_gate_init": 0.1,
+    "temporal_ttt_use_output_gate": False,
+    "temporal_ttt_scan_checkpoint_group_size": 0,
     "attention_ttt_type": "ttt_sequence",
     "attention_ttt_gate_init": 0.1,
     "attention_ttt_bidirectional": True,
@@ -246,6 +253,41 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--vittt-inner-lr", type=float, default=cfg["vittt_inner_lr"])
     parser.add_argument("--vittt-head-dim", type=int, default=cfg["vittt_head_dim"])
     parser.add_argument(
+        "--temporal-ttt-enabled",
+        action=argparse.BooleanOptionalAction,
+        default=cfg["temporal_ttt_enabled"],
+    )
+    parser.add_argument(
+        "--temporal-ttt-layer-type",
+        choices=("linear", "mlp"),
+        default=cfg["temporal_ttt_layer_type"],
+    )
+    parser.add_argument(
+        "--temporal-ttt-mini-batch-size",
+        type=int,
+        default=cfg["temporal_ttt_mini_batch_size"],
+    )
+    parser.add_argument(
+        "--temporal-ttt-base-lr",
+        type=float,
+        default=cfg["temporal_ttt_base_lr"],
+    )
+    parser.add_argument(
+        "--temporal-ttt-gate-init",
+        type=float,
+        default=cfg["temporal_ttt_gate_init"],
+    )
+    parser.add_argument(
+        "--temporal-ttt-use-output-gate",
+        action=argparse.BooleanOptionalAction,
+        default=cfg["temporal_ttt_use_output_gate"],
+    )
+    parser.add_argument(
+        "--temporal-ttt-scan-checkpoint-group-size",
+        type=int,
+        default=cfg["temporal_ttt_scan_checkpoint_group_size"],
+    )
+    parser.add_argument(
         "--vittt-padding-mode",
         choices=("zero", "replicate"),
         default=cfg["vittt_padding_mode"],
@@ -283,8 +325,8 @@ def parse_args() -> argparse.Namespace:
         choices=("auto", "off", "on", "both"),
         default="auto",
         help=(
-            "TTT state cache mode during inference. auto means both for "
-            "ttt_sequence checkpoints, off for attention/vittt/attention_ttt/pretrained."
+            "TTT state mode during inference. For temporal checkpoints, off "
+            "bypasses the temporal layer and on carries its state across rollout."
         ),
     )
     parser.add_argument("--rollout-steps", type=int, default=DEFAULT_ROLLOUT_STEPS)
@@ -367,11 +409,23 @@ def build_checkpoint_strategy(args: argparse.Namespace, checkpoint_path: Path) -
         token_mixer_type=args.token_mixer_type,
         vittt_inner_lr=args.vittt_inner_lr,
         vittt_head_dim=args.vittt_head_dim,
+        temporal_ttt_enabled=args.temporal_ttt_enabled,
+        temporal_ttt_layer_type=args.temporal_ttt_layer_type,
+        temporal_ttt_mini_batch_size=args.temporal_ttt_mini_batch_size,
+        temporal_ttt_base_lr=args.temporal_ttt_base_lr,
+        temporal_ttt_gate_init=args.temporal_ttt_gate_init,
+        temporal_ttt_use_output_gate=args.temporal_ttt_use_output_gate,
+        temporal_ttt_scan_checkpoint_group_size=(
+            args.temporal_ttt_scan_checkpoint_group_size
+        ),
     )
     strategy = SingleStepSupervised(
         model=model,
         image_key=0,
         optimizer="adamw",
+        use_ttt_state_cache_inference=args.temporal_ttt_enabled,
+        use_ttt_state_cache_train=False,
+        use_temporal_ttt_inference=(True if args.temporal_ttt_enabled else None),
     )
     strategy.learning_rate = 0.0
 
@@ -410,6 +464,9 @@ def build_pretrained_strategy(args: argparse.Namespace) -> SingleStepSupervised:
         optimizer="adamw",
         use_ttt_state_cache_inference=False,
         use_ttt_state_cache_train=False,
+        use_temporal_ttt_inference=(
+            True if getattr(model.config, "temporal_ttt_enabled", False) else None
+        ),
     )
     strategy.learning_rate = 0.0
     return strategy
@@ -496,6 +553,9 @@ def run_cache_mode(
     cache_label = "on" if cache_mode_on else "off"
     strategy.use_ttt_state_cache_inference = cache_mode_on
     strategy.use_ttt_state_cache_train = False
+    strategy.use_temporal_ttt_inference = (
+        cache_mode_on if args.temporal_ttt_enabled else None
+    )
     strategy.eval()
 
     started_iso = datetime.now().isoformat(timespec="seconds")
@@ -637,6 +697,14 @@ def run_cache_mode(
 
 
 def select_cache_modes(args: argparse.Namespace, resolved_token_mixer: str, is_pretrained: bool) -> list[bool]:
+    if args.temporal_ttt_enabled:
+        if args.cache_mode == "auto":
+            return [True]
+        if args.cache_mode == "off":
+            return [False]
+        if args.cache_mode == "on":
+            return [True]
+        return [False, True]
     cache_capable = (not is_pretrained) and resolved_token_mixer == "ttt_sequence"
     if args.cache_mode == "auto":
         return [False, True] if cache_capable else [False]
@@ -763,7 +831,17 @@ def main() -> None:
         "ttt_use_gate": args.ttt_use_gate,
         "ttt_scan_checkpoint_group_size": args.ttt_scan_checkpoint_group_size,
         "vittt_inner_lr": args.vittt_inner_lr,
+        "vittt_head_dim": args.vittt_head_dim,
         "vittt_padding_mode": args.vittt_padding_mode,
+        "temporal_ttt_enabled": args.temporal_ttt_enabled,
+        "temporal_ttt_layer_type": args.temporal_ttt_layer_type,
+        "temporal_ttt_mini_batch_size": args.temporal_ttt_mini_batch_size,
+        "temporal_ttt_base_lr": args.temporal_ttt_base_lr,
+        "temporal_ttt_gate_init": args.temporal_ttt_gate_init,
+        "temporal_ttt_use_output_gate": args.temporal_ttt_use_output_gate,
+        "temporal_ttt_scan_checkpoint_group_size": (
+            args.temporal_ttt_scan_checkpoint_group_size
+        ),
         "attention_ttt_type": args.attention_ttt_type,
         "attention_ttt_gate_init": args.attention_ttt_gate_init,
         "attention_ttt_bidirectional": args.attention_ttt_bidirectional,
