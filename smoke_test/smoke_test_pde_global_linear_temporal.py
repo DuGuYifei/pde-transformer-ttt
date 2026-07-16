@@ -237,7 +237,7 @@ def test_training_config() -> None:
     assert config["temporal_ttt_enabled"] is True
     assert config["freeze_backbone"] is True
     assert config["train_unrolling_steps"] == 29
-    assert config["train_step_size"] == 29
+    assert config["train_step_size"] == 1
     assert config["tbptt_chunk_size"] == 4
     assert config["accumulate_grad_batches"] == 8
 

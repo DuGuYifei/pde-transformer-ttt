@@ -38,7 +38,7 @@ seed: 42
 downsample_factor: 2
 sample_size: 128
 train_unrolling_steps: 29
-train_step_size: 29
+train_step_size: 1
 tbptt_chunk_size: 4
 test_unrolling_steps: 29
 max_channels: 2
