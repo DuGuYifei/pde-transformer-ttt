@@ -127,6 +127,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-epochs", type=int)
     parser.add_argument("--devices", type=int)
     parser.add_argument("--strategy", type=str)
+    parser.add_argument("--accumulate-grad-batches", type=int)
     parser.add_argument("--limit-train-batches", type=int)
     parser.add_argument("--limit-val-batches", type=int)
     parser.add_argument("--fresh", action="store_true", help="Ignore existing last checkpoints.")
@@ -294,6 +295,10 @@ def main() -> None:
         config["devices"] = args.devices
     if args.strategy is not None:
         config["strategy"] = args.strategy
+    if args.accumulate_grad_batches is not None:
+        if args.accumulate_grad_batches < 1:
+            raise ValueError("--accumulate-grad-batches must be positive")
+        config["accumulate_grad_batches"] = args.accumulate_grad_batches
 
     L.seed_everything(config["seed"], workers=True)
     run_root = Path(config["run_root"]).expanduser().resolve()
@@ -360,10 +365,15 @@ def main() -> None:
         datamodule=data_module,
         ckpt_path=str(resume_checkpoint) if resume_checkpoint else None,
     )
+    validation_checkpoint = checkpoint.best_model_path or checkpoint.last_model_path
+    if not validation_checkpoint:
+        raise RuntimeError("Training completed without writing a validation checkpoint")
+    if not checkpoint.best_model_path:
+        print("best checkpoint was not produced; validating the last checkpoint instead")
     validation = trainer.validate(
         module,
         datamodule=data_module,
-        ckpt_path="best",
+        ckpt_path=validation_checkpoint,
         verbose=False,
     )
     print(f"last_checkpoint: {checkpoint.last_model_path}")
