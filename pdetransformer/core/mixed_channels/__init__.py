@@ -4,7 +4,10 @@ from .unet import UNetWrapper
 from .dit import CustomDiTTransformer2DModel
 from .factformer import FactFormer2D
 from .train_supervised import SingleStepSupervised
-from .train_rollout import AutoregressiveRolloutSupervised
+from .train_rollout import (
+    AutoregressiveRolloutSupervised,
+    PersistentAutoregressiveRolloutSupervised,
+)
 from .train_probabilistic import SingleStepDiffusion
 
 __all__ = [
@@ -18,5 +21,6 @@ __all__ = [
     "FactFormer2D",
     "SingleStepSupervised",
     "AutoregressiveRolloutSupervised",
+    "PersistentAutoregressiveRolloutSupervised",
     "SingleStepDiffusion"
 ]

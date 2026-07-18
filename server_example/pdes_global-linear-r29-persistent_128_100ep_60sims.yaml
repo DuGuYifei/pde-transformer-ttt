@@ -1,6 +1,6 @@
 data_dir: ~/working/datasets
 run_root: ~/working/runs_global_linear_rollout
-run_name: pdes_global-linear-r29-tbptt4_128_100ep_60sims
+run_name: pdes_global-linear-r29-tbptt4-persistent_128_100ep_60sims
 
 model_type: PDE-S
 in_channels: 2
@@ -11,7 +11,7 @@ carrier_token_active: false
 token_mixer_type: global_linear_ttt
 vittt_inner_lr: 1.0
 vittt_head_dim: 32
-vittt_persistent_state: false
+vittt_persistent_state: true
 
 init_checkpoint: ~/working/runs_global_vittt/pdes_global-linear-ttt_128_60sims_100ep/checkpoints/epoch-epoch=094.ckpt
 learning_rate: 1.0e-5

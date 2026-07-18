@@ -29,6 +29,7 @@ for package_name, package_path in {
 from pdetransformer.core.mixed_channels import (  # noqa: E402
     AutoregressiveRolloutSupervised,
     PDETransformer,
+    PersistentAutoregressiveRolloutSupervised,
 )
 
 
@@ -42,6 +43,7 @@ REQUIRED_CONFIG_KEYS = {
     "data_dir", "run_root", "run_name", "model_type", "in_channels",
     "out_channels", "patch_size", "periodic", "carrier_token_active",
     "token_mixer_type", "vittt_inner_lr", "vittt_head_dim",
+    "vittt_persistent_state",
     "init_checkpoint", "learning_rate", "max_epochs", "batch_size",
     "num_workers", "devices", "strategy", "precision",
     "accumulate_grad_batches", "seed", "downsample_factor", "sample_size",
@@ -139,8 +141,14 @@ def build_training_module(config: dict) -> AutoregressiveRolloutSupervised:
         token_mixer_type=config["token_mixer_type"],
         vittt_inner_lr=config["vittt_inner_lr"],
         vittt_head_dim=config["vittt_head_dim"],
+        vittt_persistent_state=config["vittt_persistent_state"],
     )
-    module = AutoregressiveRolloutSupervised(
+    strategy_class = (
+        PersistentAutoregressiveRolloutSupervised
+        if config["vittt_persistent_state"]
+        else AutoregressiveRolloutSupervised
+    )
+    module = strategy_class(
         model=model,
         image_key=0,
         optimizer="adamw",
@@ -201,7 +209,8 @@ def main() -> None:
 
     print(OmegaConf.to_yaml(OmegaConf.create(config), resolve=True))
     print(f"parameters: {total_parameters:,} (all trainable)")
-    print("spatial fast-weight state: reset every PDE step")
+    state_mode = "persistent for full rollout" if config["vittt_persistent_state"] else "reset every PDE step"
+    print(f"spatial fast-weight state: {state_mode}")
     print(f"rollout: {config['train_unrolling_steps']} steps")
     print(f"TBPTT detach interval: {config['tbptt_chunk_size']} steps")
     print(f"resume_checkpoint: {resume_checkpoint}")

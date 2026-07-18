@@ -36,7 +36,12 @@ class GlobalLinearTTTMixer(nn.Module):
             nn.init.zeros_(self.qkv.bias)
         trunc_normal_(self.w0, std=0.02)
 
-    def inner_train(self, k: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
+    def inner_train(
+        self,
+        k: torch.Tensor,
+        v: torch.Tensor,
+        initial_weights: torch.Tensor | None = None,
+    ) -> torch.Tensor:
         """Return independent per-sample fast weights after one inner update."""
         token_count = k.shape[-2]
         gradient = -(self.scale / float(token_count)) * (
@@ -44,7 +49,20 @@ class GlobalLinearTTTMixer(nn.Module):
         )
         # Match ViT^3's stabilization: normalize each output column separately.
         gradient = gradient / (gradient.norm(dim=-2, keepdim=True) + 1.0)
-        initial_weights = self.w0.to(dtype=gradient.dtype)
+        if initial_weights is None:
+            initial_weights = self.w0
+        expected_tail = (self.num_heads, self.head_dim, self.head_dim)
+        if initial_weights.ndim != 4 or tuple(initial_weights.shape[-3:]) != expected_tail:
+            raise ValueError(
+                f"Expected fast weights [B, {self.num_heads}, {self.head_dim}, "
+                f"{self.head_dim}], got {tuple(initial_weights.shape)}."
+            )
+        if initial_weights.shape[0] not in (1, k.shape[0]):
+            raise ValueError(
+                f"Fast-weight batch {initial_weights.shape[0]} cannot serve input batch "
+                f"{k.shape[0]}."
+            )
+        initial_weights = initial_weights.to(device=gradient.device, dtype=gradient.dtype)
         return initial_weights - self.inner_lr * gradient
 
     def forward(
@@ -53,7 +71,9 @@ class GlobalLinearTTTMixer(nn.Module):
         height: int,
         width: int,
         periodic: bool = False,
-    ) -> torch.Tensor:
+        fast_weights: torch.Tensor | None = None,
+        return_fast_weights: bool = False,
+    ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         if x.ndim != 3 or x.shape[-1] != self.dim:
             raise ValueError(
                 f"Expected [B, N, {self.dim}] input, got {tuple(x.shape)}."
@@ -73,9 +93,12 @@ class GlobalLinearTTTMixer(nn.Module):
             self.head_dim,
         )
         q, k, v = qkv.permute(2, 0, 3, 1, 4).unbind(0)
-        fast_weights = self.inner_train(k, v)
-        output = q @ fast_weights
-        return output.transpose(1, 2).reshape(batch, token_count, self.dim)
+        next_fast_weights = self.inner_train(k, v, initial_weights=fast_weights)
+        output = q @ next_fast_weights
+        output = output.transpose(1, 2).reshape(batch, token_count, self.dim)
+        if return_fast_weights:
+            return output, next_fast_weights
+        return output
 
     def extra_repr(self) -> str:
         return (

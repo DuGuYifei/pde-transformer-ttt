@@ -369,6 +369,7 @@ class PDEStage(nn.Module):
             token_mixer_type: str = "attention",
             vittt_inner_lr: float = 1.0,
             vittt_head_dim: int = 32,
+            vittt_persistent_state: bool = False,
     ):
         super().__init__()
 
@@ -396,6 +397,7 @@ class PDEStage(nn.Module):
                 token_mixer_type=token_mixer_type,
                 vittt_inner_lr=vittt_inner_lr,
                 vittt_head_dim=vittt_head_dim,
+                vittt_persistent_state=vittt_persistent_state,
             )
             blocks.append(block)
 
@@ -457,22 +459,43 @@ class PDEStage(nn.Module):
                 hidden_states: torch.Tensor,
                 cond: Optional[torch.Tensor] = None,
                 timestep: Optional[torch.LongTensor] = None,
-                class_labels: Optional[torch.LongTensor] = None, ):
+                class_labels: Optional[torch.LongTensor] = None,
+                ttt_state: Optional[tuple[torch.Tensor, ...]] = None,
+                return_ttt_state: bool = False, ):
 
         B, C, H, W = hidden_states.shape
 
         if self.token_mixer_type != "attention":
-            for block in self.blocks:
+            if ttt_state is not None and not return_ttt_state:
+                raise ValueError("Supplying stage TTT state requires return_ttt_state=True")
+            if ttt_state is not None and len(ttt_state) != len(self.blocks):
+                raise ValueError(
+                    f"Expected {len(self.blocks)} block states, got {len(ttt_state)}."
+                )
+            next_states = []
+            for block_index, block in enumerate(self.blocks):
                 hidden_states = hidden_states.permute(0, 2, 3, 1)
-                hidden_states, _ = block(
+                block_result = block(
                     hidden_states,
                     None,
                     timestep=timestep,
                     class_labels=class_labels,
                     emb=cond,
+                    ttt_state=(None if ttt_state is None else ttt_state[block_index]),
+                    return_ttt_state=return_ttt_state,
                 )
+                if return_ttt_state:
+                    hidden_states, _, next_state = block_result
+                    next_states.append(next_state)
+                else:
+                    hidden_states, _ = block_result
                 hidden_states = hidden_states.reshape(B, H, W, C).permute(0, 3, 1, 2)
+            if return_ttt_state:
+                return hidden_states, tuple(next_states)
             return hidden_states
+
+        if ttt_state is not None or return_ttt_state:
+            raise ValueError("Persistent TTT state is only supported by Global Linear TTT")
 
         # precompute attention mask
         attn_mask_precomputed = self.get_attn_mask(self.window_size // 2, H, W, hidden_states.dtype,
@@ -824,6 +847,7 @@ class PDEBlock(nn.Module):
         token_mixer_type="attention",
         vittt_inner_lr=1.0,
         vittt_head_dim=32,
+        vittt_persistent_state=False,
     ):
         super().__init__()
         """
@@ -852,6 +876,11 @@ class PDEBlock(nn.Module):
 
         self.token_mixer_type = token_mixer_type
         self.periodic = periodic
+        self.vittt_persistent_state = vittt_persistent_state
+        if vittt_persistent_state and token_mixer_type != "global_linear_ttt":
+            raise ValueError(
+                "vittt_persistent_state requires token_mixer_type=global_linear_ttt"
+            )
 
         # Conditional AdaLN and residual gates are shared by all token mixers.
         self.norm1 = norm_layer(dim)
@@ -952,7 +981,9 @@ class PDEBlock(nn.Module):
                 timestep: Optional[torch.LongTensor] = None,
                 class_labels: Optional[torch.LongTensor] = None,
                 emb: Optional[torch.LongTensor] = None,
-                attn_mask: Optional[torch.Tensor] = None):
+                attn_mask: Optional[torch.Tensor] = None,
+                ttt_state: Optional[torch.Tensor] = None,
+                return_ttt_state: bool = False):
 
         B, H, W, N = x.shape
         ct = carrier_tokens
@@ -1018,8 +1049,25 @@ class PDEBlock(nn.Module):
 
         x_msa = x_msa * (1 + msa_scale[:, None]) + msa_shift[:, None]
 
+        next_ttt_state = None
+        if ttt_state is not None and not return_ttt_state:
+            raise ValueError("Supplying block TTT state requires return_ttt_state=True")
+        if ttt_state is not None or return_ttt_state:
+            if not self.vittt_persistent_state:
+                raise ValueError(
+                    "TTT state was requested from a block without vittt_persistent_state"
+                )
         if self.token_mixer_type == "attention":
             x_msa = self.attn(x_msa, attn_mask=attn_mask)
+        elif self.token_mixer_type == "global_linear_ttt" and return_ttt_state:
+            x_msa, next_ttt_state = self.attn(
+                x_msa,
+                height=H,
+                width=W,
+                periodic=self.periodic,
+                fast_weights=ttt_state,
+                return_fast_weights=True,
+            )
         else:
             x_msa = self.attn(x_msa, height=H, width=W, periodic=self.periodic)
         x_msa = x_msa * (1 + msa_gate[:, None])
@@ -1060,6 +1108,8 @@ class PDEBlock(nn.Module):
                     ctr_image_space.to(dtype=torch.float32)
                 ).flatten(2).transpose(1, 2).to(dtype=x.dtype)
 
+        if return_ttt_state:
+            return x, ct, next_ttt_state
         return x, ct
 
 class ConditionedEncoder2DBlock(nn.Module):
@@ -1241,6 +1291,7 @@ class PDEImpl(nn.Module):
             token_mixer_type: str = "attention",
             vittt_inner_lr: float = 1.0,
             vittt_head_dim: int = 32,
+            vittt_persistent_state: bool = False,
             **kwargs
     ):
         super().__init__()
@@ -1254,6 +1305,11 @@ class PDEImpl(nn.Module):
         self.num_classes = num_classes
         self.num_heads = num_heads
         self.periodic = periodic
+        self.vittt_persistent_state = vittt_persistent_state
+        if vittt_persistent_state and token_mixer_type != "global_linear_ttt":
+            raise ValueError(
+                "vittt_persistent_state requires token_mixer_type=global_linear_ttt"
+            )
 
         self.use_carrier_tokens = carrier_token_active
         self.max_hidden_size = max_hidden_size
@@ -1268,6 +1324,7 @@ class PDEImpl(nn.Module):
             'token_mixer_type': token_mixer_type,
             'vittt_inner_lr': vittt_inner_lr,
             'vittt_head_dim': vittt_head_dim,
+            'vittt_persistent_state': vittt_persistent_state,
         }
 
         if patch_size is not None:
@@ -1395,13 +1452,27 @@ class PDEImpl(nn.Module):
         nn.init.constant_(self.final_layer.out_proj.weight, 0)
         nn.init.constant_(self.final_layer.out_proj.bias, 0)
 
-    def forward(self, x, t, y):
+    def forward(
+        self,
+        x,
+        t,
+        y,
+        ttt_state_cache: Optional[Dict[str, tuple[torch.Tensor, ...]]] = None,
+        return_ttt_state_cache: bool = False,
+    ):
         """
         Forward pass of PDE transformer.
         x: (N, C, H, W) tensor of spatial inputs (images or latent representations of images)
         t: (N, ) tensor of diffusion timesteps
         y: (N, ) tensor of class labels [int]
         """
+        if ttt_state_cache is not None and not return_ttt_state_cache:
+            raise ValueError("Supplying TTT state requires return_ttt_state_cache=True")
+        if return_ttt_state_cache and not self.vittt_persistent_state:
+            raise ValueError("Persistent state requires vittt_persistent_state=True")
+        previous_states = ttt_state_cache or {}
+        next_states = {}
+
         x = self.x_embedder(x)  # (N, C, H, W)
 
         if t is None:
@@ -1428,24 +1499,64 @@ class PDEImpl(nn.Module):
         residuals_list = []
         for i, c in enumerate(emb_list[:-1]):
             # encoder
-            out_enc_level = self.__getattr__(f"encoder_level_{i}")(x, c)
+            stage_name = f"encoder_level_{i}"
+            stage = self.__getattr__(stage_name)
+            if return_ttt_state_cache:
+                out_enc_level, stage_state = stage(
+                    x,
+                    c,
+                    ttt_state=previous_states.get(stage_name),
+                    return_ttt_state=True,
+                )
+                next_states[stage_name] = stage_state
+            else:
+                out_enc_level = stage(x, c)
             residuals_list.append(out_enc_level)
             x = self.__getattr__(f"down{i}_{i+1}")(out_enc_level)
 
         c = emb_list[-1]
-        x = self.latent(x, c)
+        if return_ttt_state_cache:
+            x, stage_state = self.latent(
+                x,
+                c,
+                ttt_state=previous_states.get("latent"),
+                return_ttt_state=True,
+            )
+            next_states["latent"] = stage_state
+        else:
+            x = self.latent(x, c)
 
         for i, (residual, emb) in enumerate(zip(residuals_list[1:][::-1], emb_list[1:-1][::-1])):
             # decoder
             x = self.__getattr__(f"up{self.num_encoder_layers - i}_{self.num_encoder_layers - i - 1}")(x)
             x = torch.cat([x, residual], 1)
             x = self.__getattr__(f"reduce_chan_level{self.num_encoder_layers - i - 1}")(x)
-            x = self.__getattr__(f"decoder_level_{self.num_encoder_layers - i - 1}")(x, emb)
+            stage_name = f"decoder_level_{self.num_encoder_layers - i - 1}"
+            stage = self.__getattr__(stage_name)
+            if return_ttt_state_cache:
+                x, stage_state = stage(
+                    x,
+                    emb,
+                    ttt_state=previous_states.get(stage_name),
+                    return_ttt_state=True,
+                )
+                next_states[stage_name] = stage_state
+            else:
+                x = stage(x, emb)
 
         x = self.__getattr__(f"up1_0")(x)
         x = torch.cat([x, residuals_list[0]], 1)
         x = self.__getattr__(f"reduce_chan_level0")(x)
-        x = self.__getattr__(f"decoder_level_0")(x, emb_list[1])
+        if return_ttt_state_cache:
+            x, stage_state = self.__getattr__("decoder_level_0")(
+                x,
+                emb_list[1],
+                ttt_state=previous_states.get("decoder_level_0"),
+                return_ttt_state=True,
+            )
+            next_states["decoder_level_0"] = stage_state
+        else:
+            x = self.__getattr__("decoder_level_0")(x, emb_list[1])
 
         # output
         x = self.output(x)
@@ -1466,6 +1577,8 @@ class PDEImpl(nn.Module):
             shape=(-1, self.out_channels, height * self.patch_size, width * self.patch_size)
         )
 
+        if return_ttt_state_cache:
+            return x, next_states
         return x
 
 @dataclass
@@ -1479,6 +1592,7 @@ class PDEOutput(BaseOutput):
     """
 
     sample: torch.Tensor
+    ttt_state_cache: Optional[Dict[str, tuple[torch.Tensor, ...]]] = None
 
 class PDETransformer(ModelMixin, ConfigMixin):
 
@@ -1496,13 +1610,15 @@ class PDETransformer(ModelMixin, ConfigMixin):
             token_mixer_type: str = "attention",
             vittt_inner_lr: float = 1.0,
             vittt_head_dim: int = 32,
+            vittt_persistent_state: bool = False,
             **kwargs
     ):
         super(PDETransformer, self).__init__()
         args = {'in_channels': in_channels, 'out_channels': out_channels, 'patch_size': patch_size,
                 'periodic': periodic, 'carrier_token_active': carrier_token_active, 'window_size': window_size,
                 'token_mixer_type': token_mixer_type, 'vittt_inner_lr': vittt_inner_lr,
-                'vittt_head_dim': vittt_head_dim}
+                'vittt_head_dim': vittt_head_dim,
+                'vittt_persistent_state': vittt_persistent_state}
 
         args.update(kwargs)
 
@@ -1519,14 +1635,29 @@ class PDETransformer(ModelMixin, ConfigMixin):
             class_labels: Optional[torch.LongTensor] = None,
             cross_attention_kwargs: Dict[str, Any] = None,
             return_dict: bool = True,
+            ttt_state_cache: Optional[Dict[str, tuple[torch.Tensor, ...]]] = None,
+            return_ttt_state_cache: bool = False,
     ):
 
-        output = self.model.forward(hidden_states, timestep, class_labels)
+        model_output = self.model.forward(
+            hidden_states,
+            timestep,
+            class_labels,
+            ttt_state_cache=ttt_state_cache,
+            return_ttt_state_cache=return_ttt_state_cache,
+        )
+        if return_ttt_state_cache:
+            output, next_state_cache = model_output
+        else:
+            output = model_output
+            next_state_cache = None
 
         if not return_dict:
+            if return_ttt_state_cache:
+                return output, next_state_cache
             return (output,)
 
-        return PDEOutput(sample=output)
+        return PDEOutput(sample=output, ttt_state_cache=next_state_cache)
 
 #################################################################################
 #                            PDE Transformer Configs                            #

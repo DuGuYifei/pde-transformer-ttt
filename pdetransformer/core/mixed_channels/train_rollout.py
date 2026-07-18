@@ -146,3 +146,110 @@ class AutoregressiveRolloutSupervised(SingleStepSupervised):
             on_epoch=True, sync_dist=True, batch_size=input_frame.shape[0],
         )
         return {"val/loss": mean_loss}
+
+
+def detach_state_tree(state):
+    if state is None:
+        return None
+    if torch.is_tensor(state):
+        return state.detach()
+    if isinstance(state, dict):
+        return {key: detach_state_tree(value) for key, value in state.items()}
+    if isinstance(state, tuple):
+        return tuple(detach_state_tree(value) for value in state)
+    if isinstance(state, list):
+        return [detach_state_tree(value) for value in state]
+    return state
+
+
+class PersistentAutoregressiveRolloutSupervised(AutoregressiveRolloutSupervised):
+    """Rollout training with each spatial Linear TTT state carried across steps."""
+
+    def _persistent_rollout_chunk(
+        self,
+        previous_frame: torch.Tensor,
+        targets: torch.Tensor,
+        labels: torch.Tensor,
+        state: dict,
+        start: int,
+        end: int,
+    ) -> tuple[torch.Tensor, torch.Tensor, dict]:
+        chunk_loss = torch.zeros((), device=previous_frame.device)
+        for step in range(start, end):
+            model_output = self.model(
+                previous_frame,
+                class_labels=labels,
+                ttt_state_cache=state,
+                return_ttt_state_cache=True,
+            )
+            pred = model_output.sample
+            pred_for_loss, target_for_loss = self._normalize_pair(pred, targets[:, step])
+            chunk_loss = chunk_loss + mse_loss(pred_for_loss, target_for_loss)
+            previous_frame = pred
+            state = model_output.ttt_state_cache
+        return previous_frame, chunk_loss, state
+
+    def training_step(self, batch, batch_idx):
+        input_frame, targets, labels = self.get_input(batch)
+        num_steps = self._validate_sequence_length(targets)
+        optimizer = self.optimizers()
+        if self._batches_since_optimizer_step == 0:
+            optimizer.zero_grad()
+
+        previous_frame = input_frame
+        state = {}
+        total_loss = torch.zeros((), device=input_frame.device)
+        for chunk_start in range(0, num_steps, self.tbptt_chunk_size):
+            chunk_end = min(chunk_start + self.tbptt_chunk_size, num_steps)
+            previous_frame, chunk_loss, state = self._persistent_rollout_chunk(
+                previous_frame,
+                targets,
+                labels,
+                state,
+                chunk_start,
+                chunk_end,
+            )
+            scaled_chunk_loss = chunk_loss / (
+                num_steps * self.gradient_accumulation_batches
+            )
+            self.manual_backward(scaled_chunk_loss)
+            total_loss = total_loss + chunk_loss.detach()
+            previous_frame = previous_frame.detach()
+            state = detach_state_tree(state)
+
+        self._batches_since_optimizer_step += 1
+        self._optimizer_step_if_ready(optimizer)
+
+        mean_loss = total_loss / num_steps
+        self.log(
+            "loss", mean_loss, prog_bar=True, logger=True, on_step=True,
+            on_epoch=True, sync_dist=True, batch_size=input_frame.shape[0],
+        )
+        return mean_loss
+
+    def validation_step(self, batch, batch_idx):
+        input_frame, targets, labels = self.get_input(batch)
+        num_steps = self._validate_sequence_length(targets)
+        previous_frame = input_frame
+        state = {}
+        total_loss = torch.zeros((), device=input_frame.device)
+
+        for step in range(num_steps):
+            model_output = self.model(
+                previous_frame,
+                class_labels=labels,
+                ttt_state_cache=state,
+                return_ttt_state_cache=True,
+            )
+            pred = model_output.sample
+            pred_for_loss, target_for_loss = self._normalize_pair(pred, targets[:, step])
+            total_loss = total_loss + mse_loss(pred_for_loss, target_for_loss)
+            previous_frame = pred
+            state = model_output.ttt_state_cache
+
+        mean_loss = total_loss / num_steps
+        self.log(
+            "val/loss", mean_loss, prog_bar=True, logger=True, on_step=False,
+            on_epoch=True, sync_dist=True, batch_size=input_frame.shape[0],
+        )
+        return {"val/loss": mean_loss}

@@ -85,6 +85,7 @@ CONFIG_DEFAULTS: dict[str, Any] = {
     "ttt_scan_checkpoint_group_size": 0,
     "vittt_inner_lr": 1.0,
     "vittt_head_dim": 32,
+    "vittt_persistent_state": False,
     "vittt_padding_mode": "zero",
     "attention_ttt_type": "ttt_sequence",
     "attention_ttt_gate_init": 0.1,
@@ -246,6 +247,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--vittt-inner-lr", type=float, default=cfg["vittt_inner_lr"])
     parser.add_argument("--vittt-head-dim", type=int, default=cfg["vittt_head_dim"])
     parser.add_argument(
+        "--vittt-persistent-state",
+        action=argparse.BooleanOptionalAction,
+        default=cfg["vittt_persistent_state"],
+    )
+    parser.add_argument(
         "--vittt-padding-mode",
         choices=("zero", "replicate"),
         default=cfg["vittt_padding_mode"],
@@ -367,6 +373,7 @@ def build_checkpoint_strategy(args: argparse.Namespace, checkpoint_path: Path) -
         token_mixer_type=args.token_mixer_type,
         vittt_inner_lr=args.vittt_inner_lr,
         vittt_head_dim=args.vittt_head_dim,
+        vittt_persistent_state=args.vittt_persistent_state,
     )
     strategy = SingleStepSupervised(
         model=model,
@@ -637,8 +644,17 @@ def run_cache_mode(
 
 
 def select_cache_modes(args: argparse.Namespace, resolved_token_mixer: str, is_pretrained: bool) -> list[bool]:
-    cache_capable = (not is_pretrained) and resolved_token_mixer == "ttt_sequence"
+    persistent_linear = (
+        (not is_pretrained)
+        and resolved_token_mixer == "global_linear_ttt"
+        and args.vittt_persistent_state
+    )
+    cache_capable = (
+        (not is_pretrained) and resolved_token_mixer == "ttt_sequence"
+    ) or persistent_linear
     if args.cache_mode == "auto":
+        if persistent_linear:
+            return [True]
         return [False, True] if cache_capable else [False]
     if not cache_capable and args.cache_mode != "off":
         print(
@@ -714,6 +730,7 @@ def main() -> None:
     print(f"output_dir:        {output_dir}")
     print(f"model_type:        {args.model_type}")
     print(f"token_mixer_type:  {args.token_mixer_type} resolved={resolved_token_mixer}")
+    print(f"persistent state:  {args.vittt_persistent_state}")
     print(f"sample_size:       {args.sample_size}")
     print(f"downsample_factor: {args.downsample_factor}")
     print(f"test_unroll_steps: {args.test_unrolling_steps}")
@@ -755,6 +772,7 @@ def main() -> None:
         "carrier_token_active": args.carrier_token_active,
         "token_mixer_type": args.token_mixer_type,
         "resolved_token_mixer_type": resolved_token_mixer,
+        "vittt_persistent_state": args.vittt_persistent_state,
         "use_ttt_window_attention": args.use_ttt_window_attention,
         "use_ttt_state_cache_train": args.use_ttt_state_cache_train,
         "ttt_layer_type": args.ttt_layer_type,
