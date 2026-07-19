@@ -1,0 +1,33 @@
+data_dir: ~/working/datasets
+run_root: ~/working/runs_plain_rollout
+run_name: pdes_attention-r29-tbptt4_128_100ep_60sims
+
+model_type: PDE-S
+in_channels: 2
+out_channels: 2
+patch_size: 4
+periodic: true
+carrier_token_active: false
+token_mixer_type: attention
+vittt_inner_lr: 1.0
+vittt_head_dim: 32
+
+init_checkpoint: ~/working/runs_global_vittt/pdes_attention_128_60sims_100ep/checkpoints/epoch-epoch=096.ckpt
+learning_rate: 1.0e-5
+max_epochs: 100
+batch_size: 1
+num_workers: 2
+devices: 2
+strategy: ddp
+precision: 32-true
+accumulate_grad_batches: 8
+seed: 42
+
+downsample_factor: 2
+sample_size: 128
+train_unrolling_steps: 29
+train_step_size: 1
+tbptt_chunk_size: 4
+test_unrolling_steps: 29
+max_channels: 2
+auto_resume: true
