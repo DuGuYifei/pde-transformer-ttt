@@ -13,6 +13,44 @@ from .variable_dt_dataset import VariableDtDataset
 '''
 seed = 46
 
+SEPARATE_TEST_DATASETS = frozenset(
+    ["ks", "gs_alpha", "gs_beta", "gs_gamma", "gs_epsilon", "decay_turb", "kolm_flow"]
+)
+
+JOINT_SIMULATION_SPLITS = {
+    **{
+        name: (list(range(0, 80)), list(range(80, 100)))
+        for name in ["gs_delta", "gs_theta", "gs_iota", "gs_kappa"]
+    },
+    **{
+        name: (list(range(0, 50)), list(range(50, 60)))
+        for name in ["adv", "diff", "adv_diff", "disp", "hyp", "burgers", "kdv", "fisher", "sh"]
+    },
+}
+
+
+def ape_2d_xxl_split_spec(dataset_name: str) -> dict:
+    """Return the fixed train/test source and simulation IDs for an APE2D dataset."""
+    if dataset_name in SEPARATE_TEST_DATASETS:
+        return {
+            "train_dataset_name": dataset_name,
+            "test_dataset_name": dataset_name + "_test",
+            "train_sims": None,
+            "test_sims": None,
+        }
+
+    if dataset_name not in JOINT_SIMULATION_SPLITS:
+        raise ValueError(f"Unknown dataset: {dataset_name}")
+
+    train_sims, test_sims = JOINT_SIMULATION_SPLITS[dataset_name]
+    return {
+        "train_dataset_name": dataset_name,
+        "test_dataset_name": dataset_name,
+        "train_sims": list(train_sims),
+        "test_sims": list(test_sims),
+    }
+
+
 def ape_2d_xxl_datasets(dataset_name: str,
                  dataset_directory: str,
                  unrolling_steps: int,
@@ -51,8 +89,10 @@ def ape_2d_xxl_datasets(dataset_name: str,
     if test_variable_dt_stride_maximum is None:
         test_variable_dt_stride_maximum = variable_dt_stride_maximum
 
+    split_spec = ape_2d_xxl_split_spec(dataset_name)
+
     # separate test sets with longer rollouts
-    if dataset_name in ["ks", "gs_alpha", "gs_beta", "gs_gamma", "gs_epsilon", "decay_turb", "kolm_flow"]:
+    if dataset_name in SEPARATE_TEST_DATASETS:
         params_train = {
             "dset_name": dataset_name,
             "local_datasets_dir": dataset_directory,
@@ -80,7 +120,7 @@ def ape_2d_xxl_datasets(dataset_name: str,
             trim_end = 200 - test_unrolling_steps - 1
 
         params_test = {
-            "dset_name": dataset_name + "_test",
+            "dset_name": split_spec["test_dataset_name"],
             "local_datasets_dir": dataset_directory,
             "time_steps": test_unrolling_steps,
             "trim_end": trim_end,
@@ -99,18 +139,8 @@ def ape_2d_xxl_datasets(dataset_name: str,
     # joint training and test data file, split by simulation
     else:
         
-        if dataset_name in ["gs_delta", "gs_theta", "gs_iota", "gs_kappa"]:
-            # train_sims = list(range(0, 8))
-            # test_sims = list(range(8, 10))
-            train_sims = list(range(0, 80))
-            test_sims = list(range(80, 100))
-        elif dataset_name in ["adv", "diff", "adv_diff", "disp", "hyp", "burgers", "kdv", "fisher", "sh"]:
-            train_sims = list(range(0, 50))
-            test_sims = list(range(50, 60))
-            # train_sims = list(range(0, 500))
-            # test_sims = list(range(500, 600))
-        else:
-            raise ValueError(f"Unknown dataset: {dataset_name}")
+        train_sims = split_spec["train_sims"]
+        test_sims = split_spec["test_sims"]
 
         params_train = {
             "dset_name": dataset_name,
@@ -135,9 +165,9 @@ def ape_2d_xxl_datasets(dataset_name: str,
         val.indices = sorted(val.indices)
 
         params_test = {
-            "dset_name": dataset_name,
+            "dset_name": split_spec["test_dataset_name"],
             "local_datasets_dir": dataset_directory,
-            #"sel_sims": test_sims,
+            "sel_sims": test_sims,
             "time_steps": test_unrolling_steps,
             "intermediate_time_steps": test_intermediate_time_steps,
             "normalize_const": normalize_const if not "gs_" in dataset_name else None,

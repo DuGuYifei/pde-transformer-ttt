@@ -42,6 +42,7 @@ for package_name, package_path in {
 
 from pdetransformer.core.mixed_channels import PDETransformer, SingleStepSupervised
 from pdetransformer.data import MultiDataModule
+from pdetransformer.data.pbdl_datatypes.ape_2d_xxl import ape_2d_xxl_split_spec
 
 
 DATASET_NAMES = [
@@ -101,10 +102,25 @@ CONFIG_DEFAULTS: dict[str, Any] = {
     "test_unrolling_steps": 29,
     "max_channels": 2,
     "checkpoint_path": None,
+    "strict_official_test": False,
 }
 
 DEFAULT_EVAL_K = (1, 10, 20, 29)
 DEFAULT_ROLLOUT_STEPS = 30
+STRICT_OFFICIAL_TEST_EXPECTATIONS = {
+    "burgers": {
+        "source_dataset_name": "burgers",
+        "selected_sim_ids": list(range(50, 60)),
+    },
+    "ks": {
+        "source_dataset_name": "ks_test",
+        "selected_sim_ids": list(range(0, 5)),
+    },
+    "kolm_flow": {
+        "source_dataset_name": "kolm_flow_test",
+        "selected_sim_ids": list(range(0, 5)),
+    },
+}
 
 
 def _path_or_none(value: Any) -> Path | None:
@@ -290,6 +306,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--rollout-steps", type=int, default=DEFAULT_ROLLOUT_STEPS)
     parser.add_argument("--eval-k", type=int, nargs="+", default=list(DEFAULT_EVAL_K))
     parser.add_argument("--datasets", type=str, nargs="+", default=list(DATASET_NAMES))
+    parser.add_argument(
+        "--strict-official-test",
+        action=argparse.BooleanOptionalAction,
+        default=cfg["strict_official_test"],
+        help=(
+            "Require the reviewed small official held-out splits for Burgers, "
+            "KS, and Kolmogorov Flow, and record their source files/simulation IDs."
+        ),
+    )
     parser.add_argument("--max-batches-per-dataset", type=int, default=None)
     parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument(
@@ -349,6 +374,57 @@ def inspect_first_batch(loader) -> dict[str, Any]:
         raise RuntimeError(f"Unexpected data shape {tuple(data.shape)}; expected (B, T, C, H, W).")
     _, t, c, h, w = data.shape
     return {"trajectory_length": int(t), "data_shape": [int(c), int(h), int(w)], "channels": int(c)}
+
+
+def inspect_test_split(dm: MultiDataModule, pde: str) -> dict[str, Any]:
+    if len(dm.subsets_test) != 1:
+        raise RuntimeError(f"Expected one test subset for {pde}, found {len(dm.subsets_test)}.")
+
+    raw_dataset = dm.subsets_test[0].dataset
+    selected_sim_ids = (
+        list(raw_dataset.sel_sims)
+        if raw_dataset.sel_sims is not None
+        else list(range(raw_dataset.num_sims))
+    )
+    return {
+        "requested_dataset_name": pde,
+        "source_dataset_name": raw_dataset.dset_name,
+        "source_file": str(Path(raw_dataset.dset_file).resolve()),
+        "source_file_name": Path(raw_dataset.dset_file).name,
+        "source_num_simulations": int(raw_dataset.num_sims),
+        "selected_sim_ids": [int(sim_id) for sim_id in selected_sim_ids],
+        "selected_num_simulations": len(selected_sim_ids),
+        "samples_per_simulation": int(raw_dataset.samples_per_sim),
+    }
+
+
+def validate_strict_official_test_split(pde: str, split_info: dict[str, Any]) -> None:
+    expectation = STRICT_OFFICIAL_TEST_EXPECTATIONS[pde]
+    split_spec = ape_2d_xxl_split_spec(pde)
+    expected_source = expectation["source_dataset_name"]
+    expected_sim_ids = expectation["selected_sim_ids"]
+
+    if split_spec["test_dataset_name"] != expected_source:
+        raise RuntimeError(
+            f"Internal split specification for {pde} resolves to "
+            f"{split_spec['test_dataset_name']!r}, expected {expected_source!r}."
+        )
+    if split_info["source_dataset_name"] != expected_source:
+        raise RuntimeError(
+            f"Strict official test for {pde} loaded {split_info['source_dataset_name']!r}; "
+            f"expected {expected_source!r}."
+        )
+    if split_info["selected_sim_ids"] != expected_sim_ids:
+        raise RuntimeError(
+            f"Strict official test for {pde} selected {split_info['selected_sim_ids']}; "
+            f"expected {expected_sim_ids}."
+        )
+    if split_info["samples_per_simulation"] != 1:
+        raise RuntimeError(
+            f"Strict official test for {pde} produced "
+            f"{split_info['samples_per_simulation']} samples per simulation; "
+            "expected one 29-step rollout."
+        )
 
 
 def build_checkpoint_strategy(args: argparse.Namespace, checkpoint_path: Path) -> SingleStepSupervised:
@@ -432,8 +508,20 @@ def evaluate_dataset(
         max_channels=args.max_channels,
     )
     dm.setup(stage="test")
+    split_info = inspect_test_split(dm, pde)
+    if args.strict_official_test:
+        validate_strict_official_test_split(pde, split_info)
+
     loader = dm.test_dataloader()
     num_trajectories = len(dm.set_test) if dm.set_test is not None else 0
+    expected_trajectories = (
+        split_info["selected_num_simulations"] * split_info["samples_per_simulation"]
+    )
+    if num_trajectories != expected_trajectories:
+        raise RuntimeError(
+            f"Test dataset {pde} has {num_trajectories} samples, but split provenance "
+            f"implies {expected_trajectories}."
+        )
 
     info_loader = dm.test_dataloader()
     shape_info = inspect_first_batch(info_loader)
@@ -472,6 +560,7 @@ def evaluate_dataset(
 
     return {
         "dataset_name": pde,
+        "test_split": split_info,
         "num_test_trajectories": int(num_trajectories),
         "num_evaluated_trajectories": int(count),
         "trajectory_length": shape_info["trajectory_length"],
@@ -524,7 +613,9 @@ def run_cache_mode(
         per_dataset[pde] = result
         metric_str = "  ".join(f"nRMSE_{k}={result['nRMSE_per_k'][k]:.6g}" for k in args.eval_k)
         print(
-            f"  -> trajectories(test={result['num_test_trajectories']}, "
+            f"  -> source={result['test_split']['source_file_name']} "
+            f"sims={result['test_split']['selected_sim_ids']} "
+            f"trajectories(test={result['num_test_trajectories']}, "
             f"evaluated={result['num_evaluated_trajectories']}) "
             f"T={result['trajectory_length']} shape={tuple(result['data_shape'])} "
             f"elapsed={result['elapsed_seconds']:.1f}s {metric_str}",
@@ -569,6 +660,7 @@ def run_cache_mode(
         "per_dataset": {
             pde: {
                 "dataset_name": r["dataset_name"],
+                "test_split": r["test_split"],
                 "num_test_trajectories": r["num_test_trajectories"],
                 "num_evaluated_trajectories": r["num_evaluated_trajectories"],
                 "trajectory_length": r["trajectory_length"],
@@ -593,6 +685,9 @@ def run_cache_mode(
 
     fieldnames = [
         "dataset",
+        "source_dataset",
+        "source_file",
+        "selected_sim_ids",
         "num_test_trajectories",
         "num_evaluated_trajectories",
         "trajectory_length",
@@ -607,6 +702,11 @@ def run_cache_mode(
             r = per_dataset[pde]
             row = {
                 "dataset": pde,
+                "source_dataset": r["test_split"]["source_dataset_name"],
+                "source_file": r["test_split"]["source_file_name"],
+                "selected_sim_ids": ",".join(
+                    str(sim_id) for sim_id in r["test_split"]["selected_sim_ids"]
+                ),
                 "num_test_trajectories": r["num_test_trajectories"],
                 "num_evaluated_trajectories": r["num_evaluated_trajectories"],
                 "trajectory_length": r["trajectory_length"],
@@ -656,6 +756,24 @@ def select_cache_modes(args: argparse.Namespace, resolved_token_mixer: str, is_p
 def main() -> None:
     args = parse_args()
 
+    if args.strict_official_test:
+        unsupported = sorted(set(args.datasets) - set(STRICT_OFFICIAL_TEST_EXPECTATIONS))
+        if unsupported:
+            raise SystemExit(
+                "--strict-official-test only supports burgers, ks, and kolm_flow; "
+                f"unsupported datasets: {unsupported}."
+            )
+        if len(args.datasets) != len(set(args.datasets)):
+            raise SystemExit("--strict-official-test does not allow duplicate dataset names.")
+        if args.test_unrolling_steps != 29 or args.rollout_steps != 30:
+            raise SystemExit(
+                "--strict-official-test requires test_unrolling_steps=29 and rollout_steps=30."
+            )
+        if args.max_batches_per_dataset is not None:
+            raise SystemExit(
+                "--strict-official-test requires the complete split; remove --max-batches-per-dataset."
+            )
+
     if args.rollout_steps <= max(args.eval_k):
         raise SystemExit(
             f"--rollout-steps ({args.rollout_steps}) must be greater than max(--eval-k)={max(args.eval_k)}."
@@ -677,6 +795,11 @@ def main() -> None:
         raise SystemExit(f"Checkpoint not found: {checkpoint_path}")
     data_dir_warning = "official" not in str(data_dir).lower()
     if data_dir_warning:
+        if args.strict_official_test:
+            raise SystemExit(
+                "--strict-official-test requires an explicit official data directory; "
+                f"received {data_dir}."
+            )
         print(
             "[warn] data_dir does not look like the official test set. "
             "For official_data_eval_report.md, pass "
@@ -717,6 +840,7 @@ def main() -> None:
     print(f"sample_size:       {args.sample_size}")
     print(f"downsample_factor: {args.downsample_factor}")
     print(f"test_unroll_steps: {args.test_unrolling_steps}")
+    print(f"strict test-only:  {args.strict_official_test}")
     print(f"torch:             {torch.__version__}")
     print(f"cuda available:    {torch.cuda.is_available()}")
     print(f"device:            {device}")
@@ -745,6 +869,7 @@ def main() -> None:
         "work_dir": str(work_dir),
         "data_dir": str(data_dir),
         "data_dir_warning_non_official": data_dir_warning,
+        "strict_official_test": args.strict_official_test,
         "run_root": str(run_root),
         "run_name": args.run_name,
         "model_type": args.model_type,
