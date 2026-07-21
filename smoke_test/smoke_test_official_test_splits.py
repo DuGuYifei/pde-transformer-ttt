@@ -22,21 +22,59 @@ for package_name, package_path in {
 from pdetransformer.data.pbdl_datatypes import ape_2d_xxl
 
 
-SIMULATION_COUNTS = {
-    "burgers": 60,
-    "ks": 60,
-    "ks_test": 5,
-    "kolm_flow": 60,
-    "kolm_flow_test": 5,
-}
+OFFICIAL_DATASETS = [
+    "diff",
+    "hyp",
+    "burgers",
+    "kdv",
+    "ks",
+    "fisher",
+    "gs_alpha",
+    "gs_beta",
+    "gs_gamma",
+    "gs_delta",
+    "gs_epsilon",
+    "gs_theta",
+    "gs_iota",
+    "gs_kappa",
+    "sh",
+    "decay_turb",
+    "kolm_flow",
+]
 
-FRAME_COUNTS = {
-    "burgers": 30,
-    "ks": 30,
-    "ks_test": 200,
-    "kolm_flow": 30,
-    "kolm_flow_test": 200,
-}
+SIMULATION_COUNTS = {name: 60 for name in OFFICIAL_DATASETS}
+SIMULATION_COUNTS.update(
+    {
+        "gs_alpha": 10,
+        "gs_beta": 10,
+        "gs_gamma": 10,
+        "gs_epsilon": 10,
+        "gs_delta": 100,
+        "gs_theta": 100,
+        "gs_iota": 100,
+        "gs_kappa": 100,
+        "gs_alpha_test": 3,
+        "gs_beta_test": 3,
+        "gs_gamma_test": 3,
+        "gs_epsilon_test": 3,
+        "ks_test": 5,
+        "decay_turb_test": 5,
+        "kolm_flow_test": 5,
+    }
+)
+
+FRAME_COUNTS = {name: 30 for name in OFFICIAL_DATASETS}
+FRAME_COUNTS.update(
+    {
+        "gs_alpha_test": 100,
+        "gs_beta_test": 100,
+        "gs_gamma_test": 100,
+        "gs_epsilon_test": 100,
+        "ks_test": 200,
+        "decay_turb_test": 200,
+        "kolm_flow_test": 200,
+    }
+)
 
 
 @dataclass
@@ -76,42 +114,32 @@ def build_splits(dataset_name: str):
         ape_2d_xxl.PBDLDataset = original_dataset
 
 
-def test_joint_file_burgers_split() -> None:
-    train, val, test = build_splits("burgers")
+def test_all_official_splits() -> None:
+    total_rollouts = 0
+    for dataset_name in OFFICIAL_DATASETS:
+        train, val, test = build_splits(dataset_name)
+        split_spec = ape_2d_xxl.ape_2d_xxl_split_spec(dataset_name)
 
-    assert train.dataset.sel_sims == list(range(0, 50))
-    assert val.dataset is train.dataset
-    assert test.dset_name == "burgers"
-    assert test.sel_sims == list(range(50, 60))
-    assert test.samples_per_sim == 1
-    assert len(test) == 10
-    assert set(train.dataset.sel_sims).isdisjoint(test.sel_sims)
+        assert val.dataset is train.dataset
+        assert test.dset_name == split_spec["test_dataset_name"]
+        assert test.sel_sims == split_spec["test_sims"]
+        assert test.samples_per_sim == 1
 
+        if split_spec["test_sims"] is None:
+            expected_rollouts = SIMULATION_COUNTS[split_spec["test_dataset_name"]]
+        else:
+            assert train.dataset.sel_sims == split_spec["train_sims"]
+            assert set(train.dataset.sel_sims).isdisjoint(test.sel_sims)
+            expected_rollouts = len(split_spec["test_sims"])
 
-def test_separate_ks_test_file() -> None:
-    _, _, test = build_splits("ks")
+        assert len(test) == expected_rollouts
+        total_rollouts += expected_rollouts
 
-    assert test.dset_name == "ks_test"
-    assert test.sel_sims is None
-    assert test.num_sims == 5
-    assert test.samples_per_sim == 1
-    assert len(test) == 5
-
-
-def test_separate_kolmogorov_test_file() -> None:
-    _, _, test = build_splits("kolm_flow")
-
-    assert test.dset_name == "kolm_flow_test"
-    assert test.sel_sims is None
-    assert test.num_sims == 5
-    assert test.samples_per_sim == 1
-    assert len(test) == 5
+    assert total_rollouts == 167
 
 
 def main() -> None:
-    test_joint_file_burgers_split()
-    test_separate_ks_test_file()
-    test_separate_kolmogorov_test_file()
+    test_all_official_splits()
     print("official test split smoke test passed")
 
 

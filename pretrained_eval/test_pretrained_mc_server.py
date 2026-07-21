@@ -107,19 +107,11 @@ CONFIG_DEFAULTS: dict[str, Any] = {
 
 DEFAULT_EVAL_K = (1, 10, 20, 29)
 DEFAULT_ROLLOUT_STEPS = 30
-STRICT_OFFICIAL_TEST_EXPECTATIONS = {
-    "burgers": {
-        "source_dataset_name": "burgers",
-        "selected_sim_ids": list(range(50, 60)),
-    },
-    "ks": {
-        "source_dataset_name": "ks_test",
-        "selected_sim_ids": list(range(0, 5)),
-    },
-    "kolm_flow": {
-        "source_dataset_name": "kolm_flow_test",
-        "selected_sim_ids": list(range(0, 5)),
-    },
+STRICT_OFFICIAL_TEST_DATASETS = frozenset(DATASET_NAMES)
+STRICT_OFFICIAL_SOURCE_FRAMES = {
+    **{name: 30 for name in DATASET_NAMES},
+    **{name: 100 for name in ["gs_alpha", "gs_beta", "gs_gamma", "gs_epsilon"]},
+    **{name: 200 for name in ["ks", "decay_turb", "kolm_flow"]},
 }
 
 
@@ -311,8 +303,8 @@ def parse_args() -> argparse.Namespace:
         action=argparse.BooleanOptionalAction,
         default=cfg["strict_official_test"],
         help=(
-            "Require the reviewed small official held-out splits for Burgers, "
-            "KS, and Kolmogorov Flow, and record their source files/simulation IDs."
+            "Require the reviewed held-out split for every requested PDE in the "
+            "small official dataset, and record source files/simulation IDs."
         ),
     )
     parser.add_argument("--max-batches-per-dataset", type=int, default=None)
@@ -392,6 +384,7 @@ def inspect_test_split(dm: MultiDataModule, pde: str) -> dict[str, Any]:
         "source_file": str(Path(raw_dataset.dset_file).resolve()),
         "source_file_name": Path(raw_dataset.dset_file).name,
         "source_num_simulations": int(raw_dataset.num_sims),
+        "source_num_frames": int(raw_dataset.num_frames),
         "selected_sim_ids": [int(sim_id) for sim_id in selected_sim_ids],
         "selected_num_simulations": len(selected_sim_ids),
         "samples_per_simulation": int(raw_dataset.samples_per_sim),
@@ -399,20 +392,28 @@ def inspect_test_split(dm: MultiDataModule, pde: str) -> dict[str, Any]:
 
 
 def validate_strict_official_test_split(pde: str, split_info: dict[str, Any]) -> None:
-    expectation = STRICT_OFFICIAL_TEST_EXPECTATIONS[pde]
     split_spec = ape_2d_xxl_split_spec(pde)
-    expected_source = expectation["source_dataset_name"]
-    expected_sim_ids = expectation["selected_sim_ids"]
+    expected_source = split_spec["test_dataset_name"]
+    expected_sim_ids = split_spec["test_sims"]
+    if expected_sim_ids is None:
+        expected_sim_ids = list(range(split_info["source_num_simulations"]))
 
-    if split_spec["test_dataset_name"] != expected_source:
-        raise RuntimeError(
-            f"Internal split specification for {pde} resolves to "
-            f"{split_spec['test_dataset_name']!r}, expected {expected_source!r}."
-        )
     if split_info["source_dataset_name"] != expected_source:
         raise RuntimeError(
             f"Strict official test for {pde} loaded {split_info['source_dataset_name']!r}; "
             f"expected {expected_source!r}."
+        )
+    expected_file_name = expected_source + ".hdf5"
+    if split_info["source_file_name"] != expected_file_name:
+        raise RuntimeError(
+            f"Strict official test for {pde} loaded {split_info['source_file_name']!r}; "
+            f"expected {expected_file_name!r}."
+        )
+    expected_frames = STRICT_OFFICIAL_SOURCE_FRAMES[pde]
+    if split_info["source_num_frames"] != expected_frames:
+        raise RuntimeError(
+            f"Strict official test for {pde} found {split_info['source_num_frames']} frames; "
+            f"expected {expected_frames}."
         )
     if split_info["selected_sim_ids"] != expected_sim_ids:
         raise RuntimeError(
@@ -687,7 +688,10 @@ def run_cache_mode(
         "dataset",
         "source_dataset",
         "source_file",
+        "source_num_simulations",
+        "source_num_frames",
         "selected_sim_ids",
+        "selected_num_simulations",
         "num_test_trajectories",
         "num_evaluated_trajectories",
         "trajectory_length",
@@ -704,9 +708,12 @@ def run_cache_mode(
                 "dataset": pde,
                 "source_dataset": r["test_split"]["source_dataset_name"],
                 "source_file": r["test_split"]["source_file_name"],
+                "source_num_simulations": r["test_split"]["source_num_simulations"],
+                "source_num_frames": r["test_split"]["source_num_frames"],
                 "selected_sim_ids": ",".join(
                     str(sim_id) for sim_id in r["test_split"]["selected_sim_ids"]
                 ),
+                "selected_num_simulations": r["test_split"]["selected_num_simulations"],
                 "num_test_trajectories": r["num_test_trajectories"],
                 "num_evaluated_trajectories": r["num_evaluated_trajectories"],
                 "trajectory_length": r["trajectory_length"],
@@ -757,10 +764,10 @@ def main() -> None:
     args = parse_args()
 
     if args.strict_official_test:
-        unsupported = sorted(set(args.datasets) - set(STRICT_OFFICIAL_TEST_EXPECTATIONS))
+        unsupported = sorted(set(args.datasets) - STRICT_OFFICIAL_TEST_DATASETS)
         if unsupported:
             raise SystemExit(
-                "--strict-official-test only supports burgers, ks, and kolm_flow; "
+                "--strict-official-test only supports the reviewed official PDE datasets; "
                 f"unsupported datasets: {unsupported}."
             )
         if len(args.datasets) != len(set(args.datasets)):
