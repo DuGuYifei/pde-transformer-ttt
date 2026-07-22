@@ -38,10 +38,24 @@ run_queue() {
   test "$failures" -eq 0
 }
 
-export ROOT PYTHON OUTPUT_DIR LOG_DIR GENERATOR AUDITOR
-export -f run_queue
+run_kolm_after_smoke() {
+  export PYTHONUNBUFFERED=1
+  export XLA_FLAGS="${XLA_FLAGS:---xla_gpu_enable_command_buffer=}"
+  printf 'KOLM_SMOKE_START sim=3 time=%s\n' "$(date -Is)"
+  if "$PYTHON" "$GENERATOR" \
+    --output-dir "$OUTPUT_DIR" --gpu-id 0 --pdes kolm_flow --sim-ids 3; then
+    printf 'KOLM_SMOKE_DONE sim=3 time=%s\n' "$(date -Is)"
+    run_queue 0 gpu0_kolm_flow kolm_flow
+  else
+    printf 'KOLM_SMOKE_FAILED sim=3 time=%s\n' "$(date -Is)"
+    return 1
+  fi
+}
 
-nohup bash -c 'run_queue 0 gpu0_kolm_flow kolm_flow' \
+export ROOT PYTHON OUTPUT_DIR LOG_DIR GENERATOR AUDITOR
+export -f run_queue run_kolm_after_smoke
+
+nohup bash -c 'run_kolm_after_smoke' \
   > "$LOG_DIR/resume_gpu0_kolm_flow.log" 2>&1 < /dev/null &
 gpu0_pid=$!
 printf '%s\n' "$gpu0_pid" > "$LOG_DIR/resume_gpu0.pid"
