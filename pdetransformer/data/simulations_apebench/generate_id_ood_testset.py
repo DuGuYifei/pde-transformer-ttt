@@ -86,6 +86,7 @@ def _write_simulation(path: Path, sim_id: int, data, fixed, varied, entry) -> No
         dataset.attrs["Condition"] = entry["condition"]
         dataset.attrs["Solver Resolution"] = 2048
         dataset.attrs["Stored Resolution"] = 256
+        dataset.attrs["Integration Sub Steps"] = int(fixed["Sub Steps"])
 
 
 def generate_pde(pde: str, output_dir: Path, selected_sim_ids: set[int] | None = None) -> None:
@@ -116,12 +117,16 @@ def generate_pde(pde: str, output_dir: Path, selected_sim_ids: set[int] | None =
             continue
 
         started = time.perf_counter()
+        setup_overrides = dict(entry["parameter_overrides"])
+        setup_overrides.update(
+            {f"__{key}": value for key, value in entry["numerical_overrides"].items()}
+        )
         fixed, varied, stepper, state = get_setup_2d(
             pde,
             False,
             sim_id,
             seed_override=entry["seed"],
-            parameter_overrides=entry["parameter_overrides"],
+            parameter_overrides=setup_overrides,
         )
         if int(fixed["Resolution"]) != 2048:
             raise AssertionError(f"{pde} unexpectedly uses resolution {fixed['Resolution']}")

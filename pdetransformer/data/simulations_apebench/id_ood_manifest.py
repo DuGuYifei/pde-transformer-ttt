@@ -94,6 +94,12 @@ PARAMETER_MATRIX: dict[str, dict[str, dict[str, float]]] = {
     "kolm_flow": _scalar_conditions("Viscosity", 1.0e-4, 1.0e-3),
 }
 
+NUMERICAL_OVERRIDES: dict[str, dict[str, dict[str, int]]] = {
+    "burgers": {
+        "ood_low": {"Sub Steps": 100},
+    },
+}
+
 
 def simulation_entries(pde: str) -> list[dict[str, Any]]:
     if pde not in PDE_NAMES:
@@ -108,6 +114,9 @@ def simulation_entries(pde: str) -> list[dict[str, Any]]:
                     "condition": condition,
                     "seed": seed,
                     "parameter_overrides": deepcopy(PARAMETER_MATRIX[pde][condition]),
+                    "numerical_overrides": deepcopy(
+                        NUMERICAL_OVERRIDES.get(pde, {}).get(condition, {})
+                    ),
                 }
             )
             sim_id += 1
@@ -130,6 +139,10 @@ def build_manifest() -> dict[str, Any]:
         "rollout_transitions": 29,
         "conditions": list(CONDITIONS),
         "ood_definition": "near-OOD: 5% beyond the varied training boundary",
+        "numerical_override_policy": (
+            "Only increase internal solver substeps when an OOD parameter is unstable; "
+            "the saved-frame Dt remains unchanged."
+        ),
         "seeds": list(SEEDS),
         "pdes": {pde: simulation_entries(pde) for pde in PDE_NAMES},
     }

@@ -75,6 +75,11 @@ def _override(overrides: Mapping[str, float], key: str, sampled):
     return overrides[key] if key in overrides else sampled
 
 
+def _apply_numerical_overrides(p: dict, overrides: Mapping[str, float]) -> None:
+    if "__Sub Steps" in overrides:
+        p["Sub Steps"] = int(overrides["__Sub Steps"])
+
+
 def initial_condition_generator(p:dict, varied:dict) -> ex.ic.BaseRandomICGenerator:
     init_type = np.random.choice(p["Initial Types"])
     varied["Initial Type"] = init_type
@@ -359,6 +364,7 @@ def get_burgers(is_test_set:bool, seed:int, parameter_overrides=None) -> tuple[d
     u_init = multi_channel_ic_gen(p["Resolution"], key=jax.random.PRNGKey(seed))
 
     overrides = parameter_overrides or {}
+    _apply_numerical_overrides(p, overrides)
     nu = np.random.uniform(p["Viscosity (min)"], p["Viscosity (max)"])
     nu = _override(overrides, "Viscosity", nu)
     stepper = ex.stepper.Burgers(2, p["Domain Extent"], p["Resolution"], p["Dt"]/p["Sub Steps"], diffusivity=nu)

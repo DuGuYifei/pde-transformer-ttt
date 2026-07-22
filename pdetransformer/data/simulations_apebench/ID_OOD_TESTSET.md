@@ -17,6 +17,9 @@ parameter shifts.
   each named variant has a single nominal parameter pair.
 - Reuse a seed across the three conditions so that the initial condition is
   held fixed while the physical parameter changes.
+- Increase only the internal integration substeps when a near-OOD parameter
+  leaves the original solver stability region. This does not change the saved
+  frame interval, and the realized substep count is stored on every trajectory.
 - Store the complete protocol in `manifest.json` and the realized parameters
   in each per-PDE JSON/HDF5 file.
 
