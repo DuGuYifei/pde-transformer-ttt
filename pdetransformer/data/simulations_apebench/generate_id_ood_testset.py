@@ -6,7 +6,9 @@ import argparse
 import gc
 import json
 import os
+import sys
 import time
+import traceback
 from pathlib import Path
 from typing import Any
 
@@ -204,8 +206,17 @@ def main() -> None:
     selected_sim_ids = None if args.sim_ids is None else set(args.sim_ids)
     if selected_sim_ids is not None and not selected_sim_ids.issubset(set(range(9))):
         raise ValueError("--sim-ids values must be between 0 and 8")
+    failures = []
     for pde in args.pdes:
-        generate_pde(pde, args.output_dir, selected_sim_ids)
+        try:
+            generate_pde(pde, args.output_dir, selected_sim_ids)
+        except Exception as error:
+            failures.append((pde, str(error)))
+            print(f"PDE_FAILED pde={pde} error={error}", flush=True)
+            traceback.print_exc()
+    if failures:
+        print(f"GENERATION_COMPLETED_WITH_FAILURES failures={failures}", flush=True)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
