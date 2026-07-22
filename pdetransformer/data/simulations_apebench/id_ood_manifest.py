@@ -98,6 +98,9 @@ NUMERICAL_OVERRIDES: dict[str, dict[str, dict[str, int]]] = {
     "burgers": {
         "ood_low": {"Sub Steps": 100},
     },
+    "kolm_flow": {
+        "ood_low": {"Sub Steps": 3000},
+    },
 }
 
 

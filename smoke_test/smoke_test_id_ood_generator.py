@@ -6,7 +6,9 @@ import ast
 import importlib.util
 from pathlib import Path
 import sys
+import tempfile
 
+import h5py
 import numpy as np
 
 
@@ -47,6 +49,9 @@ def main() -> None:
         assert conditions["id"] != conditions["ood_low"], pde
         assert conditions["id"] != conditions["ood_high"], pde
 
+    assert manifest_module.NUMERICAL_OVERRIDES["burgers"]["ood_low"]["Sub Steps"] == 100
+    assert manifest_module.NUMERICAL_OVERRIDES["kolm_flow"]["ood_low"]["Sub Steps"] == 3000
+
     coordinates = np.arange(2048, dtype=np.float32)
     frame = coordinates[:, None] + coordinates[None, :]
     pooled = generator_module._downsample_2048_to_256(frame)
@@ -62,6 +67,19 @@ def main() -> None:
     argument_names = [argument.arg for argument in setup_function.args.args]
     assert argument_names[-2:] == ["seed_override", "parameter_overrides"]
     assert '"Resolution": 2048' in setup_source
+
+    entry = manifest_module.simulation_entries("diff")[0]
+    fixed = {"Constants": ["Viscosity X", "Viscosity Y"], "Sub Steps": 1}
+    varied = {"Viscosity X": 0.0275, "Viscosity Y": 0.0275}
+    data = np.zeros((30, 256, 256), dtype=np.float32)
+    with tempfile.TemporaryDirectory() as temporary_dir:
+        path = Path(temporary_dir) / "diff.hdf5"
+        generator_module._initialize_hdf5(path, {"Constants": fixed["Constants"]})
+        generator_module._write_simulation(path, 0, data, fixed, varied, entry)
+        assert generator_module._completed_simulations(path, [entry]) == {0}
+        with h5py.File(path, "r") as handle:
+            assert "sim0" in handle["sims"]
+            assert ".sim0.incomplete" not in handle["sims"]
 
     print("ID/OOD generator smoke test passed: 17 PDEs, 153 trajectories, 2048 -> 256.")
 

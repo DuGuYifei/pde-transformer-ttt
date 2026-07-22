@@ -60,17 +60,53 @@ def _initialize_hdf5(path: Path, fixed: dict[str, Any]) -> None:
         group.attrs["Generation Protocol"] = "solve_2048_then_average_pool_8x8"
 
 
-def _completed_simulations(path: Path) -> set[int]:
+def _dataset_completion_error(dataset, entry: dict[str, Any]) -> str | None:
+    if dataset.shape[0] != 30 or dataset.shape[-2:] != (256, 256):
+        return f"unexpected shape {dataset.shape}"
+
+    expected_attrs = {
+        "Seed": int(entry["seed"]),
+        "Condition": entry["condition"],
+        "Solver Resolution": 2048,
+        "Stored Resolution": 256,
+    }
+    if "Sub Steps" in entry["numerical_overrides"]:
+        expected_attrs["Integration Sub Steps"] = int(
+            entry["numerical_overrides"]["Sub Steps"]
+        )
+    elif "Integration Sub Steps" not in dataset.attrs:
+        return "missing attribute 'Integration Sub Steps'"
+
+    for key, expected in expected_attrs.items():
+        if key not in dataset.attrs:
+            return f"missing attribute {key!r}"
+        actual = dataset.attrs[key]
+        if actual != expected:
+            return f"attribute {key!r} is {actual!r}, expected {expected!r}"
+    return None
+
+
+def _completed_simulations(path: Path, entries: list[dict[str, Any]]) -> set[int]:
     import h5py
 
     if not path.exists():
         return set()
+    entries_by_id = {int(entry["sim_id"]): entry for entry in entries}
+    complete = set()
     with h5py.File(path, "r") as handle:
-        return {
-            int(name.removeprefix("sim"))
-            for name in handle["sims"].keys()
-            if name.startswith("sim") and name.removeprefix("sim").isdigit()
-        }
+        if "sims" not in handle:
+            raise ValueError(f"{path} does not contain a 'sims' group")
+        for name in handle["sims"].keys():
+            if not name.startswith("sim") or not name.removeprefix("sim").isdigit():
+                continue
+            sim_id = int(name.removeprefix("sim"))
+            if sim_id not in entries_by_id:
+                raise ValueError(f"{path} contains unexpected simulation {name}")
+            error = _dataset_completion_error(handle["sims"][name], entries_by_id[sim_id])
+            if error is not None:
+                raise ValueError(f"{path}:{name} is incomplete: {error}")
+            complete.add(sim_id)
+    return complete
 
 
 def _write_simulation(path: Path, sim_id: int, data, fixed, varied, entry) -> None:
@@ -81,7 +117,10 @@ def _write_simulation(path: Path, sim_id: int, data, fixed, varied, entry) -> No
         name = f"sim{sim_id}"
         if name in group:
             return
-        dataset = group.create_dataset(name, data=data)
+        temporary_name = f".{name}.incomplete"
+        if temporary_name in group:
+            del group[temporary_name]
+        dataset = group.create_dataset(temporary_name, data=data)
         for key in fixed["Constants"]:
             dataset.attrs[key] = varied[key]
         dataset.attrs["Seed"] = int(entry["seed"])
@@ -89,6 +128,9 @@ def _write_simulation(path: Path, sim_id: int, data, fixed, varied, entry) -> No
         dataset.attrs["Solver Resolution"] = 2048
         dataset.attrs["Stored Resolution"] = 256
         dataset.attrs["Integration Sub Steps"] = int(fixed["Sub Steps"])
+        handle.flush()
+        group.move(temporary_name, name)
+        handle.flush()
 
 
 def generate_pde(pde: str, output_dir: Path, selected_sim_ids: set[int] | None = None) -> None:
@@ -109,8 +151,9 @@ def generate_pde(pde: str, output_dir: Path, selected_sim_ids: set[int] | None =
     if metadata_path.exists():
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
 
-    complete = _completed_simulations(hdf5_path)
-    for entry in simulation_entries(pde):
+    entries = simulation_entries(pde)
+    complete = _completed_simulations(hdf5_path, entries)
+    for entry in entries:
         sim_id = int(entry["sim_id"])
         if selected_sim_ids is not None and sim_id not in selected_sim_ids:
             continue

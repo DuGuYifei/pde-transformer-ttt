@@ -40,3 +40,8 @@ python pdetransformer/data/simulations_apebench/generate_id_ood_testset.py \
 
 The command is resumable: simulations already present as `sims/simN` are
 skipped. Separate processes may generate disjoint PDE lists on different GPUs.
+
+The two-GPU server launcher runs each PDE in a fresh Python process so JAX
+compilation caches, CUDA graphs, and FFT plans are released between PDEs. It
+audits all existing trajectories before resuming and skips only datasets whose
+shape and identifying metadata are complete.
