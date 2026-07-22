@@ -238,11 +238,16 @@ def main() -> None:
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = args.output_dir / "manifest.json"
-    if not manifest_path.exists():
-        _write_json_atomic(manifest_path, build_manifest())
     if args.write_manifest_only:
+        manifest = build_manifest()
+        if manifest_path.exists():
+            existing = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["created_utc"] = existing.get("created_utc", manifest["created_utc"])
+        _write_json_atomic(manifest_path, manifest)
         print(manifest_path)
         return
+    if not manifest_path.exists():
+        _write_json_atomic(manifest_path, build_manifest())
 
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_id)
     os.environ.setdefault("XLA_PYTHON_CLIENT_MEM_FRACTION", "0.92")
