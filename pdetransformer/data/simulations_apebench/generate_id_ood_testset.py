@@ -88,7 +88,7 @@ def _write_simulation(path: Path, sim_id: int, data, fixed, varied, entry) -> No
         dataset.attrs["Stored Resolution"] = 256
 
 
-def generate_pde(pde: str, output_dir: Path) -> None:
+def generate_pde(pde: str, output_dir: Path, selected_sim_ids: set[int] | None = None) -> None:
     import exponax as ex
     import jax
     import jax.numpy as jnp
@@ -109,6 +109,8 @@ def generate_pde(pde: str, output_dir: Path) -> None:
     complete = _completed_simulations(hdf5_path)
     for entry in simulation_entries(pde):
         sim_id = int(entry["sim_id"])
+        if selected_sim_ids is not None and sim_id not in selected_sim_ids:
+            continue
         if sim_id in complete:
             print(f"SIM_SKIP pde={pde} sim={sim_id}", flush=True)
             continue
@@ -173,6 +175,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--pdes", nargs="+", default=list(PDE_NAMES))
     parser.add_argument("--gpu-id", default="0")
+    parser.add_argument("--sim-ids", nargs="+", type=int)
     parser.add_argument("--write-manifest-only", action="store_true")
     return parser.parse_args()
 
@@ -193,8 +196,11 @@ def main() -> None:
 
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_id)
     os.environ.setdefault("XLA_PYTHON_CLIENT_MEM_FRACTION", "0.92")
+    selected_sim_ids = None if args.sim_ids is None else set(args.sim_ids)
+    if selected_sim_ids is not None and not selected_sim_ids.issubset(set(range(9))):
+        raise ValueError("--sim-ids values must be between 0 and 8")
     for pde in args.pdes:
-        generate_pde(pde, args.output_dir)
+        generate_pde(pde, args.output_dir, selected_sim_ids)
 
 
 if __name__ == "__main__":
