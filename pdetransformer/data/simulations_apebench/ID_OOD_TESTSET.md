@@ -12,6 +12,9 @@ parameter shifts.
 - Generate 30 saved frames, corresponding to 29 autoregressive transitions.
 - Generate three conditions (`id`, `ood_low`, `ood_high`) and three unseen
   seeds per PDE: nine trajectories for each of 17 PDEs.
+- Define near-OOD parameters at five percent beyond the varied training
+  boundary. Gray-Scott varies feed rate by minus/plus five percent because
+  each named variant has a single nominal parameter pair.
 - Reuse a seed across the three conditions so that the initial condition is
   held fixed while the physical parameter changes.
 - Store the complete protocol in `manifest.json` and the realized parameters

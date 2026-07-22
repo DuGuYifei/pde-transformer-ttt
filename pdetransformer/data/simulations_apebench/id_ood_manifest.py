@@ -42,24 +42,24 @@ def _scalar_conditions(
     center = (train_min + train_max) / 2.0
     return {
         "id": {**fixed, key: center},
-        "ood_low": {**fixed, key: 0.8 * train_min},
-        "ood_high": {**fixed, key: 1.2 * train_max},
+        "ood_low": {**fixed, key: 0.95 * train_min},
+        "ood_high": {**fixed, key: 1.05 * train_max},
     }
 
 
 def _gray_scott_conditions(feed: float, kill: float) -> dict[str, dict[str, float]]:
     return {
         "id": {"Feed Rate": feed, "Kill Rate": kill},
-        "ood_low": {"Feed Rate": 0.9 * feed, "Kill Rate": kill},
-        "ood_high": {"Feed Rate": 1.1 * feed, "Kill Rate": kill},
+        "ood_low": {"Feed Rate": 0.95 * feed, "Kill Rate": kill},
+        "ood_high": {"Feed Rate": 1.05 * feed, "Kill Rate": kill},
     }
 
 
 PARAMETER_MATRIX: dict[str, dict[str, dict[str, float]]] = {
     "diff": {
         "id": {"Viscosity X": 0.0275, "Viscosity Y": 0.0275},
-        "ood_low": {"Viscosity X": 0.004, "Viscosity Y": 0.004},
-        "ood_high": {"Viscosity X": 0.06, "Viscosity Y": 0.06},
+        "ood_low": {"Viscosity X": 0.00475, "Viscosity Y": 0.00475},
+        "ood_high": {"Viscosity X": 0.0525, "Viscosity Y": 0.0525},
     },
     "hyp": _scalar_conditions("Hyper-Diffusivity", 5.0e-5, 5.0e-4),
     "burgers": _scalar_conditions("Viscosity", 5.0e-5, 3.0e-4),
@@ -129,6 +129,7 @@ def build_manifest() -> dict[str, Any]:
         "time_steps": 30,
         "rollout_transitions": 29,
         "conditions": list(CONDITIONS),
+        "ood_definition": "near-OOD: 5% beyond the varied training boundary",
         "seeds": list(SEEDS),
         "pdes": {pde: simulation_entries(pde) for pde in PDE_NAMES},
     }
