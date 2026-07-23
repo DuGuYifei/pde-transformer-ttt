@@ -103,6 +103,7 @@ CONFIG_DEFAULTS: dict[str, Any] = {
     "max_channels": 2,
     "checkpoint_path": None,
     "strict_official_test": False,
+    "id_ood_test": False,
 }
 
 DEFAULT_EVAL_K = (1, 10, 20, 29)
@@ -113,6 +114,9 @@ STRICT_OFFICIAL_SOURCE_FRAMES = {
     **{name: 100 for name in ["gs_alpha", "gs_beta", "gs_gamma", "gs_epsilon"]},
     **{name: 200 for name in ["ks", "decay_turb", "kolm_flow"]},
 }
+ID_OOD_CONDITIONS = ("id", "ood_low", "ood_high")
+ID_OOD_EXPECTED_SIM_IDS = list(range(9))
+ID_OOD_EXPECTED_FRAMES = 30
 
 
 def _path_or_none(value: Any) -> Path | None:
@@ -307,6 +311,15 @@ def parse_args() -> argparse.Namespace:
             "small official dataset, and record source files/simulation IDs."
         ),
     )
+    parser.add_argument(
+        "--id-ood-test",
+        action=argparse.BooleanOptionalAction,
+        default=cfg["id_ood_test"],
+        help=(
+            "Evaluate datasets_test/<pde>.hdf5 using sim0..8 exactly once: "
+            "ID sim0..2, OOD-low sim3..5, and OOD-high sim6..8."
+        ),
+    )
     parser.add_argument("--max-batches-per-dataset", type=int, default=None)
     parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument(
@@ -327,6 +340,7 @@ def build_data_module(
     downsample_factor: int,
     test_unrolling_steps: int,
     max_channels: int,
+    test_sim_ids_override: list[int] | None = None,
 ) -> MultiDataModule:
     params_data = {
         "path_index": {"2D_APE_xxl": str(data_dir)},
@@ -343,6 +357,8 @@ def build_data_module(
         "downsample_factor": downsample_factor,
         "max_channels": max_channels,
     }
+    if test_sim_ids_override is not None:
+        params_data["test_sim_ids_override"] = list(test_sim_ids_override)
     return MultiDataModule(**params_data)
 
 
@@ -428,6 +444,108 @@ def validate_strict_official_test_split(pde: str, split_info: dict[str, Any]) ->
         )
 
 
+def load_id_ood_manifest(data_dir: Path, datasets: list[str]) -> dict[str, Any]:
+    manifest_path = data_dir / "manifest.json"
+    if not manifest_path.exists():
+        raise RuntimeError(f"ID/OOD test manifest not found: {manifest_path}")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    expected_scalars = {
+        "solver_resolution": 2048,
+        "stored_resolution": 256,
+        "evaluation_resolution": 128,
+        "time_steps": 30,
+        "rollout_transitions": 29,
+    }
+    for key, expected in expected_scalars.items():
+        if manifest.get(key) != expected:
+            raise RuntimeError(
+                f"ID/OOD manifest has {key}={manifest.get(key)!r}; expected {expected!r}."
+            )
+    if tuple(manifest.get("conditions", ())) != ID_OOD_CONDITIONS:
+        raise RuntimeError(
+            f"ID/OOD manifest conditions are {manifest.get('conditions')!r}; "
+            f"expected {list(ID_OOD_CONDITIONS)!r}."
+        )
+
+    manifest_pdes = manifest.get("pdes")
+    if not isinstance(manifest_pdes, dict):
+        raise RuntimeError("ID/OOD manifest is missing the 'pdes' mapping.")
+    missing = sorted(set(datasets) - set(manifest_pdes))
+    if missing:
+        raise RuntimeError(f"ID/OOD manifest is missing requested PDEs: {missing}.")
+
+    expected_seeds = list(manifest.get("seeds", ()))
+    if len(expected_seeds) != 3 or len(set(expected_seeds)) != 3:
+        raise RuntimeError(f"ID/OOD manifest must define three unique seeds; got {expected_seeds}.")
+
+    for pde in datasets:
+        entries = manifest_pdes[pde]
+        if not isinstance(entries, list) or len(entries) != 9:
+            raise RuntimeError(f"ID/OOD manifest must define 9 entries for {pde}.")
+        entries_by_sim = {int(entry["sim_id"]): entry for entry in entries}
+        if sorted(entries_by_sim) != ID_OOD_EXPECTED_SIM_IDS:
+            raise RuntimeError(
+                f"ID/OOD manifest sim IDs for {pde} are {sorted(entries_by_sim)}; "
+                f"expected {ID_OOD_EXPECTED_SIM_IDS}."
+            )
+        for condition in ID_OOD_CONDITIONS:
+            condition_entries = sorted(
+                (entry for entry in entries if entry.get("condition") == condition),
+                key=lambda entry: int(entry["sim_id"]),
+            )
+            if len(condition_entries) != 3:
+                raise RuntimeError(
+                    f"ID/OOD manifest must define 3 {condition} entries for {pde}."
+                )
+            if [entry.get("seed") for entry in condition_entries] != expected_seeds:
+                raise RuntimeError(
+                    f"ID/OOD seed order for {pde}/{condition} does not match manifest seeds."
+                )
+        if not (data_dir / f"{pde}.hdf5").exists():
+            raise RuntimeError(f"ID/OOD data file not found: {data_dir / f'{pde}.hdf5'}")
+    return manifest
+
+
+def validate_id_ood_test_split(
+    pde: str,
+    split_info: dict[str, Any],
+    manifest: dict[str, Any],
+) -> None:
+    if split_info["source_dataset_name"] != pde:
+        raise RuntimeError(
+            f"ID/OOD test for {pde} loaded {split_info['source_dataset_name']!r}; "
+            f"expected {pde!r}."
+        )
+    if split_info["source_file_name"] != f"{pde}.hdf5":
+        raise RuntimeError(
+            f"ID/OOD test for {pde} loaded {split_info['source_file_name']!r}; "
+            f"expected {pde}.hdf5."
+        )
+    if split_info["source_num_frames"] != ID_OOD_EXPECTED_FRAMES:
+        raise RuntimeError(
+            f"ID/OOD test for {pde} found {split_info['source_num_frames']} frames; "
+            f"expected {ID_OOD_EXPECTED_FRAMES}."
+        )
+    if split_info["selected_sim_ids"] != ID_OOD_EXPECTED_SIM_IDS:
+        raise RuntimeError(
+            f"ID/OOD test for {pde} selected {split_info['selected_sim_ids']}; "
+            f"expected {ID_OOD_EXPECTED_SIM_IDS}."
+        )
+    if split_info["samples_per_simulation"] != 1:
+        raise RuntimeError(
+            f"ID/OOD test for {pde} produced "
+            f"{split_info['samples_per_simulation']} samples per simulation; "
+            "expected one 29-step rollout."
+        )
+
+    manifest_ids = sorted(int(entry["sim_id"]) for entry in manifest["pdes"][pde])
+    if manifest_ids != split_info["selected_sim_ids"]:
+        raise RuntimeError(
+            f"ID/OOD test split for {pde} does not match manifest sim IDs."
+        )
+
+
 def build_checkpoint_strategy(args: argparse.Namespace, checkpoint_path: Path) -> SingleStepSupervised:
     torch.manual_seed(args.seed)
     if torch.cuda.is_available():
@@ -507,11 +625,14 @@ def evaluate_dataset(
         downsample_factor=args.downsample_factor,
         test_unrolling_steps=args.test_unrolling_steps,
         max_channels=args.max_channels,
+        test_sim_ids_override=ID_OOD_EXPECTED_SIM_IDS if args.id_ood_test else None,
     )
     dm.setup(stage="test")
     split_info = inspect_test_split(dm, pde)
     if args.strict_official_test:
         validate_strict_official_test_split(pde, split_info)
+    if args.id_ood_test:
+        validate_id_ood_test_split(pde, split_info, args.id_ood_manifest)
 
     loader = dm.test_dataloader()
     num_trajectories = len(dm.set_test) if dm.set_test is not None else 0
@@ -529,6 +650,7 @@ def evaluate_dataset(
     del info_loader
 
     sum_nrmse = {k: 0.0 for k in args.eval_k}
+    trajectory_nrmse = {k: [] for k in args.eval_k}
     count = 0
     t0 = time.perf_counter()
 
@@ -545,6 +667,7 @@ def evaluate_dataset(
             for k in args.eval_k:
                 per_traj = per_trajectory_nrmse(prediction[:, k], reference[:, k])
                 sum_nrmse[k] += float(per_traj.sum())
+                trajectory_nrmse[k].extend(float(value) for value in per_traj)
             count += batch_b
 
     elapsed = time.perf_counter() - t0
@@ -552,6 +675,48 @@ def evaluate_dataset(
         k: (sum_nrmse[k] / count if count > 0 else float("nan"))
         for k in args.eval_k
     }
+    trajectory_results: list[dict[str, Any]] = []
+    condition_nrmse: dict[str, dict[int, float]] = {}
+    condition_sum_nrmse: dict[str, dict[int, float]] = {}
+    condition_counts: dict[str, int] = {}
+    if args.id_ood_test:
+        selected_sim_ids = split_info["selected_sim_ids"][:count]
+        entries_by_sim = {
+            int(entry["sim_id"]): entry
+            for entry in args.id_ood_manifest["pdes"][pde]
+        }
+        for trajectory_idx, sim_id in enumerate(selected_sim_ids):
+            entry = entries_by_sim[sim_id]
+            trajectory_results.append(
+                {
+                    "sim_id": sim_id,
+                    "condition": entry["condition"],
+                    "seed": int(entry["seed"]),
+                    "parameter_overrides": entry.get("parameter_overrides", {}),
+                    "numerical_overrides": entry.get("numerical_overrides", {}),
+                    **{
+                        f"nRMSE_{k}": trajectory_nrmse[k][trajectory_idx]
+                        for k in args.eval_k
+                    },
+                }
+            )
+        for condition in ID_OOD_CONDITIONS:
+            condition_rows = [
+                row for row in trajectory_results if row["condition"] == condition
+            ]
+            condition_counts[condition] = len(condition_rows)
+            condition_sum_nrmse[condition] = {
+                k: float(sum(row[f"nRMSE_{k}"] for row in condition_rows))
+                for k in args.eval_k
+            }
+            condition_nrmse[condition] = {
+                k: (
+                    condition_sum_nrmse[condition][k] / len(condition_rows)
+                    if condition_rows
+                    else float("nan")
+                )
+                for k in args.eval_k
+            }
 
     del loader
     del dm
@@ -569,6 +734,10 @@ def evaluate_dataset(
         "channels": shape_info["channels"],
         "nRMSE_per_k": nrmse,
         "sum_nrmse_per_k": dict(sum_nrmse),
+        "trajectory_results": trajectory_results,
+        "condition_nRMSE_per_k": condition_nrmse,
+        "condition_sum_nrmse_per_k": condition_sum_nrmse,
+        "condition_counts": condition_counts,
         "elapsed_seconds": elapsed,
     }
 
@@ -636,6 +805,39 @@ def run_cache_mode(
         total_count = sum(per_dataset[pde]["num_evaluated_trajectories"] for pde in args.datasets)
         micro[k] = total_sum / total_count if total_count > 0 else float("nan")
 
+    condition_aggregate: dict[str, dict[str, Any]] = {}
+    if args.id_ood_test:
+        for condition in ID_OOD_CONDITIONS:
+            condition_macro: dict[int, float] = {}
+            condition_micro: dict[int, float] = {}
+            condition_count = sum(
+                per_dataset[pde]["condition_counts"][condition]
+                for pde in args.datasets
+            )
+            for k in args.eval_k:
+                pde_values = [
+                    per_dataset[pde]["condition_nRMSE_per_k"][condition][k]
+                    for pde in args.datasets
+                    if per_dataset[pde]["condition_counts"][condition] > 0
+                ]
+                condition_macro[k] = (
+                    float(np.mean(pde_values)) if pde_values else float("nan")
+                )
+                condition_sum = sum(
+                    per_dataset[pde]["condition_sum_nrmse_per_k"][condition][k]
+                    for pde in args.datasets
+                )
+                condition_micro[k] = (
+                    condition_sum / condition_count
+                    if condition_count > 0
+                    else float("nan")
+                )
+            condition_aggregate[condition] = {
+                "macro": condition_macro,
+                "micro": condition_micro,
+                "count": condition_count,
+            }
+
     total_trajectories = sum(r["num_evaluated_trajectories"] for r in per_dataset.values())
     elapsed_total = time.perf_counter() - started_perf
     ended_iso = datetime.now().isoformat(timespec="seconds")
@@ -643,6 +845,18 @@ def run_cache_mode(
     print("-" * 78)
     print("[aggregate:%s] macro: %s" % (cache_label, "  ".join(f"nRMSE_{k}={macro[k]:.6g}" for k in args.eval_k)))
     print("[aggregate:%s] micro: %s" % (cache_label, "  ".join(f"nRMSE_{k}={micro[k]:.6g}" for k in args.eval_k)))
+    for condition, condition_result in condition_aggregate.items():
+        print(
+            "[aggregate:%s:%s] macro: %s"
+            % (
+                cache_label,
+                condition,
+                "  ".join(
+                    f"nRMSE_{k}={condition_result['macro'][k]:.6g}"
+                    for k in args.eval_k
+                ),
+            )
+        )
     print(f"elapsed_total:     {elapsed_total:.1f}s")
     print("=" * 78)
 
@@ -668,6 +882,17 @@ def run_cache_mode(
                 "data_shape": r["data_shape"],
                 "channels": r["channels"],
                 **{f"nRMSE_{k}": r["nRMSE_per_k"][k] for k in args.eval_k},
+                "conditions": {
+                    condition: {
+                        "count": r["condition_counts"][condition],
+                        **{
+                            f"nRMSE_{k}": r["condition_nRMSE_per_k"][condition][k]
+                            for k in args.eval_k
+                        },
+                    }
+                    for condition in ID_OOD_CONDITIONS
+                } if args.id_ood_test else {},
+                "trajectories": r["trajectory_results"],
                 "elapsed_seconds": r["elapsed_seconds"],
             }
             for pde, r in per_dataset.items()
@@ -675,6 +900,18 @@ def run_cache_mode(
         "aggregate": {
             "macro": {f"nRMSE_{k}": macro[k] for k in args.eval_k},
             "micro": {f"nRMSE_{k}": micro[k] for k in args.eval_k},
+            "conditions": {
+                condition: {
+                    "count": result["count"],
+                    "macro": {
+                        f"nRMSE_{k}": result["macro"][k] for k in args.eval_k
+                    },
+                    "micro": {
+                        f"nRMSE_{k}": result["micro"][k] for k in args.eval_k
+                    },
+                }
+                for condition, result in condition_aggregate.items()
+            },
             "total_evaluated_trajectories": int(total_trajectories),
         },
     }
@@ -740,6 +977,86 @@ def run_cache_mode(
 
     print(f"wrote {json_path}")
     print(f"wrote {csv_path}")
+    if args.id_ood_test:
+        condition_csv_path = output_dir / f"results_conditions_cache_{cache_label}.csv"
+        trajectory_csv_path = output_dir / f"results_trajectories_cache_{cache_label}.csv"
+        condition_fieldnames = [
+            "dataset",
+            "condition",
+            "count",
+            *[f"nRMSE_{k}" for k in args.eval_k],
+        ]
+        with condition_csv_path.open("w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=condition_fieldnames)
+            writer.writeheader()
+            for pde in args.datasets:
+                r = per_dataset[pde]
+                for condition in ID_OOD_CONDITIONS:
+                    writer.writerow(
+                        {
+                            "dataset": pde,
+                            "condition": condition,
+                            "count": r["condition_counts"][condition],
+                            **{
+                                f"nRMSE_{k}": (
+                                    f"{r['condition_nRMSE_per_k'][condition][k]:.6g}"
+                                )
+                                for k in args.eval_k
+                            },
+                        }
+                    )
+            for condition, result in condition_aggregate.items():
+                writer.writerow(
+                    {
+                        "dataset": "macro_avg",
+                        "condition": condition,
+                        "count": result["count"],
+                        **{
+                            f"nRMSE_{k}": f"{result['macro'][k]:.6g}"
+                            for k in args.eval_k
+                        },
+                    }
+                )
+                writer.writerow(
+                    {
+                        "dataset": "micro_avg",
+                        "condition": condition,
+                        "count": result["count"],
+                        **{
+                            f"nRMSE_{k}": f"{result['micro'][k]:.6g}"
+                            for k in args.eval_k
+                        },
+                    }
+                )
+
+        trajectory_fieldnames = [
+            "dataset",
+            "sim_id",
+            "condition",
+            "seed",
+            "parameter_overrides",
+            "numerical_overrides",
+            *[f"nRMSE_{k}" for k in args.eval_k],
+        ]
+        with trajectory_csv_path.open("w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=trajectory_fieldnames)
+            writer.writeheader()
+            for pde in args.datasets:
+                for row in per_dataset[pde]["trajectory_results"]:
+                    writer.writerow(
+                        {
+                            "dataset": pde,
+                            **row,
+                            "parameter_overrides": json.dumps(
+                                row["parameter_overrides"], sort_keys=True
+                            ),
+                            "numerical_overrides": json.dumps(
+                                row["numerical_overrides"], sort_keys=True
+                            ),
+                        }
+                    )
+        print(f"wrote {condition_csv_path}")
+        print(f"wrote {trajectory_csv_path}")
     return payload
 
 
@@ -763,6 +1080,10 @@ def select_cache_modes(args: argparse.Namespace, resolved_token_mixer: str, is_p
 def main() -> None:
     args = parse_args()
 
+    if args.strict_official_test and args.id_ood_test:
+        raise SystemExit(
+            "--strict-official-test and --id-ood-test are mutually exclusive."
+        )
     if args.strict_official_test:
         unsupported = sorted(set(args.datasets) - STRICT_OFFICIAL_TEST_DATASETS)
         if unsupported:
@@ -779,6 +1100,28 @@ def main() -> None:
         if args.max_batches_per_dataset is not None:
             raise SystemExit(
                 "--strict-official-test requires the complete split; remove --max-batches-per-dataset."
+            )
+    if args.id_ood_test:
+        unsupported = sorted(set(args.datasets) - STRICT_OFFICIAL_TEST_DATASETS)
+        if unsupported:
+            raise SystemExit(
+                "--id-ood-test only supports the 17 APE2D PDE datasets; "
+                f"unsupported datasets: {unsupported}."
+            )
+        if len(args.datasets) != len(set(args.datasets)):
+            raise SystemExit("--id-ood-test does not allow duplicate dataset names.")
+        if args.test_unrolling_steps != 29 or args.rollout_steps != 30:
+            raise SystemExit(
+                "--id-ood-test requires test_unrolling_steps=29 and rollout_steps=30."
+            )
+        if args.max_batches_per_dataset is not None:
+            raise SystemExit(
+                "--id-ood-test requires all nine trajectories per PDE; "
+                "remove --max-batches-per-dataset."
+            )
+        if args.downsample_factor != 2 or args.sample_size != 128:
+            raise SystemExit(
+                "--id-ood-test requires downsample_factor=2 and sample_size=128."
             )
 
     if args.rollout_steps <= max(args.eval_k):
@@ -800,7 +1143,12 @@ def main() -> None:
         raise SystemExit(f"Data directory not found: {data_dir}")
     if checkpoint_path is not None and not checkpoint_path.exists():
         raise SystemExit(f"Checkpoint not found: {checkpoint_path}")
-    data_dir_warning = "official" not in str(data_dir).lower()
+    args.id_ood_manifest = (
+        load_id_ood_manifest(data_dir, args.datasets) if args.id_ood_test else None
+    )
+    data_dir_warning = (
+        "official" not in str(data_dir).lower() and not args.id_ood_test
+    )
     if data_dir_warning:
         if args.strict_official_test:
             raise SystemExit(
@@ -848,6 +1196,7 @@ def main() -> None:
     print(f"downsample_factor: {args.downsample_factor}")
     print(f"test_unroll_steps: {args.test_unrolling_steps}")
     print(f"strict test-only:  {args.strict_official_test}")
+    print(f"ID/OOD test-only:  {args.id_ood_test}")
     print(f"torch:             {torch.__version__}")
     print(f"cuda available:    {torch.cuda.is_available()}")
     print(f"device:            {device}")
@@ -877,6 +1226,10 @@ def main() -> None:
         "data_dir": str(data_dir),
         "data_dir_warning_non_official": data_dir_warning,
         "strict_official_test": args.strict_official_test,
+        "id_ood_test": args.id_ood_test,
+        "id_ood_manifest_path": (
+            str(data_dir / "manifest.json") if args.id_ood_test else None
+        ),
         "run_root": str(run_root),
         "run_name": args.run_name,
         "model_type": args.model_type,

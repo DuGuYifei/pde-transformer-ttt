@@ -59,6 +59,7 @@ def ape_2d_xxl_datasets(dataset_name: str,
                  test_variable_dt_stride_maximum: int = 1,
                  test_unrolling_steps: Optional[int] = None,
                  test_intermediate_time_steps: Optional[bool] = None,
+                 test_sim_ids_override: Optional[list[int]] = None,
                  normalize_data: Optional[str] = None,
                  normalize_const: Optional[str] = None,
                  **kwargs) -> tuple[PBDLDataset, PBDLDataset, PBDLDataset]:
@@ -88,6 +89,55 @@ def ape_2d_xxl_datasets(dataset_name: str,
         test_intermediate_time_steps = intermediate_time_steps
     if test_variable_dt_stride_maximum is None:
         test_variable_dt_stride_maximum = variable_dt_stride_maximum
+
+    if test_sim_ids_override is not None:
+        test_sim_ids = [int(sim_id) for sim_id in test_sim_ids_override]
+        if not test_sim_ids or len(test_sim_ids) != len(set(test_sim_ids)):
+            raise ValueError("test_sim_ids_override must contain unique simulation IDs.")
+
+        normalize_const_for_dataset = normalize_const if "gs_" not in dataset_name else None
+        params_train = {
+            "dset_name": dataset_name,
+            "local_datasets_dir": dataset_directory,
+            "sel_sims": test_sim_ids,
+            "time_steps": unrolling_steps,
+            "intermediate_time_steps": intermediate_time_steps,
+            "normalize_const": normalize_const_for_dataset,
+            "normalize_data": normalize_data,
+        }
+        if variable_dt_stride_maximum <= 1:
+            pbdl_all = PBDLDataset(**params_train)
+        else:
+            pbdl_all = VariableDtDataset(
+                **params_train,
+                maximum_dt=variable_dt_stride_maximum,
+                seed=None,
+            )
+
+        train, val = random_split(
+            pbdl_all, [0.85, 0.15], generator=torch.Generator().manual_seed(seed)
+        )
+        train.indices = sorted(train.indices)
+        val.indices = sorted(val.indices)
+
+        params_test = {
+            "dset_name": dataset_name,
+            "local_datasets_dir": dataset_directory,
+            "sel_sims": test_sim_ids,
+            "time_steps": test_unrolling_steps,
+            "intermediate_time_steps": test_intermediate_time_steps,
+            "normalize_const": normalize_const_for_dataset,
+            "normalize_data": normalize_data,
+        }
+        if test_variable_dt_stride_maximum <= 1:
+            test = PBDLDataset(**params_test)
+        else:
+            test = VariableDtDataset(
+                **params_test,
+                maximum_dt=test_variable_dt_stride_maximum,
+                seed=seed,
+            )
+        return train, val, test
 
     split_spec = ape_2d_xxl_split_spec(dataset_name)
 
