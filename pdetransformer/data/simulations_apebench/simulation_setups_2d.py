@@ -803,6 +803,7 @@ def get_decaying_turbulence(is_test_set:bool, seed:int, parameter_overrides=None
     u_init = ic_gen(p["Resolution"], key=jax.random.PRNGKey(seed))
 
     overrides = parameter_overrides or {}
+    _apply_numerical_overrides(p, overrides)
     nu = np.random.uniform(p["Viscosity (min)"], p["Viscosity (max)"])
     nu = _override(overrides, "Viscosity", nu)
     stepper = ex.stepper.NavierStokesVorticity(2, p["Domain Extent"], p["Resolution"], p["Dt"]/p["Sub Steps"], diffusivity=nu)

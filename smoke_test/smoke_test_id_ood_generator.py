@@ -50,6 +50,7 @@ def main() -> None:
         assert conditions["id"] != conditions["ood_high"], pde
 
     assert manifest_module.NUMERICAL_OVERRIDES["burgers"]["ood_low"]["Sub Steps"] == 100
+    assert manifest_module.NUMERICAL_OVERRIDES["decay_turb"]["ood_low"]["Sub Steps"] == 1000
     assert manifest_module.NUMERICAL_OVERRIDES["kolm_flow"]["ood_low"]["Sub Steps"] == 3000
 
     coordinates = np.arange(2048, dtype=np.float32)
