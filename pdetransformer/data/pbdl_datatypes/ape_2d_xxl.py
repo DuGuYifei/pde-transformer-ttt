@@ -6,6 +6,10 @@ from torchvision.transforms.v2 import Transform, ToDtype, Compose, Lambda, Norma
 from ..pbdl_dataloader.dataset import Dataset as PBDLDataset
 
 from .variable_dt_dataset import VariableDtDataset
+from .ape_2d_splits import (
+    SEPARATE_TEST_DATASETS,
+    ape_2d_xxl_simulation_split,
+)
 
 
 '''
@@ -23,6 +27,7 @@ def ape_2d_xxl_datasets(dataset_name: str,
                  test_intermediate_time_steps: Optional[bool] = None,
                  normalize_data: Optional[str] = None,
                  normalize_const: Optional[str] = None,
+                 dataset_profile: str = "legacy_small",
                  **kwargs) -> tuple[PBDLDataset, PBDLDataset, PBDLDataset]:
     r'''
     Creates 2D extended APE train, val, and test dataset objects.
@@ -52,7 +57,7 @@ def ape_2d_xxl_datasets(dataset_name: str,
         test_variable_dt_stride_maximum = variable_dt_stride_maximum
 
     # separate test sets with longer rollouts
-    if dataset_name in ["ks", "gs_alpha", "gs_beta", "gs_gamma", "gs_epsilon", "decay_turb", "kolm_flow"]:
+    if dataset_name in SEPARATE_TEST_DATASETS:
         params_train = {
             "dset_name": dataset_name,
             "local_datasets_dir": dataset_directory,
@@ -99,18 +104,12 @@ def ape_2d_xxl_datasets(dataset_name: str,
     # joint training and test data file, split by simulation
     else:
         
-        if dataset_name in ["gs_delta", "gs_theta", "gs_iota", "gs_kappa"]:
-            # train_sims = list(range(0, 8))
-            # test_sims = list(range(8, 10))
-            train_sims = list(range(0, 80))
-            test_sims = list(range(80, 100))
-        elif dataset_name in ["adv", "diff", "adv_diff", "disp", "hyp", "burgers", "kdv", "fisher", "sh"]:
-            train_sims = list(range(0, 50))
-            test_sims = list(range(50, 60))
-            # train_sims = list(range(0, 500))
-            # test_sims = list(range(500, 600))
-        else:
-            raise ValueError(f"Unknown dataset: {dataset_name}")
+        train_sims, test_sims = ape_2d_xxl_simulation_split(
+            dataset_name,
+            dataset_profile,
+        )
+        if train_sims is None or test_sims is None:
+            raise AssertionError("Joint-file dataset must define explicit simulation IDs.")
 
         params_train = {
             "dset_name": dataset_name,
@@ -137,7 +136,7 @@ def ape_2d_xxl_datasets(dataset_name: str,
         params_test = {
             "dset_name": dataset_name,
             "local_datasets_dir": dataset_directory,
-            #"sel_sims": test_sims,
+            "sel_sims": test_sims,
             "time_steps": test_unrolling_steps,
             "intermediate_time_steps": test_intermediate_time_steps,
             "normalize_const": normalize_const if not "gs_" in dataset_name else None,

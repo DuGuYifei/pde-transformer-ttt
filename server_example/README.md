@@ -64,3 +64,26 @@ pdetransformer/core/mixed_channels/pde_transformer.py
 server_example/train_global_vittt_ape_xxl_server.py
 server_example/*.yaml
 ```
+## Dataset profiles
+
+The focused training entrypoint requires an explicit `dataset_profile`:
+
+- `legacy_small`: historical 60-simulation experiments, including `hyp`.
+- `full_paper`: the 16 PDEs used in the paper comparison. Joint 600-simulation
+  files use simulations `0..499` as the train/validation source and `500..599`
+  as test. PDEs with dedicated `*_test.hdf5` files use those files for test.
+
+`pdes_global-linear-ttt_256_full.yaml` trains PDE-S Global Linear TTT at native
+256 resolution on `thuerey-group/pde-transformer-ape2d-full`. The entrypoint
+checks every required file and simulation count before PBDL is constructed.
+This prevents an incomplete local directory from falling back to another
+remote dataset release.
+
+For an 11 GB GPU, start with the recorded `batch_size: 8`. If it does not fit,
+preserve the effective global batch of 128 with:
+
+```bash
+python server_example/train_global_vittt_ape_xxl_server.py \
+  --config server_example/pdes_global-linear-ttt_256_full.yaml \
+  --batch-size 4 --accumulate-grad-batches 16
+```

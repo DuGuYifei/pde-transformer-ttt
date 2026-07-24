@@ -27,27 +27,13 @@ for package_name, package_path in {
         sys.modules[package_name] = package
 
 from pdetransformer.core.mixed_channels import PDETransformer, SingleStepSupervised
+from pdetransformer.data.pbdl_datatypes.ape_2d_splits import (
+    DATASET_PROFILES,
+    SEPARATE_TEST_DATASETS,
+    ape_2d_xxl_simulation_split,
+    dataset_names_for_profile,
+)
 
-
-DATASET_NAMES = [
-    "diff",
-    "hyp",
-    "burgers",
-    "kdv",
-    "ks",
-    "fisher",
-    "gs_alpha",
-    "gs_beta",
-    "gs_gamma",
-    "gs_delta",
-    "gs_epsilon",
-    "gs_theta",
-    "gs_iota",
-    "gs_kappa",
-    "sh",
-    "decay_turb",
-    "kolm_flow",
-]
 
 REQUIRED_CONFIG_KEYS = {
     "data_dir",
@@ -77,6 +63,7 @@ REQUIRED_CONFIG_KEYS = {
     "test_unrolling_steps",
     "max_channels",
     "auto_resume",
+    "dataset_profile",
 }
 OPTIONAL_CONFIG_KEYS = {"init_checkpoint"}
 
@@ -108,6 +95,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-epochs", type=int)
     parser.add_argument("--devices", type=int)
     parser.add_argument("--strategy", type=str)
+    parser.add_argument("--batch-size", type=int)
+    parser.add_argument("--accumulate-grad-batches", type=int)
     parser.add_argument("--fresh", action="store_true", help="Ignore an existing last checkpoint.")
     parser.add_argument(
         "--check-config",
@@ -134,6 +123,11 @@ def load_config(path: Path) -> dict:
         raise ValueError(f"Unsupported token_mixer_type={config['token_mixer_type']!r}")
     if config["carrier_token_active"] and config["token_mixer_type"] != "attention":
         raise ValueError("Global ViTTT configurations cannot enable carrier tokens.")
+    if config["dataset_profile"] not in DATASET_PROFILES:
+        raise ValueError(
+            f"Unsupported dataset_profile={config['dataset_profile']!r}; "
+            f"expected one of {sorted(DATASET_PROFILES)}."
+        )
     return config
 
 
@@ -144,7 +138,7 @@ def build_data_module(config: dict):
 
     return MultiDataModule(
         path_index={"2D_APE_xxl": str(Path(config["data_dir"]).expanduser())},
-        dataset_names=DATASET_NAMES,
+        dataset_names=list(dataset_names_for_profile(config["dataset_profile"])),
         dataset_type="2D_APE_xxl",
         unrolling_steps=config["train_unrolling_steps"],
         test_unrolling_steps=config["test_unrolling_steps"],
@@ -156,7 +150,58 @@ def build_data_module(config: dict):
         normalize_const="mean-std",
         downsample_factor=config["downsample_factor"],
         max_channels=config["max_channels"],
+        dataset_profile=config["dataset_profile"],
     )
+
+
+def validate_dataset_files(config: dict) -> None:
+    """Fail before PBDL can fall back to a different remote dataset release."""
+
+    import h5py
+
+    data_dir = Path(config["data_dir"]).expanduser().resolve()
+    dataset_names = dataset_names_for_profile(config["dataset_profile"])
+    rows = []
+    for name in dataset_names:
+        train_path = data_dir / f"{name}.hdf5"
+        if not train_path.is_file():
+            raise FileNotFoundError(f"Required training dataset is missing: {train_path}")
+        with h5py.File(train_path, "r") as handle:
+            train_file_sims = len(handle["sims"])
+
+        train_sims, test_sims = ape_2d_xxl_simulation_split(
+            name,
+            config["dataset_profile"],
+        )
+        if name in SEPARATE_TEST_DATASETS:
+            test_path = data_dir / f"{name}_test.hdf5"
+            if not test_path.is_file():
+                raise FileNotFoundError(f"Required test dataset is missing: {test_path}")
+            with h5py.File(test_path, "r") as handle:
+                test_file_sims = len(handle["sims"])
+            rows.append(
+                f"{name}: train_file={train_file_sims} test_file={test_file_sims}"
+            )
+            continue
+
+        if train_sims is None or test_sims is None:
+            raise AssertionError(f"Missing joint-file split for {name}.")
+        required_sims = max(train_sims + test_sims) + 1
+        if train_file_sims < required_sims:
+            raise ValueError(
+                f"{train_path} has {train_file_sims} simulations, but profile "
+                f"{config['dataset_profile']!r} requires {required_sims}."
+            )
+        if set(train_sims) & set(test_sims):
+            raise ValueError(f"Train/test simulation overlap detected for {name}.")
+        rows.append(
+            f"{name}: file={train_file_sims} train_source={len(train_sims)} "
+            f"test={len(test_sims)}"
+        )
+
+    print("[data] validated files and disjoint simulation splits")
+    for row in rows:
+        print(f"[data] {row}")
 
 
 def build_training_module(config: dict) -> SingleStepSupervised:
@@ -206,6 +251,10 @@ def main():
         config["devices"] = args.devices
     if args.strategy is not None:
         config["strategy"] = args.strategy
+    if args.batch_size is not None:
+        config["batch_size"] = args.batch_size
+    if args.accumulate_grad_batches is not None:
+        config["accumulate_grad_batches"] = args.accumulate_grad_batches
 
     L.seed_everything(config["seed"], workers=True)
     data_dir = Path(config["data_dir"]).expanduser().resolve()
@@ -221,6 +270,7 @@ def main():
     if not data_dir.is_dir():
         raise FileNotFoundError(f"Data directory does not exist: {data_dir}")
 
+    validate_dataset_files(config)
     data_module = build_data_module(config)
     checkpoint = ModelCheckpoint(
         dirpath=checkpoint_dir,
@@ -255,6 +305,10 @@ def main():
         load_initial_weights(module, init_checkpoint)
     print(OmegaConf.to_yaml(OmegaConf.create(config), resolve=True))
     print(f"parameters: {parameter_count:,}")
+    print(
+        "effective_global_batch: "
+        f"{config['batch_size'] * config['devices'] * config['accumulate_grad_batches']}"
+    )
     print(f"resume_checkpoint: {resume_checkpoint}")
     print(f"init_checkpoint: {init_checkpoint}")
 

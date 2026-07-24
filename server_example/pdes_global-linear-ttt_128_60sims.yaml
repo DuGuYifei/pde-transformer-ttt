@@ -25,3 +25,4 @@ train_unrolling_steps: 1
 test_unrolling_steps: 29
 max_channels: 2
 auto_resume: true
+dataset_profile: legacy_small
