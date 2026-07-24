@@ -103,6 +103,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Build the model and print its parameter count without loading data.",
     )
+    parser.add_argument(
+        "--check-data",
+        action="store_true",
+        help="Validate required HDF5 files and disjoint simulation splits, then exit.",
+    )
     return parser.parse_args()
 
 
@@ -271,6 +276,8 @@ def main():
         raise FileNotFoundError(f"Data directory does not exist: {data_dir}")
 
     validate_dataset_files(config)
+    if args.check_data:
+        return
     data_module = build_data_module(config)
     checkpoint = ModelCheckpoint(
         dirpath=checkpoint_dir,
