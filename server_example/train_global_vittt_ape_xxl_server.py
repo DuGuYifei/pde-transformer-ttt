@@ -17,6 +17,7 @@ from omegaconf import OmegaConf
 # Prefer the reviewed source tree over an older installed wheel on the server.
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 for package_name, package_path in {
     "pdetransformer": REPO_ROOT / "pdetransformer",
     "pdetransformer.core": REPO_ROOT / "pdetransformer" / "core",
@@ -33,6 +34,7 @@ from pdetransformer.data.pbdl_datatypes.ape_2d_splits import (
     ape_2d_xxl_simulation_split,
     dataset_names_for_profile,
 )
+from training_ema import TrainingEMA, export_ema_checkpoint
 
 
 REQUIRED_CONFIG_KEYS = {
@@ -65,7 +67,14 @@ REQUIRED_CONFIG_KEYS = {
     "auto_resume",
     "dataset_profile",
 }
-OPTIONAL_CONFIG_KEYS = {"init_checkpoint"}
+OPTIONAL_CONFIG_DEFAULTS = {
+    "init_checkpoint": None,
+    "use_ema": False,
+    "ema_decay": 0.999,
+    "ema_update_every_n_steps": 1,
+    "ema_validate": True,
+}
+OPTIONAL_CONFIG_KEYS = set(OPTIONAL_CONFIG_DEFAULTS)
 
 
 class EpochSummary(L.Callback):
@@ -119,6 +128,8 @@ def load_config(path: Path) -> dict:
     unknown = sorted(set(config) - REQUIRED_CONFIG_KEYS - OPTIONAL_CONFIG_KEYS)
     if missing or unknown:
         raise ValueError(f"Invalid config: missing={missing}, unknown={unknown}")
+    for key, value in OPTIONAL_CONFIG_DEFAULTS.items():
+        config.setdefault(key, value)
     if config["token_mixer_type"] not in {
         "attention",
         "global_vittt",
@@ -133,6 +144,10 @@ def load_config(path: Path) -> dict:
             f"Unsupported dataset_profile={config['dataset_profile']!r}; "
             f"expected one of {sorted(DATASET_PROFILES)}."
         )
+    if not 0.0 <= float(config["ema_decay"]) < 1.0:
+        raise ValueError("ema_decay must be in [0, 1).")
+    if int(config["ema_update_every_n_steps"]) < 1:
+        raise ValueError("ema_update_every_n_steps must be positive.")
     return config
 
 
@@ -288,6 +303,16 @@ def main():
         save_top_k=3,
         every_n_epochs=1,
     )
+    ema_callback = None
+    callbacks = []
+    if config["use_ema"]:
+        ema_callback = TrainingEMA(
+            decay=config["ema_decay"],
+            update_every_n_steps=config["ema_update_every_n_steps"],
+            validate_with_ema=config["ema_validate"],
+        )
+        callbacks.append(ema_callback)
+    callbacks.extend([checkpoint, EpochSummary()])
     trainer = L.Trainer(
         max_epochs=config["max_epochs"],
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
@@ -295,7 +320,7 @@ def main():
         strategy=config["strategy"],
         precision=config["precision"],
         accumulate_grad_batches=config["accumulate_grad_batches"],
-        callbacks=[checkpoint, EpochSummary()],
+        callbacks=callbacks,
         logger=CSVLogger(save_dir=str(run_root), name=config["run_name"]),
         enable_progress_bar=False,
         log_every_n_steps=10,
@@ -318,6 +343,10 @@ def main():
     )
     print(f"resume_checkpoint: {resume_checkpoint}")
     print(f"init_checkpoint: {init_checkpoint}")
+    print(
+        "validation_weights: "
+        f"{'ema' if config['use_ema'] and config['ema_validate'] else 'raw'}"
+    )
 
     trainer.fit(
         module,
@@ -330,8 +359,22 @@ def main():
         ckpt_path="best",
         verbose=False,
     )
+    best_ema_checkpoint = None
+    last_ema_checkpoint = None
+    if ema_callback is not None and trainer.is_global_zero:
+        best_ema_checkpoint = export_ema_checkpoint(
+            Path(checkpoint.best_model_path),
+            checkpoint_dir / "ema-best.ckpt",
+        )
+        last_ema_checkpoint = export_ema_checkpoint(
+            Path(checkpoint.last_model_path),
+            checkpoint_dir / "ema-last.ckpt",
+        )
+    trainer.strategy.barrier()
     print(f"last_checkpoint: {checkpoint.last_model_path}")
     print(f"best_checkpoint: {checkpoint.best_model_path}")
+    print(f"ema_last_checkpoint: {last_ema_checkpoint}")
+    print(f"ema_best_checkpoint: {best_ema_checkpoint}")
     print(f"best_validation: {validation}")
 
 
