@@ -9,6 +9,7 @@ from pathlib import Path
 import lightning as L
 import torch
 from lightning.pytorch.callbacks import ModelCheckpoint
+from torch.func import functional_call
 from torch.utils.data import DataLoader, TensorDataset
 
 
@@ -41,6 +42,39 @@ class TinyRegression(L.LightningModule):
 
     def configure_optimizers(self):
         return torch.optim.SGD(self.parameters(), lr=0.05)
+
+
+class TinyDualRegression(TinyRegression):
+    def __init__(self, ema: TrainingEMA) -> None:
+        super().__init__()
+        self.ema = ema
+
+    def validation_step(self, batch, batch_idx):
+        x, target = batch
+        raw_prediction = self(x)
+        raw_loss = torch.nn.functional.mse_loss(raw_prediction, target)
+        raw_weight = self.linear.weight.detach().clone()
+        ema_prediction = functional_call(
+            self.linear,
+            self.ema.functional_parameters_for(self.linear, prefix="linear."),
+            (x,),
+        )
+        ema_loss = torch.nn.functional.mse_loss(ema_prediction, target)
+        torch.testing.assert_close(self.linear.weight, raw_weight)
+        self.log(
+            "val/raw_loss_epoch",
+            raw_loss,
+            on_step=False,
+            on_epoch=True,
+            batch_size=x.shape[0],
+        )
+        self.log(
+            "val/ema_loss_epoch",
+            ema_loss,
+            on_step=False,
+            on_epoch=True,
+            batch_size=x.shape[0],
+        )
 
 
 def loader() -> DataLoader:
@@ -169,9 +203,64 @@ def test_lightning_checkpoint_resume_and_export() -> None:
         )
 
 
+def test_dual_raw_and_ema_checkpoints() -> None:
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        checkpoint_dir = root / "checkpoints"
+        raw_checkpoint = ModelCheckpoint(
+            dirpath=checkpoint_dir,
+            filename="raw-epoch-{epoch:03d}",
+            monitor="val/raw_loss_epoch",
+            mode="min",
+            save_last=True,
+            save_top_k=1,
+        )
+        ema_checkpoint = ModelCheckpoint(
+            dirpath=checkpoint_dir,
+            filename="ema-source-epoch-{epoch:03d}",
+            monitor="val/ema_loss_epoch",
+            mode="min",
+            save_last=False,
+            save_top_k=1,
+        )
+        ema = TrainingEMA(decay=0.9, validate_with_ema=False)
+        dual_trainer = L.Trainer(
+            default_root_dir=root,
+            max_epochs=3,
+            accelerator="cpu",
+            devices=1,
+            precision="32-true",
+            callbacks=[ema, raw_checkpoint, ema_checkpoint],
+            logger=False,
+            enable_progress_bar=False,
+            enable_model_summary=False,
+            log_every_n_steps=1,
+            num_sanity_val_steps=0,
+        )
+        module = TinyDualRegression(ema)
+        dual_trainer.fit(
+            module,
+            train_dataloaders=loader(),
+            val_dataloaders=loader(),
+        )
+
+        assert raw_checkpoint.best_model_path
+        assert ema_checkpoint.best_model_path
+        assert Path(raw_checkpoint.best_model_path).is_file()
+        assert Path(ema_checkpoint.best_model_path).is_file()
+        assert raw_checkpoint.best_model_score is not None
+        assert ema_checkpoint.best_model_score is not None
+        exported = export_ema_checkpoint(
+            Path(ema_checkpoint.best_model_path),
+            checkpoint_dir / "ema-best.ckpt",
+        )
+        assert exported.is_file()
+
+
 def main() -> None:
     test_manual_update_and_swap()
     test_lightning_checkpoint_resume_and_export()
+    test_dual_raw_and_ema_checkpoints()
     print("training EMA smoke tests passed")
 
 

@@ -118,6 +118,31 @@ class TrainingEMA(L.Callback):
         self._raw_backup = {}
         self._using_ema = False
 
+    def functional_parameters_for(
+        self,
+        module: torch.nn.Module,
+        *,
+        prefix: str,
+    ) -> dict[str, torch.Tensor]:
+        """Return EMA parameters keyed for ``torch.func.functional_call``."""
+
+        if not self._shadow:
+            raise RuntimeError("EMA parameters are not initialized.")
+        expected = set(dict(module.named_parameters()))
+        selected = {
+            name.removeprefix(prefix): value
+            for name, value in self._shadow.items()
+            if name.startswith(prefix)
+        }
+        missing = sorted(expected - set(selected))
+        unexpected = sorted(set(selected) - expected)
+        if missing or unexpected:
+            raise RuntimeError(
+                "EMA functional parameters do not match the target module: "
+                f"missing={missing}, unexpected={unexpected}"
+            )
+        return selected
+
     def on_validation_start(self, trainer, pl_module) -> None:
         if self.validate_with_ema and self._shadow:
             self._swap_to_ema(pl_module)

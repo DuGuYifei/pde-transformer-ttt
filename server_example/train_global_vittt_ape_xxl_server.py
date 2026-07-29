@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import shutil
 import sys
 import time
 import types
@@ -13,6 +14,8 @@ import torch
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.loggers import CSVLogger
 from omegaconf import OmegaConf
+from torch.func import functional_call
+from torch.nn.functional import mse_loss
 
 # Prefer the reviewed source tree over an older installed wheel on the server.
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -73,6 +76,7 @@ OPTIONAL_CONFIG_DEFAULTS = {
     "ema_decay": 0.999,
     "ema_update_every_n_steps": 1,
     "ema_validate": True,
+    "ema_dual_validation": False,
 }
 OPTIONAL_CONFIG_KEYS = set(OPTIONAL_CONFIG_DEFAULTS)
 
@@ -93,9 +97,81 @@ class EpochSummary(L.Callback):
     def on_validation_epoch_end(self, trainer, pl_module):
         if trainer.sanity_checking:
             return
+        raw_loss = trainer.callback_metrics.get("val/raw_loss_epoch")
+        ema_loss = trainer.callback_metrics.get("val/ema_loss_epoch")
+        if raw_loss is not None and ema_loss is not None:
+            print(
+                f"[val] epoch={trainer.current_epoch + 1} "
+                f"raw_loss={float(raw_loss):.6g} ema_loss={float(ema_loss):.6g}"
+            )
+            return
         loss = trainer.callback_metrics.get("val/loss_epoch")
         if loss is not None:
             print(f"[val] epoch={trainer.current_epoch + 1} loss={float(loss):.6g}")
+
+
+class DualEMAValidationSupervised(SingleStepSupervised):
+    """Evaluate raw and EMA weights on the same validation batches."""
+
+    ema_callback: TrainingEMA | None = None
+
+    def attach_ema_callback(self, callback: TrainingEMA) -> None:
+        self.ema_callback = callback
+
+    def _validation_loss(self, prediction: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        if self.normalize_channels:
+            target = (
+                target - target.mean(dim=(2, 3), keepdim=True)
+            ) / (target.std(dim=(2, 3), keepdim=True) + 1e-4)
+            prediction = (
+                prediction - prediction.mean(dim=(2, 3), keepdim=True)
+            ) / (prediction.std(dim=(2, 3), keepdim=True) + 1e-4)
+        return mse_loss(prediction, target)
+
+    def validation_step(self, batch, batch_idx):
+        if self.ema_callback is None:
+            raise RuntimeError("Dual EMA validation requires an attached TrainingEMA callback.")
+
+        inputs, targets, labels = self.get_input(batch)
+        targets = targets[:, -1]
+        raw_prediction = self.model(inputs, class_labels=labels).sample
+        raw_loss = self._validation_loss(raw_prediction, targets)
+
+        ema_parameters = self.ema_callback.functional_parameters_for(
+            self.model,
+            prefix="model.",
+        )
+        ema_prediction = functional_call(
+            self.model,
+            ema_parameters,
+            (inputs,),
+            {"class_labels": labels},
+        ).sample
+        ema_loss = self._validation_loss(ema_prediction, targets)
+
+        batch_size = int(inputs.shape[0])
+        self.log(
+            "val/raw_loss_epoch",
+            raw_loss,
+            logger=True,
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
+            batch_size=batch_size,
+        )
+        self.log(
+            "val/ema_loss_epoch",
+            ema_loss,
+            logger=True,
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
+            batch_size=batch_size,
+        )
+        return {
+            "val/raw_loss_epoch": raw_loss,
+            "val/ema_loss_epoch": ema_loss,
+        }
 
 
 def parse_args() -> argparse.Namespace:
@@ -106,6 +182,26 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--strategy", type=str)
     parser.add_argument("--batch-size", type=int)
     parser.add_argument("--accumulate-grad-batches", type=int)
+    parser.add_argument(
+        "--run-root",
+        type=Path,
+        help="Override the output root, primarily for isolated server smoke tests.",
+    )
+    parser.add_argument(
+        "--run-name",
+        type=str,
+        help="Override the run name, primarily for isolated server smoke tests.",
+    )
+    parser.add_argument(
+        "--limit-train-batches",
+        type=int,
+        help="Limit training batches for a server memory smoke test.",
+    )
+    parser.add_argument(
+        "--limit-val-batches",
+        type=int,
+        help="Limit validation batches for a server memory smoke test.",
+    )
     parser.add_argument("--fresh", action="store_true", help="Ignore an existing last checkpoint.")
     parser.add_argument(
         "--check-config",
@@ -148,6 +244,10 @@ def load_config(path: Path) -> dict:
         raise ValueError("ema_decay must be in [0, 1).")
     if int(config["ema_update_every_n_steps"]) < 1:
         raise ValueError("ema_update_every_n_steps must be positive.")
+    if config["ema_dual_validation"] and not config["use_ema"]:
+        raise ValueError("ema_dual_validation requires use_ema=true.")
+    if config["ema_dual_validation"] and not config["ema_validate"]:
+        raise ValueError("ema_dual_validation requires ema_validate=true.")
     return config
 
 
@@ -237,11 +337,21 @@ def build_training_module(config: dict) -> SingleStepSupervised:
         vittt_inner_lr=config["vittt_inner_lr"],
         vittt_head_dim=config["vittt_head_dim"],
     )
-    training_module = SingleStepSupervised(
+    module_type = (
+        DualEMAValidationSupervised
+        if config["use_ema"] and config["ema_dual_validation"]
+        else SingleStepSupervised
+    )
+    monitor = (
+        "val/ema_loss_epoch"
+        if config["use_ema"] and config["ema_dual_validation"]
+        else "val/loss_epoch"
+    )
+    training_module = module_type(
         model=model,
         image_key=0,
         optimizer="adamw",
-        monitor="val/loss_epoch",
+        monitor=monitor,
     )
     training_module.learning_rate = config["learning_rate"]
     return training_module
@@ -275,6 +385,10 @@ def main():
         config["batch_size"] = args.batch_size
     if args.accumulate_grad_batches is not None:
         config["accumulate_grad_batches"] = args.accumulate_grad_batches
+    if args.run_root is not None:
+        config["run_root"] = str(args.run_root)
+    if args.run_name is not None:
+        config["run_name"] = args.run_name
 
     L.seed_everything(config["seed"], workers=True)
     data_dir = Path(config["data_dir"]).expanduser().resolve()
@@ -294,25 +408,61 @@ def main():
     if args.check_data:
         return
     data_module = build_data_module(config)
-    checkpoint = ModelCheckpoint(
-        dirpath=checkpoint_dir,
-        filename="epoch-{epoch:03d}",
-        monitor="val/loss_epoch",
-        mode="min",
-        save_last=True,
-        save_top_k=3,
-        every_n_epochs=1,
-    )
+    dual_validation = bool(config["use_ema"] and config["ema_dual_validation"])
+    raw_checkpoint = None
+    ema_checkpoint = None
+    checkpoint = None
+    if dual_validation:
+        raw_checkpoint = ModelCheckpoint(
+            dirpath=checkpoint_dir,
+            filename="raw-epoch-{epoch:03d}",
+            monitor="val/raw_loss_epoch",
+            mode="min",
+            save_last=True,
+            save_top_k=1,
+            every_n_epochs=1,
+        )
+        ema_checkpoint = ModelCheckpoint(
+            dirpath=checkpoint_dir,
+            filename="ema-source-epoch-{epoch:03d}",
+            monitor="val/ema_loss_epoch",
+            mode="min",
+            save_last=False,
+            save_top_k=1,
+            every_n_epochs=1,
+        )
+    else:
+        checkpoint = ModelCheckpoint(
+            dirpath=checkpoint_dir,
+            filename="epoch-{epoch:03d}",
+            monitor="val/loss_epoch",
+            mode="min",
+            save_last=True,
+            save_top_k=3,
+            every_n_epochs=1,
+        )
     ema_callback = None
     callbacks = []
     if config["use_ema"]:
         ema_callback = TrainingEMA(
             decay=config["ema_decay"],
             update_every_n_steps=config["ema_update_every_n_steps"],
-            validate_with_ema=config["ema_validate"],
+            validate_with_ema=config["ema_validate"] and not dual_validation,
         )
         callbacks.append(ema_callback)
-    callbacks.extend([checkpoint, EpochSummary()])
+        if dual_validation:
+            if not isinstance(module, DualEMAValidationSupervised):
+                raise AssertionError("Dual EMA validation module was not constructed.")
+            module.attach_ema_callback(ema_callback)
+    if dual_validation:
+        callbacks.extend([raw_checkpoint, ema_checkpoint, EpochSummary()])
+    else:
+        callbacks.extend([checkpoint, EpochSummary()])
+    trainer_kwargs = {}
+    if args.limit_train_batches is not None:
+        trainer_kwargs["limit_train_batches"] = args.limit_train_batches
+    if args.limit_val_batches is not None:
+        trainer_kwargs["limit_val_batches"] = args.limit_val_batches
     trainer = L.Trainer(
         max_epochs=config["max_epochs"],
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
@@ -324,6 +474,7 @@ def main():
         logger=CSVLogger(save_dir=str(run_root), name=config["run_name"]),
         enable_progress_bar=False,
         log_every_n_steps=10,
+        **trainer_kwargs,
     )
 
     resume_checkpoint = None
@@ -345,7 +496,7 @@ def main():
     print(f"init_checkpoint: {init_checkpoint}")
     print(
         "validation_weights: "
-        f"{'ema' if config['use_ema'] and config['ema_validate'] else 'raw'}"
+        f"{'raw+ema' if dual_validation else 'ema' if config['use_ema'] and config['ema_validate'] else 'raw'}"
     )
 
     trainer.fit(
@@ -353,29 +504,55 @@ def main():
         datamodule=data_module,
         ckpt_path=str(resume_checkpoint) if resume_checkpoint else None,
     )
-    validation = trainer.validate(
-        module,
-        datamodule=data_module,
-        ckpt_path="best",
-        verbose=False,
-    )
     best_ema_checkpoint = None
     last_ema_checkpoint = None
-    if ema_callback is not None and trainer.is_global_zero:
-        best_ema_checkpoint = export_ema_checkpoint(
-            Path(checkpoint.best_model_path),
-            checkpoint_dir / "ema-best.ckpt",
+    raw_best_checkpoint = None
+    raw_last_checkpoint = None
+    validation = None
+    if dual_validation:
+        if trainer.is_global_zero:
+            raw_best_checkpoint = checkpoint_dir / "raw-best.ckpt"
+            shutil.copy2(raw_checkpoint.best_model_path, raw_best_checkpoint)
+            raw_last_checkpoint = Path(raw_checkpoint.last_model_path)
+            best_ema_checkpoint = export_ema_checkpoint(
+                Path(ema_checkpoint.best_model_path),
+                checkpoint_dir / "ema-best.ckpt",
+            )
+            last_ema_checkpoint = export_ema_checkpoint(
+                raw_last_checkpoint,
+                checkpoint_dir / "ema-last.ckpt",
+            )
+    else:
+        validation = trainer.validate(
+            module,
+            datamodule=data_module,
+            ckpt_path="best",
+            verbose=False,
         )
-        last_ema_checkpoint = export_ema_checkpoint(
-            Path(checkpoint.last_model_path),
-            checkpoint_dir / "ema-last.ckpt",
-        )
+        if ema_callback is not None and trainer.is_global_zero:
+            best_ema_checkpoint = export_ema_checkpoint(
+                Path(checkpoint.best_model_path),
+                checkpoint_dir / "ema-best.ckpt",
+            )
+            last_ema_checkpoint = export_ema_checkpoint(
+                Path(checkpoint.last_model_path),
+                checkpoint_dir / "ema-last.ckpt",
+            )
     trainer.strategy.barrier()
-    print(f"last_checkpoint: {checkpoint.last_model_path}")
-    print(f"best_checkpoint: {checkpoint.best_model_path}")
+    if dual_validation:
+        print(f"raw_last_checkpoint: {raw_last_checkpoint}")
+        print(f"raw_best_checkpoint: {raw_best_checkpoint}")
+        print(f"raw_best_source: {raw_checkpoint.best_model_path}")
+        print(f"raw_best_validation: {raw_checkpoint.best_model_score}")
+        print(f"ema_best_source: {ema_checkpoint.best_model_path}")
+        print(f"ema_best_validation: {ema_checkpoint.best_model_score}")
+    else:
+        print(f"last_checkpoint: {checkpoint.last_model_path}")
+        print(f"best_checkpoint: {checkpoint.best_model_path}")
     print(f"ema_last_checkpoint: {last_ema_checkpoint}")
     print(f"ema_best_checkpoint: {best_ema_checkpoint}")
-    print(f"best_validation: {validation}")
+    if validation is not None:
+        print(f"best_validation: {validation}")
 
 
 if __name__ == "__main__":
