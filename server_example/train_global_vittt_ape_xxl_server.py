@@ -183,6 +183,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int)
     parser.add_argument("--accumulate-grad-batches", type=int)
     parser.add_argument(
+        "--seed",
+        type=int,
+        help="Override the experiment seed for independent repeated runs.",
+    )
+    parser.add_argument(
         "--run-root",
         type=Path,
         help="Override the output root, primarily for isolated server smoke tests.",
@@ -385,6 +390,8 @@ def main():
         config["batch_size"] = args.batch_size
     if args.accumulate_grad_batches is not None:
         config["accumulate_grad_batches"] = args.accumulate_grad_batches
+    if args.seed is not None:
+        config["seed"] = args.seed
     if args.run_root is not None:
         config["run_root"] = str(args.run_root)
     if args.run_name is not None:
