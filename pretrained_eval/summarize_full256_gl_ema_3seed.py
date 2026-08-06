@@ -31,6 +31,11 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Defaults to RESULT_ROOT/summary_3seed.",
     )
+    parser.add_argument(
+        "--checkpoint-label",
+        default="ema-best.ckpt",
+        help="Checkpoint-selection label recorded in the generated report.",
+    )
     return parser.parse_args()
 
 
@@ -80,6 +85,7 @@ def render_report(
     aggregate_rows: list[dict[str, Any]],
     aggregate_stats_rows: list[dict[str, Any]],
     elapsed_rows: list[dict[str, Any]],
+    checkpoint_label: str,
 ) -> None:
     per_seed = {
         (row["model_seed"], row["split"], row["condition"], row["aggregation"]): row
@@ -95,19 +101,19 @@ def render_report(
     }
 
     lines = [
-        "# G-L+EMA PDE-S Full-256 Three-Seed Evaluation",
+        f"# G-L+EMA PDE-S Full-256 Three-Seed {checkpoint_label} Evaluation",
         "",
         "## Scope",
         "",
         "This report evaluates three independently trained G-L+EMA PDE-S models ",
         "with model-training seeds 42, 43, and 44. Every checkpoint uses its own ",
-        "EMA-best model selection. These model seeds are distinct from the fixed ",
+        f"`{checkpoint_label}` model selection. These model seeds are distinct from the fixed ",
         "data-generation seeds inside the generated ID/OOD test matrix.",
         "",
         "- training resolution: 256 x 256",
         "- training data: `pde-transformer-ape2d-full` train split",
         "- training epochs: 100 per seed",
-        "- inference checkpoint: `ema-best.ckpt`",
+        f"- inference checkpoint: `{checkpoint_label}`",
         "- evaluation batch: 8 on one GTX 1080 Ti",
         "- rollout: 29 autoregressive transitions",
         "- uncertainty: sample standard deviation and two-sided 95% Student-t CI ",
@@ -375,6 +381,7 @@ def main() -> None:
     serialized = {
         "model_seeds": MODEL_SEEDS,
         "steps": STEPS,
+        "checkpoint_label": args.checkpoint_label,
         "ci_method": "two-sided Student t, 95%, df=2",
         "aggregate_per_model_seed": aggregate_rows,
         "aggregate_statistics": aggregate_stats_rows,
@@ -386,7 +393,13 @@ def main() -> None:
         json.dump(serialized, handle, indent=2)
         handle.write("\n")
 
-    render_report(output_dir, aggregate_rows, aggregate_stats_rows, elapsed_rows)
+    render_report(
+        output_dir,
+        aggregate_rows,
+        aggregate_stats_rows,
+        elapsed_rows,
+        args.checkpoint_label,
+    )
 
     print(f"Wrote three-seed summary to {output_dir}")
 

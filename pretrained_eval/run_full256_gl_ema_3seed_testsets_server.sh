@@ -8,6 +8,7 @@ RUN_ROOT="${RUN_ROOT:-$HOME/working/runs_global_linear_s_ema_3seed_full256}"
 FULL_DATA_DIR="${FULL_DATA_DIR:-$HOME/working/datasets_ape2d_full}"
 OOD_DATA_DIR="${OOD_DATA_DIR:-$HOME/working/datasets_test}"
 RESULT_ROOT="${RESULT_ROOT:-$HOME/working/eval_global_linear_s_ema_3seed_full256}"
+CHECKPOINT_NAME="${CHECKPOINT_NAME:-ema-best.ckpt}"
 GPU_ID="${GPU_ID:-0}"
 BATCH_SIZE="${BATCH_SIZE:-8}"
 EVALUATOR="$REPO_ROOT/pretrained_eval/test_pretrained_mc_server.py"
@@ -25,11 +26,11 @@ export PYTHONUNBUFFERED=1
 
 for seed in "${SEEDS[@]}"; do
   run_name="pdes_global-linear-ttt-s-ema_256_full_seed${seed}_100ep"
-  checkpoint="$RUN_ROOT/$run_name/checkpoints/ema-best.ckpt"
+  checkpoint="$RUN_ROOT/$run_name/checkpoints/$CHECKPOINT_NAME"
   seed_root="$RESULT_ROOT/seed${seed}"
 
   if [[ ! -f "$checkpoint" ]]; then
-    echo "Missing EMA checkpoint for seed $seed: $checkpoint" >&2
+    echo "Missing checkpoint for seed $seed: $checkpoint" >&2
     exit 1
   fi
 
