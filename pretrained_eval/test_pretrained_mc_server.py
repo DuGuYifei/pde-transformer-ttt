@@ -627,8 +627,6 @@ def build_pretrained_strategy(args: argparse.Namespace) -> SingleStepSupervised:
         model=model,
         image_key=0,
         optimizer="adamw",
-        use_ttt_state_cache_inference=False,
-        use_ttt_state_cache_train=False,
     )
     strategy.learning_rate = 0.0
     return strategy
