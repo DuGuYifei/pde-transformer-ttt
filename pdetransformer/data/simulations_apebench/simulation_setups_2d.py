@@ -3,64 +3,81 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 import hashlib
+from typing import Mapping, Optional
 
-def get_setup_2d(sim_type:str, is_test_set:bool, sim_id:int):
-    if not is_test_set:
-        seed_name = sim_type
+def get_setup_2d(
+        sim_type: str,
+        is_test_set: bool,
+        sim_id: int,
+        seed_override: Optional[int] = None,
+        parameter_overrides: Optional[Mapping[str, float]] = None,
+):
+    if seed_override is None:
+        seed_name = sim_type if not is_test_set else sim_type + "_test"
+        seed = int(hashlib.md5(seed_name.encode('utf-8')).hexdigest(), 16) % 2**30 + sim_id
     else:
-        seed_name = sim_type + "_test"
-    seed = int(hashlib.md5(seed_name.encode('utf-8')).hexdigest(), 16) % 2**30 + sim_id
+        seed = int(seed_override)
+    overrides = {} if parameter_overrides is None else dict(parameter_overrides)
 
     # linear
     if sim_type == "adv":
-        return get_advection(is_test_set, seed)
+        return get_advection(is_test_set, seed, overrides)
     elif sim_type == "diff":
-        return get_diffusion(is_test_set, seed)
+        return get_diffusion(is_test_set, seed, overrides)
     elif sim_type == "adv_diff":
-        return get_advection_diffusion(is_test_set, seed)
+        return get_advection_diffusion(is_test_set, seed, overrides)
     elif sim_type == "disp":
-        return get_dispersion(is_test_set, seed)
+        return get_dispersion(is_test_set, seed, overrides)
     elif sim_type == "hyp":
-        return get_hyper_diffusion(is_test_set, seed)
+        return get_hyper_diffusion(is_test_set, seed, overrides)
 
     # nonlinear
     elif sim_type == "burgers":
-        return get_burgers(is_test_set, seed)
+        return get_burgers(is_test_set, seed, overrides)
     elif sim_type == "kdv":
-        return get_korteweg_de_vries(is_test_set, seed)
+        return get_korteweg_de_vries(is_test_set, seed, overrides)
     elif sim_type == "ks":
-        return get_kuramoto_sivashinsky(is_test_set, seed)
+        return get_kuramoto_sivashinsky(is_test_set, seed, overrides)
 
     # reaction-diffusion
     elif sim_type == "fisher":
-        return get_fisher_kpp(is_test_set, seed)
+        return get_fisher_kpp(is_test_set, seed, overrides)
     elif sim_type == "gs_alpha": # time-dependent
-        return get_gray_scott(is_test_set, seed, variant="alpha")
+        return get_gray_scott(is_test_set, seed, variant="alpha", parameter_overrides=overrides)
     elif sim_type == "gs_beta": # time-dependent
-        return get_gray_scott(is_test_set, seed, variant="beta")
+        return get_gray_scott(is_test_set, seed, variant="beta", parameter_overrides=overrides)
     elif sim_type == "gs_gamma": # steady (with time-dependent defects)
-        return get_gray_scott(is_test_set, seed, variant="gamma")
+        return get_gray_scott(is_test_set, seed, variant="gamma", parameter_overrides=overrides)
     elif sim_type == "gs_delta": # steady
-        return get_gray_scott(is_test_set, seed, variant="delta")
+        return get_gray_scott(is_test_set, seed, variant="delta", parameter_overrides=overrides)
     elif sim_type == "gs_epsilon": # chaotic
-        return get_gray_scott(is_test_set, seed, variant="epsilon")
+        return get_gray_scott(is_test_set, seed, variant="epsilon", parameter_overrides=overrides)
     elif sim_type == "gs_theta": # steady
-        return get_gray_scott(is_test_set, seed, variant="theta")
+        return get_gray_scott(is_test_set, seed, variant="theta", parameter_overrides=overrides)
     elif sim_type == "gs_iota": # steady
-        return get_gray_scott(is_test_set, seed, variant="iota")
+        return get_gray_scott(is_test_set, seed, variant="iota", parameter_overrides=overrides)
     elif sim_type == "gs_kappa": # steady-ish (very slow process)
-        return get_gray_scott(is_test_set, seed, variant="kappa")
+        return get_gray_scott(is_test_set, seed, variant="kappa", parameter_overrides=overrides)
     elif sim_type == "sh":
-        return get_swift_hohenberg(is_test_set, seed)
+        return get_swift_hohenberg(is_test_set, seed, overrides)
 
     # navier-stokes
     elif sim_type == "decay_turb":
-        return get_decaying_turbulence(is_test_set, seed)
+        return get_decaying_turbulence(is_test_set, seed, overrides)
     elif sim_type == "kolm_flow":
-        return get_kolmogorov_flow(is_test_set, seed)
+        return get_kolmogorov_flow(is_test_set, seed, overrides)
 
     else:
         raise ValueError("Unknown simulation type: %s" % sim_type)
+
+
+def _override(overrides: Mapping[str, float], key: str, sampled):
+    return overrides[key] if key in overrides else sampled
+
+
+def _apply_numerical_overrides(p: dict, overrides: Mapping[str, float]) -> None:
+    if "__Sub Steps" in overrides:
+        p["Sub Steps"] = int(overrides["__Sub Steps"])
 
 
 def initial_condition_generator(p:dict, varied:dict) -> ex.ic.BaseRandomICGenerator:
@@ -88,7 +105,7 @@ def initial_condition_generator(p:dict, varied:dict) -> ex.ic.BaseRandomICGenera
 
 
 
-def get_advection(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
+def get_advection(is_test_set:bool, seed:int, parameter_overrides=None) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
     p = {
         "PDE": "Advection",
         "Dimension": 2,
@@ -120,7 +137,10 @@ def get_advection(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.BaseSteppe
 
     u_init = ic_gen(p["Resolution"], key=jax.random.PRNGKey(seed))
 
+    overrides = parameter_overrides or {}
     vel = np.random.uniform(p["Velocity (min)"], p["Velocity (max)"], 2)
+    vel[0] = _override(overrides, "Velocity X", vel[0])
+    vel[1] = _override(overrides, "Velocity Y", vel[1])
     stepper = ex.stepper.Advection(2, p["Domain Extent"], p["Resolution"], p["Dt"]/p["Sub Steps"], velocity=vel)
 
     varied["Velocity X"] = vel[0]
@@ -129,7 +149,7 @@ def get_advection(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.BaseSteppe
     return p, varied, stepper, u_init
 
 
-def get_diffusion(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
+def get_diffusion(is_test_set:bool, seed:int, parameter_overrides=None) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
     p = {
         "PDE": "Diffusion",
         "Dimension": 2,
@@ -161,7 +181,10 @@ def get_diffusion(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.BaseSteppe
 
     u_init = ic_gen(p["Resolution"], key=jax.random.PRNGKey(seed))
 
+    overrides = parameter_overrides or {}
     nu = np.random.uniform(p["Viscosity (min)"], p["Viscosity (max)"], 2)
+    nu[0] = _override(overrides, "Viscosity X", nu[0])
+    nu[1] = _override(overrides, "Viscosity Y", nu[1])
     stepper = ex.stepper.Diffusion(2, p["Domain Extent"], p["Resolution"], p["Dt"]/p["Sub Steps"], diffusivity=nu)
 
     varied["Viscosity X"] = nu[0]
@@ -170,7 +193,7 @@ def get_diffusion(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.BaseSteppe
     return p, varied, stepper, u_init
 
 
-def get_advection_diffusion(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
+def get_advection_diffusion(is_test_set:bool, seed:int, parameter_overrides=None) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
     p = {
         "PDE": "Advection-Diffusion",
         "Dimension": 2,
@@ -204,8 +227,13 @@ def get_advection_diffusion(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.
 
     u_init = ic_gen(p["Resolution"], key=jax.random.PRNGKey(seed))
 
+    overrides = parameter_overrides or {}
     nu = np.random.uniform(p["Viscosity (min)"], p["Viscosity (max)"], 2)
     vel = np.random.uniform(p["Velocity (min)"], p["Velocity (max)"], 2)
+    nu[0] = _override(overrides, "Viscosity X", nu[0])
+    nu[1] = _override(overrides, "Viscosity Y", nu[1])
+    vel[0] = _override(overrides, "Velocity X", vel[0])
+    vel[1] = _override(overrides, "Velocity Y", vel[1])
     stepper = ex.stepper.AdvectionDiffusion(2, p["Domain Extent"], p["Resolution"], p["Dt"]/p["Sub Steps"], velocity=vel, diffusivity=nu)
 
     varied["Viscosity X"] = nu[0]
@@ -216,7 +244,7 @@ def get_advection_diffusion(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.
     return p, varied, stepper, u_init
 
 
-def get_dispersion(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
+def get_dispersion(is_test_set:bool, seed:int, parameter_overrides=None) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
     p = {
         "PDE": "Dispersion",
         "Dimension": 2,
@@ -248,7 +276,10 @@ def get_dispersion(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.BaseStepp
 
     u_init = ic_gen(p["Resolution"], key=jax.random.PRNGKey(seed))
 
+    overrides = parameter_overrides or {}
     dispersivity = np.random.uniform(p["Dispersivity (min)"], p["Dispersivity (max)"], 2)
+    dispersivity[0] = _override(overrides, "Dispersivity X", dispersivity[0])
+    dispersivity[1] = _override(overrides, "Dispersivity Y", dispersivity[1])
     stepper = ex.stepper.Dispersion(2, p["Domain Extent"], p["Resolution"], p["Dt"]/p["Sub Steps"], dispersivity=dispersivity)
 
     varied["Dispersivity X"] = dispersivity[0]
@@ -257,7 +288,7 @@ def get_dispersion(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.BaseStepp
     return p, varied, stepper, u_init
 
 
-def get_hyper_diffusion(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
+def get_hyper_diffusion(is_test_set:bool, seed:int, parameter_overrides=None) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
     p = {
         "PDE": "Hyper-Diffusion",
         "Dimension": 2,
@@ -289,7 +320,9 @@ def get_hyper_diffusion(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.Base
 
     u_init = ic_gen(p["Resolution"], key=jax.random.PRNGKey(seed))
 
+    overrides = parameter_overrides or {}
     diffusivity = np.random.uniform(p["Hyper-Diffusivity (min)"], p["Hyper-Diffusivity (max)"])
+    diffusivity = _override(overrides, "Hyper-Diffusivity", diffusivity)
     stepper = ex.stepper.HyperDiffusion(2, p["Domain Extent"], p["Resolution"], p["Dt"]/p["Sub Steps"], hyper_diffusivity=diffusivity)
 
     varied["Hyper-Diffusivity"] = diffusivity
@@ -297,7 +330,7 @@ def get_hyper_diffusion(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.Base
     return p, varied, stepper, u_init
 
 
-def get_burgers(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
+def get_burgers(is_test_set:bool, seed:int, parameter_overrides=None) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
     p = {
         "PDE": "Burgers",
         "Dimension": 2,
@@ -330,7 +363,10 @@ def get_burgers(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.BaseStepper,
     multi_channel_ic_gen = ex.ic.RandomMultiChannelICGenerator([ic_gen, ic_gen])
     u_init = multi_channel_ic_gen(p["Resolution"], key=jax.random.PRNGKey(seed))
 
+    overrides = parameter_overrides or {}
+    _apply_numerical_overrides(p, overrides)
     nu = np.random.uniform(p["Viscosity (min)"], p["Viscosity (max)"])
+    nu = _override(overrides, "Viscosity", nu)
     stepper = ex.stepper.Burgers(2, p["Domain Extent"], p["Resolution"], p["Dt"]/p["Sub Steps"], diffusivity=nu)
 
     varied["Viscosity"] = nu
@@ -338,7 +374,7 @@ def get_burgers(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.BaseStepper,
     return p, varied, stepper, u_init
 
 
-def get_korteweg_de_vries(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
+def get_korteweg_de_vries(is_test_set:bool, seed:int, parameter_overrides=None) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
     p = {
         "PDE": "Korteweg-de-Vries",
         "Dimension": 2,
@@ -372,8 +408,11 @@ def get_korteweg_de_vries(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.Ba
     multi_channel_ic_gen = ex.ic.RandomMultiChannelICGenerator([ic_gen, ic_gen])
     u_init = multi_channel_ic_gen(p["Resolution"], key=jax.random.PRNGKey(seed))
 
+    overrides = parameter_overrides or {}
     extent = np.random.uniform(p["Domain Extent (min)"], p["Domain Extent (max)"])
     nu = np.random.uniform(p["Viscosity (min)"], p["Viscosity (max)"])
+    extent = _override(overrides, "Domain Extent", extent)
+    nu = _override(overrides, "Viscosity", nu)
     #scale = np.random.uniform(p["Convection Scale (min)"], p["Convection Scale (max)"])
     #dispersivity = np.random.uniform(p["Dispersivity (min)"], p["Dispersivity (max)"])
     stepper = ex.stepper.KortewegDeVries(2, extent, p["Resolution"], p["Dt"]/p["Sub Steps"], diffusivity=nu)
@@ -386,7 +425,7 @@ def get_korteweg_de_vries(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.Ba
     return p, varied, stepper, u_init
 
 
-def get_kuramoto_sivashinsky(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
+def get_kuramoto_sivashinsky(is_test_set:bool, seed:int, parameter_overrides=None) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
     p = {
         "PDE": "Kuramoto-Sivashinsky",
         "Dimension": 2,
@@ -418,7 +457,9 @@ def get_kuramoto_sivashinsky(is_test_set:bool, seed:int) -> tuple[dict, dict, ex
 
     u_init = ic_gen(p["Resolution"], key=jax.random.PRNGKey(seed))
 
+    overrides = parameter_overrides or {}
     extent = np.random.uniform(p["Domain Extent (min)"], p["Domain Extent (max)"])
+    extent = _override(overrides, "Domain Extent", extent)
     stepper = ex.stepper.KuramotoSivashinsky(2, extent, p["Resolution"], p["Dt"]/p["Sub Steps"])
 
     varied["Domain Extent"] = extent
@@ -426,7 +467,7 @@ def get_kuramoto_sivashinsky(is_test_set:bool, seed:int) -> tuple[dict, dict, ex
     return p, varied, stepper, u_init
 
 
-def get_fisher_kpp(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
+def get_fisher_kpp(is_test_set:bool, seed:int, parameter_overrides=None) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
     p = {
         "PDE": "Fisher-KPP",
         "Dimension": 2,
@@ -461,8 +502,11 @@ def get_fisher_kpp(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.BaseStepp
 
     u_init = ic_gen(p["Resolution"], key=jax.random.PRNGKey(seed))
 
+    overrides = parameter_overrides or {}
     nu = np.random.uniform(p["Diffusivity (min)"], p["Diffusivity (max)"])
     r = np.random.uniform(p["Reactivity (min)"], p["Reactivity (max)"])
+    nu = _override(overrides, "Diffusivity", nu)
+    r = _override(overrides, "Reactivity", r)
     stepper = ex.stepper.reaction.FisherKPP(2, p["Domain Extent"], p["Resolution"], p["Dt"]/p["Sub Steps"], diffusivity=nu, reactivity=r)
 
     varied["Diffusivity"] = nu
@@ -471,7 +515,7 @@ def get_fisher_kpp(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.BaseStepp
     return p, varied, stepper, u_init
 
 
-def get_gray_scott(is_test_set:bool, seed:int, variant:str) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
+def get_gray_scott(is_test_set:bool, seed:int, variant:str, parameter_overrides=None) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
     if variant == "alpha": # time-dependent
         p = {
             "PDE": "Gray Scott",
@@ -663,8 +707,11 @@ def get_gray_scott(is_test_set:bool, seed:int, variant:str) -> tuple[dict, dict,
 
     u_init = ic_gen(p["Resolution"], key=jax.random.PRNGKey(seed))
 
+    overrides = parameter_overrides or {}
     dyn = np.random.randint(len(p["Dynamics Types (Feed Rate, Kill Rate)"]))
     feed, kill = p["Dynamics Types (Feed Rate, Kill Rate)"][dyn]
+    feed = _override(overrides, "Feed Rate", feed)
+    kill = _override(overrides, "Kill Rate", kill)
     stepper = ex.stepper.reaction.GrayScott(2, p["Domain Extent"], p["Resolution"], p["Dt"]/p["Sub Steps"],
                                     diffusivity_1=p["Diffusivity A"], diffusivity_2=p["Diffusivity B"], feed_rate=feed, kill_rate=kill)
 
@@ -675,7 +722,7 @@ def get_gray_scott(is_test_set:bool, seed:int, variant:str) -> tuple[dict, dict,
     return p, varied, stepper, u_init
 
 
-def get_swift_hohenberg(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
+def get_swift_hohenberg(is_test_set:bool, seed:int, parameter_overrides=None) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
     p = {
         "PDE": "Swift-Hohenberg",
         "Dimension": 2,
@@ -710,8 +757,11 @@ def get_swift_hohenberg(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.Base
 
     u_init = ic_gen(p["Resolution"], key=jax.random.PRNGKey(seed))
 
+    overrides = parameter_overrides or {}
     r = np.random.uniform(p["Reactivity (min)"], p["Reactivity (max)"])
     k = np.random.uniform(p["Critical Number (min)"], p["Critical Number (max)"])
+    r = _override(overrides, "Reactivity", r)
+    k = _override(overrides, "Critical Number", k)
     stepper = ex.stepper.reaction.SwiftHohenberg(2, p["Domain Extent"], p["Resolution"], p["Dt"]/p["Sub Steps"], reactivity=r, critical_number=k)
 
     varied["Reactivity"] = r
@@ -720,7 +770,7 @@ def get_swift_hohenberg(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.Base
     return p, varied, stepper, u_init
 
 
-def get_decaying_turbulence(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
+def get_decaying_turbulence(is_test_set:bool, seed:int, parameter_overrides=None) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
     p = {
         "PDE": "Navier-Stokes: Decaying Turbulence",
         "Dimension": 2,
@@ -752,7 +802,10 @@ def get_decaying_turbulence(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.
 
     u_init = ic_gen(p["Resolution"], key=jax.random.PRNGKey(seed))
 
+    overrides = parameter_overrides or {}
+    _apply_numerical_overrides(p, overrides)
     nu = np.random.uniform(p["Viscosity (min)"], p["Viscosity (max)"])
+    nu = _override(overrides, "Viscosity", nu)
     stepper = ex.stepper.NavierStokesVorticity(2, p["Domain Extent"], p["Resolution"], p["Dt"]/p["Sub Steps"], diffusivity=nu)
 
     varied["Viscosity"] = nu
@@ -760,7 +813,7 @@ def get_decaying_turbulence(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.
     return p, varied, stepper, u_init
 
 
-def get_kolmogorov_flow(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
+def get_kolmogorov_flow(is_test_set:bool, seed:int, parameter_overrides=None) -> tuple[dict, dict, ex.BaseStepper, jnp.ndarray]:
     p = {
         "PDE": "Navier-Stokes: Kolmogorov Flow",
         "Dimension": 2,
@@ -793,7 +846,10 @@ def get_kolmogorov_flow(is_test_set:bool, seed:int) -> tuple[dict, dict, ex.Base
 
     u_init = ic_gen(p["Resolution"], key=jax.random.PRNGKey(seed))
 
+    overrides = parameter_overrides or {}
+    _apply_numerical_overrides(p, overrides)
     nu = np.random.uniform(p["Viscosity (min)"], p["Viscosity (max)"])
+    nu = _override(overrides, "Viscosity", nu)
     stepper = ex.stepper.KolmogorovFlowVorticity(2, p["Domain Extent"], p["Resolution"], p["Dt"]/p["Sub Steps"], diffusivity=nu)
 
     varied["Viscosity"] = nu
