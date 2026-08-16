@@ -33,6 +33,21 @@
 
 ---
 
+## Thesis extension: full-map Test-Time Training
+
+This fork preserves the complete upstream PDE-Transformer repository at
+commit `850e09d` and adds the PDE-TTT experiments developed for the thesis
+*Test Time Training for Adaptive Neural PDE Solvers*.
+
+The original shifted-window Attention model remains available. The thesis
+extension adds three selectable full-map token mixers, including the selected
+linear PDE-TTT architecture, matched training configurations, strict test
+splits, EMA checkpointing, parameter-shift data generation, and evaluation
+utilities. Start with [the thesis code guide](docs/thesis-extension.md) for the
+architecture, source-file map, experiment-to-YAML table, and commands.
+
+---
+
 **PDE-Transformer** is a state-of-the-art neural architecture for physics simulations, specifically designed for partial differential equations (PDEs) on regular grids. This work will be presented at **ICML 2025**.
 
 ### Key Highlights
