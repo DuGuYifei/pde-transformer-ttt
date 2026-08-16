@@ -54,7 +54,12 @@ def main() -> None:
             json.dumps(build_manifest(evaluator)),
             encoding="utf-8",
         )
-        manifest = evaluator.load_id_ood_manifest(data_dir, ["diff"])
+        manifest = evaluator.load_id_ood_manifest(
+            data_dir,
+            ["diff"],
+            sample_size=128,
+            downsample_factor=2,
+        )
         split_info = {
             "source_dataset_name": "diff",
             "source_file_name": "diff.hdf5",

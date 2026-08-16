@@ -20,6 +20,10 @@ for package_name, package_path in {
     sys.modules[package_name] = package
 
 from pdetransformer.data.pbdl_datatypes import ape_2d_xxl
+from pdetransformer.data.pbdl_datatypes.ape_2d_splits import (
+    SEPARATE_TEST_DATASETS,
+    ape_2d_xxl_simulation_split,
+)
 
 
 OFFICIAL_DATASETS = [
@@ -109,6 +113,7 @@ def build_splits(dataset_name: str):
             test_unrolling_steps=29,
             normalize_data="mean-std",
             normalize_const="mean-std",
+            dataset_profile="legacy_small",
         )
     finally:
         ape_2d_xxl.PBDLDataset = original_dataset
@@ -118,19 +123,27 @@ def test_all_official_splits() -> None:
     total_rollouts = 0
     for dataset_name in OFFICIAL_DATASETS:
         train, val, test = build_splits(dataset_name)
-        split_spec = ape_2d_xxl.ape_2d_xxl_split_spec(dataset_name)
+        train_sims, test_sims = ape_2d_xxl_simulation_split(
+            dataset_name,
+            "legacy_small",
+        )
+        test_dataset_name = (
+            dataset_name + "_test"
+            if dataset_name in SEPARATE_TEST_DATASETS
+            else dataset_name
+        )
 
         assert val.dataset is train.dataset
-        assert test.dset_name == split_spec["test_dataset_name"]
-        assert test.sel_sims == split_spec["test_sims"]
+        assert test.dset_name == test_dataset_name
+        assert test.sel_sims == test_sims
         assert test.samples_per_sim == 1
 
-        if split_spec["test_sims"] is None:
-            expected_rollouts = SIMULATION_COUNTS[split_spec["test_dataset_name"]]
+        if test_sims is None:
+            expected_rollouts = SIMULATION_COUNTS[test_dataset_name]
         else:
-            assert train.dataset.sel_sims == split_spec["train_sims"]
+            assert train.dataset.sel_sims == train_sims
             assert set(train.dataset.sel_sims).isdisjoint(test.sel_sims)
-            expected_rollouts = len(split_spec["test_sims"])
+            expected_rollouts = len(test_sims)
 
         assert len(test) == expected_rollouts
         total_rollouts += expected_rollouts

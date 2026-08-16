@@ -33,38 +33,42 @@ def load_evaluator():
 def test_expected_splits_pass(evaluator) -> None:
     total_rollouts = 0
     for pde in evaluator.DATASET_NAMES:
-        split_spec = evaluator.ape_2d_xxl_split_spec(pde)
-        source_name = split_spec["test_dataset_name"]
-        source_num_simulations = SOURCE_SIMULATION_COUNTS.get(source_name, 60)
-        selected_sim_ids = split_spec["test_sims"]
-        if selected_sim_ids is None:
-            selected_sim_ids = list(range(source_num_simulations))
-        evaluator.validate_strict_official_test_split(
+        train_sims, test_sims = evaluator.ape_2d_xxl_simulation_split(
             pde,
+            "legacy_small",
+        )
+        source_name = pde + "_test" if pde in evaluator.SEPARATE_TEST_DATASETS else pde
+        source_num_simulations = SOURCE_SIMULATION_COUNTS.get(source_name, 60)
+        selected_sim_ids = (
+            list(range(source_num_simulations))
+            if test_sims is None
+            else list(test_sims)
+        )
+        evaluator.validate_profile_test_split(
+            pde,
+            "legacy_small",
             {
                 "source_dataset_name": source_name,
                 "source_file_name": source_name + ".hdf5",
                 "source_num_simulations": source_num_simulations,
-                "source_num_frames": evaluator.STRICT_OFFICIAL_SOURCE_FRAMES[pde],
                 "selected_sim_ids": selected_sim_ids,
                 "samples_per_simulation": 1,
             },
         )
         total_rollouts += len(selected_sim_ids)
 
-    assert set(evaluator.DATASET_NAMES) == evaluator.STRICT_OFFICIAL_TEST_DATASETS
     assert total_rollouts == 167
 
 
 def test_all_burgers_simulations_fail(evaluator) -> None:
     try:
-        evaluator.validate_strict_official_test_split(
+        evaluator.validate_profile_test_split(
             "burgers",
+            "legacy_small",
             {
                 "source_dataset_name": "burgers",
                 "source_file_name": "burgers.hdf5",
                 "source_num_simulations": 60,
-                "source_num_frames": 30,
                 "selected_sim_ids": list(range(60)),
                 "samples_per_simulation": 1,
             },

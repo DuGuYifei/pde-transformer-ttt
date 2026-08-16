@@ -20,7 +20,7 @@ OFFICIAL_TTT = (
 OFFICIAL_VITTT_ROOT = REPO_ROOT.parent / "_external_research" / "ViTTT-latest" / "vittt"
 UPSTREAM_REPO = REPO_ROOT.parent / "pde-transformer"
 CONFIG_PATHS = {
-    "attention": REPO_ROOT / "server_example" / "pdes_attention_128_60sims.yaml",
+    "attention": REPO_ROOT / "server_example" / "pdes_attention_128_100ep_60sims.yaml",
     "global_vittt": REPO_ROOT
     / "server_example"
     / "pdes_global-vittt_128_60sims.yaml",
@@ -180,8 +180,7 @@ def assert_fair_training_configs():
         config = dict(config)
         config.pop("run_name")
         config.pop("token_mixer_type")
-        # These YAMLs record the 20-epoch screen and later 100-epoch runs.
-        # Duration is intentionally checked by each experiment-specific test.
+        # Duration is checked by each experiment-specific test.
         config.pop("max_epochs")
         comparable.append(config)
     assert comparable[0] == comparable[1] == comparable[2]
