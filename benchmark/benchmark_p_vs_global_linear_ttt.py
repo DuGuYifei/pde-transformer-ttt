@@ -21,6 +21,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--mixer", choices=MIXERS, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--sample-size", type=int, choices=(128, 256), default=128)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--warmup-steps", type=int, default=10)
     parser.add_argument("--measure-steps", type=int, default=50)
@@ -78,7 +79,7 @@ def main() -> None:
     properties = torch.cuda.get_device_properties(device)
 
     model = PDETransformer(
-        sample_size=128,
+        sample_size=args.sample_size,
         in_channels=2,
         out_channels=2,
         type="PDE-S",
@@ -92,7 +93,13 @@ def main() -> None:
     model.train()
     optimizer = torch.optim.AdamW(model.parameters(), lr=4.0e-5, weight_decay=1.0e-15)
 
-    inputs = torch.randn(args.batch_size, 2, 128, 128, device=device)
+    inputs = torch.randn(
+        args.batch_size,
+        2,
+        args.sample_size,
+        args.sample_size,
+        device=device,
+    )
     targets = torch.randn_like(inputs)
     labels = torch.zeros(args.batch_size, dtype=torch.long, device=device)
     parameter_count = sum(parameter.numel() for parameter in model.parameters())
@@ -138,7 +145,7 @@ def main() -> None:
         "device": properties.name,
         "torch_version": torch.__version__,
         "precision": "fp32",
-        "sample_size": 128,
+        "sample_size": args.sample_size,
         "batch_size": args.batch_size,
         "warmup_steps": args.warmup_steps,
         "measure_steps": args.measure_steps,
