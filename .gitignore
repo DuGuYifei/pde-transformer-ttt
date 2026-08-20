@@ -173,3 +173,6 @@ wandb/
 
 # plot files
 .plots/
+
+# Local/server visualization artifacts
+/tmp/
