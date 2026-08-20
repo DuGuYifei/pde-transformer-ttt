@@ -11,10 +11,10 @@ import numpy as np
 
 
 MODEL_ROWS = (
-    ("published_pde_s", "Published PDE-S"),
-    ("pde_transformer_s", "PDE-Transformer-S"),
-    ("pde_ttt_s", "PDE-TTT-S"),
     ("pde_ttt_s_ema", "PDE-TTT-S EMA"),
+    ("published_pde_s", "Published PDE-S"),
+    ("pde_ttt_s", "PDE-TTT-S"),
+    ("pde_transformer_s", "PDE-Transformer-S"),
 )
 
 PDE_LABELS = {
