@@ -26,6 +26,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import h5py
 import numpy as np
 import torch
 
@@ -109,6 +110,7 @@ CONFIG_DEFAULTS: dict[str, Any] = {
     "checkpoint_path": None,
     "dataset_profile": "legacy_small",
     "strict_test_split": False,
+    "legacy_all_source_sims": False,
     "id_ood_test": False,
 }
 
@@ -230,6 +232,7 @@ def parse_args() -> argparse.Namespace:
             "global_vittt",
             "global_h_vittt",
             "global_linear_ttt",
+            "window_linear_ttt",
         ),
         default=cfg.get("token_mixer_type"),
         help="Local checkpoint mixer type. Ignored for from_pretrained models.",
@@ -321,6 +324,15 @@ def parse_args() -> argparse.Namespace:
         help="Validate source files, simulation IDs, and one-rollout-per-simulation.",
     )
     parser.add_argument(
+        "--legacy-all-source-sims",
+        action=argparse.BooleanOptionalAction,
+        default=cfg["legacy_all_source_sims"],
+        help=(
+            "Reproduce the historical 128-resolution architecture-screen protocol "
+            "by evaluating every simulation in each selected source file."
+        ),
+    )
+    parser.add_argument(
         "--id-ood-test",
         action=argparse.BooleanOptionalAction,
         default=cfg["id_ood_test"],
@@ -339,6 +351,10 @@ def parse_args() -> argparse.Namespace:
 
     parser.set_defaults(global_ttt_stage_names=cfg["global_ttt_stage_names"])
     args = parser.parse_args(remaining)
+    if args.strict_test_split and args.legacy_all_source_sims:
+        parser.error("--strict-test-split and --legacy-all-source-sims are mutually exclusive")
+    if args.id_ood_test and args.legacy_all_source_sims:
+        parser.error("--id-ood-test and --legacy-all-source-sims are mutually exclusive")
     if args.datasets is None:
         args.datasets = list(dataset_names_for_profile(args.dataset_profile))
     return args
@@ -374,6 +390,20 @@ def build_data_module(
     if test_sim_ids_override is not None:
         params_data["test_sim_ids_override"] = list(test_sim_ids_override)
     return MultiDataModule(**params_data)
+
+
+def all_source_sim_ids(data_dir: Path, pde: str) -> list[int]:
+    source_name = pde + "_test" if pde in SEPARATE_TEST_DATASETS else pde
+    source_file = data_dir / f"{source_name}.hdf5"
+    if not source_file.is_file():
+        raise FileNotFoundError(f"Historical evaluation source not found: {source_file}")
+    with h5py.File(source_file, "r") as handle:
+        if "sims" not in handle:
+            raise RuntimeError(f"Historical evaluation source has no 'sims' group: {source_file}")
+        sim_ids = sorted(int(name.removeprefix("sim")) for name in handle["sims"].keys())
+    if sim_ids != list(range(len(sim_ids))):
+        raise RuntimeError(f"Simulation IDs are not contiguous in {source_file}: {sim_ids}")
+    return sim_ids
 
 
 def count_parameters(model: torch.nn.Module) -> tuple[int, int]:
@@ -639,6 +669,18 @@ def evaluate_dataset(
     pde: str,
     device: torch.device,
 ) -> dict[str, Any]:
+    if args.id_ood_test:
+        test_sim_ids_override = ID_OOD_EXPECTED_SIM_IDS
+    elif args.legacy_all_source_sims:
+        # The standard loader already selects every trajectory from dedicated
+        # *_test.hdf5 sources. An explicit override would incorrectly redirect
+        # those PDEs back to their training file.
+        test_sim_ids_override = (
+            None if pde in SEPARATE_TEST_DATASETS else all_source_sim_ids(data_dir, pde)
+        )
+    else:
+        test_sim_ids_override = None
+
     dm = build_data_module(
         data_dir=data_dir,
         dataset_names=[pde],
@@ -648,7 +690,7 @@ def evaluate_dataset(
         test_unrolling_steps=args.test_unrolling_steps,
         max_channels=args.max_channels,
         dataset_profile=args.dataset_profile,
-        test_sim_ids_override=ID_OOD_EXPECTED_SIM_IDS if args.id_ood_test else None,
+        test_sim_ids_override=test_sim_ids_override,
     )
     dm.setup(stage="test")
     split_info = inspect_test_split(dm, pde)
@@ -1193,6 +1235,7 @@ def main() -> None:
     print(f"test_unroll_steps: {args.test_unrolling_steps}")
     print(f"dataset_profile:   {args.dataset_profile}")
     print(f"strict test split: {args.strict_test_split}")
+    print(f"legacy all sims:   {args.legacy_all_source_sims}")
     print(f"ID/OOD test-only:  {args.id_ood_test}")
     print(f"torch:             {torch.__version__}")
     print(f"cuda available:    {torch.cuda.is_available()}")
@@ -1224,6 +1267,7 @@ def main() -> None:
         "data_dir_warning_non_official": data_dir_warning,
         "dataset_profile": args.dataset_profile,
         "strict_test_split": args.strict_test_split,
+        "legacy_all_source_sims": args.legacy_all_source_sims,
         "id_ood_test": args.id_ood_test,
         "id_ood_manifest_path": (
             str(data_dir / "manifest.json") if args.id_ood_test else None
