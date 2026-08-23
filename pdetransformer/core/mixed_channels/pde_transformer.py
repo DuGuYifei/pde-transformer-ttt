@@ -29,6 +29,13 @@ SUPPORTED_TOKEN_MIXERS = {
     "global_vittt",
     "global_h_vittt",
     "global_linear_ttt",
+    "window_linear_ttt",
+}
+
+FULL_MAP_TOKEN_MIXERS = {
+    "global_vittt",
+    "global_h_vittt",
+    "global_linear_ttt",
 }
 
 ###############################
@@ -378,7 +385,7 @@ class PDEStage(nn.Module):
                 f"Expected one of {sorted(SUPPORTED_TOKEN_MIXERS)}."
             )
         if token_mixer_type != "attention" and carrier_token_active:
-            raise ValueError("Global ViTTT variants do not support carrier tokens.")
+            raise ValueError("TTT token mixers do not support carrier tokens.")
 
         self.dim = dim
         self.token_mixer_type = token_mixer_type
@@ -461,7 +468,7 @@ class PDEStage(nn.Module):
 
         B, C, H, W = hidden_states.shape
 
-        if self.token_mixer_type != "attention":
+        if self.token_mixer_type in FULL_MAP_TOKEN_MIXERS:
             for block in self.blocks:
                 hidden_states = hidden_states.permute(0, 2, 3, 1)
                 hidden_states, _ = block(
@@ -869,6 +876,19 @@ class PDEBlock(nn.Module):
                 attn_drop=attn_drop,
                 proj_drop=drop,
                 resolution=window_size,
+            )
+        elif token_mixer_type == "window_linear_ttt":
+            if vittt_head_dim <= 0 or dim % vittt_head_dim != 0:
+                raise ValueError(
+                    f"Window Linear TTT dim={dim} must be divisible by "
+                    f"vittt_head_dim={vittt_head_dim}."
+                )
+            self.cpe = None
+            self.attn = GlobalLinearTTTMixer(
+                dim,
+                num_heads=dim // vittt_head_dim,
+                qkv_bias=True,
+                inner_lr=vittt_inner_lr,
             )
         else:
             if vittt_head_dim <= 0 or dim % vittt_head_dim != 0:
