@@ -12,6 +12,8 @@ declared in YAML.
 | `global_linear_ttt` | Selected full-map linear PDE-TTT mixer |
 | `global_vittt` | Nonlinear full-map ViT3-style mixer |
 | `global_h_vittt` | H-style full-map mixer with periodic RoPE and Conv MLP |
+| `window_linear_ttt` | One closed-form linear update per 8 x 8 shifted window |
+| `window_fullbatch_mlp_ttt` | One non-causal two-layer MLP update per 8 x 8 shifted window |
 
 Full-map mixers process the complete feature map at each stage. They do not
 partition windows, cache fast weights, or carry state between PDE rollout

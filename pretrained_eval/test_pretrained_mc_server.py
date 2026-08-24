@@ -233,6 +233,7 @@ def parse_args() -> argparse.Namespace:
             "global_h_vittt",
             "global_linear_ttt",
             "window_linear_ttt",
+            "window_fullbatch_mlp_ttt",
         ),
         default=cfg.get("token_mixer_type"),
         help="Local checkpoint mixer type. Ignored for from_pretrained models.",

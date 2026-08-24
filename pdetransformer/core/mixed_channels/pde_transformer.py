@@ -22,6 +22,7 @@ from ..pde_vittt_global import (
     GlobalViTTTMixer,
 )
 from ..pde_vittt_global_linear import GlobalLinearTTTMixer
+from ..pde_vittt_window_mlp import WindowFullBatchMLPTTTMixer
 
 
 SUPPORTED_TOKEN_MIXERS = {
@@ -30,6 +31,7 @@ SUPPORTED_TOKEN_MIXERS = {
     "global_h_vittt",
     "global_linear_ttt",
     "window_linear_ttt",
+    "window_fullbatch_mlp_ttt",
 }
 
 FULL_MAP_TOKEN_MIXERS = {
@@ -877,14 +879,22 @@ class PDEBlock(nn.Module):
                 proj_drop=drop,
                 resolution=window_size,
             )
-        elif token_mixer_type == "window_linear_ttt":
+        elif token_mixer_type in {
+            "window_linear_ttt",
+            "window_fullbatch_mlp_ttt",
+        }:
             if vittt_head_dim <= 0 or dim % vittt_head_dim != 0:
                 raise ValueError(
-                    f"Window Linear TTT dim={dim} must be divisible by "
+                    f"Window TTT dim={dim} must be divisible by "
                     f"vittt_head_dim={vittt_head_dim}."
                 )
             self.cpe = None
-            self.attn = GlobalLinearTTTMixer(
+            mixer_class = (
+                GlobalLinearTTTMixer
+                if token_mixer_type == "window_linear_ttt"
+                else WindowFullBatchMLPTTTMixer
+            )
+            self.attn = mixer_class(
                 dim,
                 num_heads=dim // vittt_head_dim,
                 qkv_bias=True,
@@ -1372,6 +1382,8 @@ class PDEImpl(nn.Module):
             if isinstance(module, GlobalViTTTMixer):
                 module.reset_official_projection_parameters()
             elif isinstance(module, GlobalLinearTTTMixer):
+                module.reset_ttt_parameters()
+            elif isinstance(module, WindowFullBatchMLPTTTMixer):
                 module.reset_ttt_parameters()
             elif isinstance(module, DepthwiseCPE2D):
                 module.reset_official_parameters()

@@ -237,6 +237,7 @@ def load_config(path: Path) -> dict:
         "global_h_vittt",
         "global_linear_ttt",
         "window_linear_ttt",
+        "window_fullbatch_mlp_ttt",
     }:
         raise ValueError(f"Unsupported token_mixer_type={config['token_mixer_type']!r}")
     if config["carrier_token_active"] and config["token_mixer_type"] != "attention":
