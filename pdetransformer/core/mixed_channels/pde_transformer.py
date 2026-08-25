@@ -40,6 +40,11 @@ FULL_MAP_TOKEN_MIXERS = {
     "global_linear_ttt",
 }
 
+WINDOW_TTT_TOKEN_MIXERS = {
+    "window_linear_ttt",
+    "window_fullbatch_mlp_ttt",
+}
+
 ###############################
 # We need to create subclass of Swinv2PreTrainedModel because it sets use_mask_token=True
 # This will create a parameter swinv2.embeddings.mask_token that will receive no gradient if bool_masked_pos is None
@@ -378,6 +383,8 @@ class PDEStage(nn.Module):
             token_mixer_type: str = "attention",
             vittt_inner_lr: float = 1.0,
             vittt_head_dim: int = 32,
+            window_ttt_update_mode: str = "full_batch",
+            window_ttt_chunk_size: int = 16,
     ):
         super().__init__()
 
@@ -405,6 +412,8 @@ class PDEStage(nn.Module):
                 token_mixer_type=token_mixer_type,
                 vittt_inner_lr=vittt_inner_lr,
                 vittt_head_dim=vittt_head_dim,
+                window_ttt_update_mode=window_ttt_update_mode,
+                window_ttt_chunk_size=window_ttt_chunk_size,
             )
             blocks.append(block)
 
@@ -833,6 +842,8 @@ class PDEBlock(nn.Module):
         token_mixer_type="attention",
         vittt_inner_lr=1.0,
         vittt_head_dim=32,
+        window_ttt_update_mode="full_batch",
+        window_ttt_chunk_size=16,
     ):
         super().__init__()
         """
@@ -899,6 +910,8 @@ class PDEBlock(nn.Module):
                 num_heads=dim // vittt_head_dim,
                 qkv_bias=True,
                 inner_lr=vittt_inner_lr,
+                update_mode=window_ttt_update_mode,
+                chunk_size=window_ttt_chunk_size,
             )
         else:
             if vittt_head_dim <= 0 or dim % vittt_head_dim != 0:
@@ -1050,6 +1063,14 @@ class PDEBlock(nn.Module):
 
         if self.token_mixer_type == "attention":
             x_msa = self.attn(x_msa, attn_mask=attn_mask)
+        elif self.token_mixer_type in WINDOW_TTT_TOKEN_MIXERS:
+            x_msa = self.attn(
+                x_msa,
+                height=H,
+                width=W,
+                periodic=self.periodic,
+                windows_per_sample=num_windows_total,
+            )
         else:
             x_msa = self.attn(x_msa, height=H, width=W, periodic=self.periodic)
         x_msa = x_msa * (1 + msa_gate[:, None])
@@ -1271,6 +1292,8 @@ class PDEImpl(nn.Module):
             token_mixer_type: str = "attention",
             vittt_inner_lr: float = 1.0,
             vittt_head_dim: int = 32,
+            window_ttt_update_mode: str = "full_batch",
+            window_ttt_chunk_size: int = 16,
             **kwargs
     ):
         super().__init__()
@@ -1298,6 +1321,8 @@ class PDEImpl(nn.Module):
             'token_mixer_type': token_mixer_type,
             'vittt_inner_lr': vittt_inner_lr,
             'vittt_head_dim': vittt_head_dim,
+            'window_ttt_update_mode': window_ttt_update_mode,
+            'window_ttt_chunk_size': window_ttt_chunk_size,
         }
 
         if patch_size is not None:
@@ -1528,13 +1553,17 @@ class PDETransformer(ModelMixin, ConfigMixin):
             token_mixer_type: str = "attention",
             vittt_inner_lr: float = 1.0,
             vittt_head_dim: int = 32,
+            window_ttt_update_mode: str = "full_batch",
+            window_ttt_chunk_size: int = 16,
             **kwargs
     ):
         super(PDETransformer, self).__init__()
         args = {'in_channels': in_channels, 'out_channels': out_channels, 'patch_size': patch_size,
                 'periodic': periodic, 'carrier_token_active': carrier_token_active, 'window_size': window_size,
                 'token_mixer_type': token_mixer_type, 'vittt_inner_lr': vittt_inner_lr,
-                'vittt_head_dim': vittt_head_dim}
+                'vittt_head_dim': vittt_head_dim,
+                'window_ttt_update_mode': window_ttt_update_mode,
+                'window_ttt_chunk_size': window_ttt_chunk_size}
 
         args.update(kwargs)
 

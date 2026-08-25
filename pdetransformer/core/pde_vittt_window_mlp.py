@@ -5,7 +5,7 @@ from timm.models.layers import trunc_normal_
 
 
 class WindowFullBatchMLPTTTMixer(nn.Module):
-    """One non-causal MLP fast-weight update over all tokens in one window."""
+    """Closed-form MLP TTT with optional sequential window schedules."""
 
     def __init__(
         self,
@@ -14,6 +14,8 @@ class WindowFullBatchMLPTTTMixer(nn.Module):
         qkv_bias: bool = True,
         inner_lr: float = 1.0,
         hidden_ratio: int = 4,
+        update_mode: str = "full_batch",
+        chunk_size: int = 16,
     ):
         super().__init__()
         if num_heads <= 0 or dim % num_heads != 0:
@@ -27,6 +29,17 @@ class WindowFullBatchMLPTTTMixer(nn.Module):
         self.hidden_dim = hidden_ratio * self.head_dim
         self.inner_lr = inner_lr
         self.scale = 9**-0.5
+        self.update_mode = update_mode
+        self.chunk_size = chunk_size
+
+        valid_modes = {"full_batch", "token_sequential", "window_sequential"}
+        if update_mode not in valid_modes:
+            raise ValueError(
+                f"Unsupported update_mode={update_mode!r}; "
+                f"expected one of {sorted(valid_modes)}."
+            )
+        if chunk_size <= 0:
+            raise ValueError(f"chunk_size must be positive, got {chunk_size}.")
 
         self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
         self.w1 = nn.Parameter(
@@ -60,11 +73,15 @@ class WindowFullBatchMLPTTTMixer(nn.Module):
         self,
         k: torch.Tensor,
         v: torch.Tensor,
+        initial_weights: tuple[torch.Tensor, torch.Tensor] | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        """Construct independent per-sample MLP weights from one full-window update."""
+        """Apply one inner update to the supplied per-sample MLP weights."""
         token_count = k.shape[-2]
-        w1 = self.w1.to(dtype=k.dtype)
-        w2 = self.w2.to(dtype=k.dtype)
+        if initial_weights is None:
+            w1 = self.w1.to(dtype=k.dtype)
+            w2 = self.w2.to(dtype=k.dtype)
+        else:
+            w1, w2 = initial_weights
 
         z1 = k @ w1
         hidden = F.gelu(z1)
@@ -82,12 +99,82 @@ class WindowFullBatchMLPTTTMixer(nn.Module):
             w2 - self.inner_lr * gradient_w2,
         )
 
+    @staticmethod
+    def _apply_fast_weights(
+        q: torch.Tensor,
+        fast_weights: tuple[torch.Tensor, torch.Tensor],
+    ) -> torch.Tensor:
+        fast_w1, fast_w2 = fast_weights
+        return F.gelu(q @ fast_w1) @ fast_w2
+
+    def _token_sequential(
+        self,
+        q: torch.Tensor,
+        k: torch.Tensor,
+        v: torch.Tensor,
+    ) -> torch.Tensor:
+        batch, _, token_count, _ = q.shape
+        fast_weights = (
+            self.w1.to(dtype=q.dtype).expand(batch, -1, -1, -1),
+            self.w2.to(dtype=q.dtype).expand(batch, -1, -1, -1),
+        )
+        outputs = []
+        for start in range(0, token_count, self.chunk_size):
+            stop = min(start + self.chunk_size, token_count)
+            fast_weights = self.inner_train(
+                k[..., start:stop, :],
+                v[..., start:stop, :],
+                initial_weights=fast_weights,
+            )
+            outputs.append(
+                self._apply_fast_weights(q[..., start:stop, :], fast_weights)
+            )
+        return torch.cat(outputs, dim=-2)
+
+    def _window_sequential(
+        self,
+        q: torch.Tensor,
+        k: torch.Tensor,
+        v: torch.Tensor,
+        windows_per_sample: int,
+    ) -> torch.Tensor:
+        window_batch, num_heads, token_count, head_dim = q.shape
+        if windows_per_sample <= 0 or window_batch % windows_per_sample != 0:
+            raise ValueError(
+                f"window batch {window_batch} must be divisible by "
+                f"windows_per_sample={windows_per_sample}."
+            )
+        sample_batch = window_batch // windows_per_sample
+        q = q.reshape(
+            sample_batch, windows_per_sample, num_heads, token_count, head_dim
+        )
+        k = k.reshape_as(q)
+        v = v.reshape_as(q)
+        fast_weights = (
+            self.w1.to(dtype=q.dtype).expand(sample_batch, -1, -1, -1),
+            self.w2.to(dtype=q.dtype).expand(sample_batch, -1, -1, -1),
+        )
+        outputs = []
+        for window_index in range(windows_per_sample):
+            fast_weights = self.inner_train(
+                k[:, window_index],
+                v[:, window_index],
+                initial_weights=fast_weights,
+            )
+            outputs.append(
+                self._apply_fast_weights(q[:, window_index], fast_weights)
+            )
+        return torch.stack(outputs, dim=1).reshape(
+            window_batch, num_heads, token_count, head_dim
+        )
+
     def forward(
         self,
         x: torch.Tensor,
         height: int,
         width: int,
         periodic: bool = False,
+        windows_per_sample: int = 1,
     ) -> torch.Tensor:
         if x.ndim != 3 or x.shape[-1] != self.dim:
             raise ValueError(
@@ -108,13 +195,21 @@ class WindowFullBatchMLPTTTMixer(nn.Module):
             self.head_dim,
         )
         q, k, v = qkv.permute(2, 0, 3, 1, 4).unbind(0)
-        fast_w1, fast_w2 = self.inner_train(k, v)
-        output = F.gelu(q @ fast_w1) @ fast_w2
+        if self.update_mode == "full_batch":
+            fast_weights = self.inner_train(k, v)
+            output = self._apply_fast_weights(q, fast_weights)
+        elif self.update_mode == "token_sequential":
+            output = self._token_sequential(q, k, v)
+        else:
+            output = self._window_sequential(
+                q, k, v, windows_per_sample=windows_per_sample
+            )
         return output.transpose(1, 2).reshape(batch, token_count, self.dim)
 
     def extra_repr(self) -> str:
         return (
             f"dim={self.dim}, num_heads={self.num_heads}, "
             f"head_dim={self.head_dim}, hidden_dim={self.hidden_dim}, "
-            f"inner_lr={self.inner_lr}"
+            f"inner_lr={self.inner_lr}, update_mode={self.update_mode!r}, "
+            f"chunk_size={self.chunk_size}"
         )

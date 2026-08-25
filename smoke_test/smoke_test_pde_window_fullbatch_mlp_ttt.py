@@ -140,9 +140,18 @@ def assert_window_model_integration():
     original_mixer_forward = WindowFullBatchMLPTTTMixer.forward
     original_roll = pde_module.torch.roll
 
-    def recording_forward(self, x, height, width, periodic=False):
+    def recording_forward(
+        self, x, height, width, periodic=False, windows_per_sample=1
+    ):
         calls.append((x.shape[0], x.shape[1], x.shape[2], height, width))
-        return original_mixer_forward(self, x, height, width, periodic)
+        return original_mixer_forward(
+            self,
+            x,
+            height,
+            width,
+            periodic,
+            windows_per_sample=windows_per_sample,
+        )
 
     def recording_roll(*args, **kwargs):
         shifts = kwargs.get("shifts", args[1] if len(args) > 1 else None)

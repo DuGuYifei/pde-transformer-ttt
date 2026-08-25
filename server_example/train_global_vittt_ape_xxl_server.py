@@ -72,6 +72,8 @@ REQUIRED_CONFIG_KEYS = {
 }
 OPTIONAL_CONFIG_DEFAULTS = {
     "init_checkpoint": None,
+    "window_ttt_update_mode": "full_batch",
+    "window_ttt_chunk_size": 16,
     "use_ema": False,
     "ema_decay": 0.999,
     "ema_update_every_n_steps": 1,
@@ -242,6 +244,17 @@ def load_config(path: Path) -> dict:
         raise ValueError(f"Unsupported token_mixer_type={config['token_mixer_type']!r}")
     if config["carrier_token_active"] and config["token_mixer_type"] != "attention":
         raise ValueError("TTT token mixers cannot enable carrier tokens.")
+    if config["window_ttt_update_mode"] not in {
+        "full_batch",
+        "token_sequential",
+        "window_sequential",
+    }:
+        raise ValueError(
+            "window_ttt_update_mode must be full_batch, token_sequential, "
+            "or window_sequential."
+        )
+    if int(config["window_ttt_chunk_size"]) < 1:
+        raise ValueError("window_ttt_chunk_size must be positive.")
     if config["dataset_profile"] not in DATASET_PROFILES:
         raise ValueError(
             f"Unsupported dataset_profile={config['dataset_profile']!r}; "
@@ -343,6 +356,8 @@ def build_training_module(config: dict) -> SingleStepSupervised:
         token_mixer_type=config["token_mixer_type"],
         vittt_inner_lr=config["vittt_inner_lr"],
         vittt_head_dim=config["vittt_head_dim"],
+        window_ttt_update_mode=config["window_ttt_update_mode"],
+        window_ttt_chunk_size=config["window_ttt_chunk_size"],
     )
     module_type = (
         DualEMAValidationSupervised
