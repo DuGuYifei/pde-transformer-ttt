@@ -92,6 +92,8 @@ CONFIG_DEFAULTS: dict[str, Any] = {
     "ttt_scan_checkpoint_group_size": 0,
     "vittt_inner_lr": 1.0,
     "vittt_head_dim": 32,
+    "window_ttt_update_mode": "full_batch",
+    "window_ttt_chunk_size": 16,
     "vittt_padding_mode": "zero",
     "attention_ttt_type": "ttt_sequence",
     "attention_ttt_gate_init": 0.1,
@@ -261,6 +263,16 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--vittt-inner-lr", type=float, default=cfg["vittt_inner_lr"])
     parser.add_argument("--vittt-head-dim", type=int, default=cfg["vittt_head_dim"])
+    parser.add_argument(
+        "--window-ttt-update-mode",
+        choices=("full_batch", "token_sequential", "window_sequential"),
+        default=cfg["window_ttt_update_mode"],
+    )
+    parser.add_argument(
+        "--window-ttt-chunk-size",
+        type=int,
+        default=cfg["window_ttt_chunk_size"],
+    )
     parser.add_argument(
         "--vittt-padding-mode",
         choices=("zero", "replicate"),
@@ -617,6 +629,8 @@ def build_checkpoint_strategy(args: argparse.Namespace, checkpoint_path: Path) -
         token_mixer_type=args.token_mixer_type,
         vittt_inner_lr=args.vittt_inner_lr,
         vittt_head_dim=args.vittt_head_dim,
+        window_ttt_update_mode=args.window_ttt_update_mode,
+        window_ttt_chunk_size=args.window_ttt_chunk_size,
     )
     strategy = SingleStepSupervised(
         model=model,
@@ -1291,6 +1305,9 @@ def main() -> None:
         "ttt_use_gate": args.ttt_use_gate,
         "ttt_scan_checkpoint_group_size": args.ttt_scan_checkpoint_group_size,
         "vittt_inner_lr": args.vittt_inner_lr,
+        "vittt_head_dim": args.vittt_head_dim,
+        "window_ttt_update_mode": args.window_ttt_update_mode,
+        "window_ttt_chunk_size": args.window_ttt_chunk_size,
         "vittt_padding_mode": args.vittt_padding_mode,
         "attention_ttt_type": args.attention_ttt_type,
         "attention_ttt_gate_init": args.attention_ttt_gate_init,
