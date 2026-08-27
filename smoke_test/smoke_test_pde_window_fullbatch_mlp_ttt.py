@@ -43,14 +43,12 @@ def load_experiment_modules():
         "pdetransformer.core.mixed_channels.pde_transformer"
     )
     mlp = importlib.import_module("pdetransformer.core.pde_vittt_window_mlp")
-    global_vittt = importlib.import_module("pdetransformer.core.pde_vittt_global")
-    return pde, mlp, global_vittt
+    return pde, mlp
 
 
-pde_module, mlp_module, global_vittt_module = load_experiment_modules()
+pde_module, mlp_module = load_experiment_modules()
 PDETransformer = pde_module.PDETransformer
 WindowFullBatchMLPTTTMixer = mlp_module.WindowFullBatchMLPTTTMixer
-DepthwiseCPE2D = global_vittt_module.DepthwiseCPE2D
 WindowAttention2DTime = pde_module.WindowAttention2DTime
 
 
@@ -129,7 +127,7 @@ def assert_window_model_integration():
     assert len(mixers) == 22
     assert len({id(module.w1) for module in mixers}) == 22
     assert len({id(module.w2) for module in mixers}) == 22
-    assert not any(isinstance(module, DepthwiseCPE2D) for module in model.modules())
+    assert not any(type(module).__name__ == "DepthwiseCPE2D" for module in model.modules())
     assert not any(
         isinstance(module, WindowAttention2DTime) for module in model.modules()
     )

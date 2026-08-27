@@ -74,6 +74,12 @@ OPTIONAL_CONFIG_DEFAULTS = {
     "init_checkpoint": None,
     "window_ttt_update_mode": "full_batch",
     "window_ttt_chunk_size": 16,
+    "ttt_layer_type": "linear",
+    "ttt_mini_batch_size": 16,
+    "ttt_base_lr": 1.0,
+    "ttt_use_gate": False,
+    "ttt_scan_checkpoint_group_size": 0,
+    "vittt_padding_mode": "zero",
     "use_ema": False,
     "ema_decay": 0.999,
     "ema_update_every_n_steps": 1,
@@ -235,9 +241,8 @@ def load_config(path: Path) -> dict:
         config.setdefault(key, value)
     if config["token_mixer_type"] not in {
         "attention",
-        "global_vittt",
-        "global_h_vittt",
-        "global_linear_ttt",
+        "ttt_sequence",
+        "vittt",
         "window_linear_ttt",
         "window_fullbatch_mlp_ttt",
     }:
@@ -358,6 +363,12 @@ def build_training_module(config: dict) -> SingleStepSupervised:
         vittt_head_dim=config["vittt_head_dim"],
         window_ttt_update_mode=config["window_ttt_update_mode"],
         window_ttt_chunk_size=config["window_ttt_chunk_size"],
+        ttt_layer_type=config["ttt_layer_type"],
+        ttt_mini_batch_size=config["ttt_mini_batch_size"],
+        ttt_base_lr=config["ttt_base_lr"],
+        ttt_use_gate=config["ttt_use_gate"],
+        ttt_scan_checkpoint_group_size=config["ttt_scan_checkpoint_group_size"],
+        vittt_padding_mode=config["vittt_padding_mode"],
     )
     module_type = (
         DualEMAValidationSupervised

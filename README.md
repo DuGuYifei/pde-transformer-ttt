@@ -1,142 +1,91 @@
-# PDE-Transformer: Efficient and Versatile Transformers for Physics Simulations
+# Window TTT architecture experiments
 
-<div align="center">
+This branch contains the window-local architecture screen for
+[PDE-TTT](https://github.com/DuGuYifei/pde-transformer-ttt/tree/thesis/pde-ttt).
+It is based on the original
+[PDE-Transformer](https://github.com/tum-pbs/pde-transformer) backbone and keeps
+the 8 x 8 shifted-window partition. Self-attention is replaced inside each
+window by one of the TTT mixers below.
 
-<p align="center">
-<a href="https://pypi.org/project/pdetransformer/">
-  <img src="https://img.shields.io/pypi/v/pdetransformer.svg" alt="PyPI">
-</a> 
-<a href="https://tum-pbs.github.io/pde-transformer">
-  <img src="https://img.shields.io/badge/docs-latest-green" alt="docs-latest">
-</a>
-<a href="https://github.com/tum-pbs/pde-transformer/releases">
-  <img src="https://img.shields.io/github/v/release/tum-pbs/pde-transformer?include_prereleases&label=changelog" alt="Changelog">
-</a>
-<a href="https://github.com/tum-pbs/pde-transformer/blob/main/LICENSE.txt">
-  <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
-</a>
-</p>
+The final full-map linear PDE-TTT model is maintained on
+`thesis/pde-ttt`; the Attention-TTT hybrid is maintained separately on
+`thesis/window-attention-ttt-hybrid`.
 
-[Paper](https://arxiv.org/pdf/2505.24717.pdf) • 
-[Project Page](https://tum-pbs.github.io/pde-transformer/landing.html) • 
-[🤗 Hugging Face](https://huggingface.co/thuerey-group/pde-transformer) • 
-[Documentation](https://tum-pbs.github.io/pde-transformer)
-</div>
+## Included mixers
 
----
+| Mixer | YAML | Update |
+|---|---|---|
+| Sequence TTT-Linear | `pdes_ttt-sequence-linear-cacheoff_128_60sims.yaml` | Four ordered groups of 16 tokens inside each window |
+| Sequence TTT-MLP | `pdes_ttt-sequence-mlp-cacheoff_128_60sims.yaml` | Four ordered groups of 16 tokens inside each window |
+| Window ViT3 | `pdes_vittt-cacheoff_128_60sims.yaml` | ViT3-style two-branch window mixer |
+| Full-batch TTT-Linear | `pdes_window-linear-ttt_128_60sims.yaml` | One closed-form update per window |
+| Full-batch TTT-MLP | `pdes_window-fullbatch-mlp-ttt_128_60sims.yaml` | One non-causal MLP update per window |
+| Token-sequential Linear/MLP | `pdes_window-*-token-sequential_128_60sims.yaml` | Four groups of 16 tokens inside each window |
+| Window-sequential Linear/MLP | `pdes_window-*-window-sequential_128_60sims.yaml` | One update per window, carried across windows in a sample |
 
-**Authors:** [Benjamin Holzschuh](), [Qiang Liu](), [Georg Kohl](), [Nils Thuerey](https://ge.in.tum.de/about/n-thuerey/)
+Fast weights are temporary and are reconstructed on every model call. None of
+these configurations carries fast weights across PDE rollout steps.
 
----
-
-## For P3D: see https://github.com/tum-pbs/P3D
-
----
-
-## Thesis extension: full-map Test-Time Training
-
-This fork preserves the complete upstream PDE-Transformer repository at
-commit `850e09d` and adds the PDE-TTT experiments developed for the thesis
-*Test Time Training for Adaptive Neural PDE Solvers*.
-
-The original shifted-window Attention model remains available. The thesis
-extension adds three selectable full-map token mixers, including the selected
-linear PDE-TTT architecture, matched training configurations, strict test
-splits, EMA checkpointing, parameter-shift data generation, and evaluation
-utilities. Start with [the thesis code guide](docs/thesis-extension.md) for the
-architecture, source-file map, experiment-to-YAML table, and commands.
-
----
-
-**PDE-Transformer** is a state-of-the-art neural architecture for physics simulations, specifically designed for partial differential equations (PDEs) on regular grids. This work will be presented at **ICML 2025**.
-
-### Key Highlights
-- **Production Ready**: Available as a pip package for easy installation and experimentation.
-- **State-of-the-Art**: Outperforms existing methods across 16 different types of PDEs and three challenging downstream tasks involving complex dynamics. 
-- **Transfer Learning**: Improved performance when adapting pre-trained models to new physics problems with limited training data.
-- **Open Source**: Full implementation with pre-trained models and comprehensive documentation.
-
-### Quick Installation
+## Installation
 
 ```bash
-# Install from PyPI
-pip install pdetransformer
-
-# Or install from source
-git clone https://github.com/tum-pbs/pde-transformer.git
-cd pde-transformer
+git clone --branch thesis/window-ttt \
+  https://github.com/DuGuYifei/pde-transformer-ttt.git
+cd pde-transformer-ttt
+python -m venv venv
+source venv/bin/activate
 pip install -e .
 ```
 
-## Model Description
+On PowerShell use `./venv/Scripts/Activate.ps1`.
 
-PDE-Transformer is designed to efficiently process and predict the evolution of physical systems described by partial differential equations (PDEs). It can handle multiple types of PDEs, different resolutions, domain extents, boundary conditions, 
-and includes deep conditioning mechanisms for PDE- and task-specific information.
+## Data
 
-Key features:
-- **Multi-scale architecture** with token down- and upsampling for efficient modeling.
-- **Shifted window attention** for improved scaling to high-resolution data.
-- **Mixed Channel (MC) and Separate Channel (SC)** representations for handling multiple physical quantities.
-- **Flexible conditioning mechanism** for PDE parameters, boundary conditions, and simulation metadata.
-- **Pre-training and fine-tuning capabilities** for transfer learning across different physics domains.
+The 128-resolution architecture screen uses the small datasets generated with
+the bundled APEBench simulation module. The final 256-resolution dataset is
+available at
+[`thuerey-group/pde-transformer-ape2d-full`](https://huggingface.co/datasets/thuerey-group/pde-transformer-ape2d-full).
 
-### Training Objectives
+To reproduce the thesis ID/OOD generation protocol at 256 resolution:
 
-The model supports both supervised and diffusion training:
-
-- **Supervised Training**: Direct MSE loss for deterministic, unique solutions. Fast training and inference. 
-- **Flow Matching**: For probabilistic modeling and uncertainty quantification.
-
-## Supported PDE Types
-
-PDE-Transformer has been trained and evaluated on 16 different types of PDEs including:
-
-- **Linear PDEs**: Diffusion
-- **Nonlinear PDEs**: Burgers, Korteweg-de-Vries, Kuramoto-Sivashinsky
-- **Reaction-Diffusion**: Fisher-KPP, Swift-Hohenberg, Gray-Scott
-- **Fluid Dynamics**: Navier-Stokes (Decaying Turbulence, Kolmogorov Flow)
-
-## Quick Start
-
-```python
-from pdetransformer.core.mixed_channels import PDETransformer
-import torch
-
-# Load pre-trained model
-model = PDETransformer.from_pretrained('thuerey-group/pde-transformer', subfolder='mc-s').cuda()
-
-# For physics simulation
-x = torch.randn((1,2,256,256), dtype=torch.float32).cuda()
-predictions = model(x)
+```bash
+python -m pdetransformer.data.simulations_apebench.generate_id_ood_testset \
+  --output-dir ~/working/datasets_test_256 \
+  --gpu-id 0
 ```
 
-See the following notebook for an example of how to initialize the model from pretrained weights and use it for inference:
-<a href="https://colab.research.google.com/github/tum-pbs/pde-transformer/blob/main/notebooks/visualization_mc_ape2d.ipynb">
-  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab">
-</a>
+## Train and evaluate
 
-## Documentation
+Choose one YAML from `server_example/`:
 
-For detailed documentation, visit [tum-pbs.github.io/pde-transformer](https://tum-pbs.github.io/pde-transformer/).
+```bash
+python server_example/train_global_vittt_ape_xxl_server.py \
+  --config server_example/pdes_window-linear-ttt_128_60sims.yaml \
+  --check-config
 
-## Citation
-
-If you use PDE-Transformer in your research, please cite:
-
-```bibtex
-@article{holzschuh2025pde,
-  title={PDE-Transformer: Efficient and Versatile Transformers for Physics Simulations},
-  author={Holzschuh, Benjamin and Liu, Qiang and Kohl, Georg and Thuerey, Nils},
-  booktitle={Forty-second International Conference on Machine Learning, {ICML} 2025, Vancouver, Canada, July 13-19, 2025},
-  year={2025}
-}
+python server_example/train_global_vittt_ape_xxl_server.py \
+  --config server_example/pdes_window-linear-ttt_128_60sims.yaml
 ```
 
-## License
+Evaluate a retained checkpoint with the same YAML:
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE.txt) file for details.
+```bash
+python pretrained_eval/test_pretrained_mc_server.py \
+  --config server_example/pdes_window-linear-ttt_128_60sims.yaml \
+  --checkpoint-path /path/to/checkpoint.ckpt \
+  --data-dir ~/working/datasets \
+  --batch-size 8 \
+  --output-dir ~/working/eval/window-linear
+```
 
----
+## Verification
 
-**Note**: This is a research project from the Technical University of Munich (TUM) Physics-based Simulation Group. 
-For questions and support, please refer to the GitHub repository or contact the authors.
+```bash
+python smoke_test/smoke_test_pde_vittt_window.py
+python smoke_test/smoke_test_pde_window_linear_ttt.py
+python smoke_test/smoke_test_pde_window_fullbatch_mlp_ttt.py
+python smoke_test/smoke_test_pde_window_ttt_sequential.py
+```
+
+See `LICENSE.txt` and the upstream repository for license and citation
+information.

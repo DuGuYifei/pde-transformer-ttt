@@ -16,31 +16,25 @@ from timm.models.layers import DropPath
 import torch
 
 from .udit import FinalLayer, precompute_freqs_cis_2d, apply_rotary_emb
-from ..pde_vittt_global import (
-    ConvEnhancedMlp,
-    DepthwiseCPE2D,
-    GlobalViTTTMixer,
-)
 from ..pde_vittt_global_linear import GlobalLinearTTTMixer
+from ..pde_vittt_window import PDEViTTTWindowBlock
 from ..pde_vittt_window_mlp import WindowFullBatchMLPTTTMixer
+from ..ttt_window_attention import TTTWindowAttention2DTime
 
 
 SUPPORTED_TOKEN_MIXERS = {
     "attention",
-    "global_vittt",
-    "global_h_vittt",
-    "global_linear_ttt",
+    "ttt_sequence",
+    "vittt",
     "window_linear_ttt",
     "window_fullbatch_mlp_ttt",
 }
 
-FULL_MAP_TOKEN_MIXERS = {
-    "global_vittt",
-    "global_h_vittt",
-    "global_linear_ttt",
-}
+FULL_MAP_TOKEN_MIXERS = set()
 
 WINDOW_TTT_TOKEN_MIXERS = {
+    "ttt_sequence",
+    "vittt",
     "window_linear_ttt",
     "window_fullbatch_mlp_ttt",
 }
@@ -385,6 +379,12 @@ class PDEStage(nn.Module):
             vittt_head_dim: int = 32,
             window_ttt_update_mode: str = "full_batch",
             window_ttt_chunk_size: int = 16,
+            ttt_layer_type: str = "linear",
+            ttt_mini_batch_size: int = 16,
+            ttt_base_lr: float = 1.0,
+            ttt_use_gate: bool = False,
+            ttt_scan_checkpoint_group_size: int = 0,
+            vittt_padding_mode: str = "zero",
     ):
         super().__init__()
 
@@ -414,6 +414,12 @@ class PDEStage(nn.Module):
                 vittt_head_dim=vittt_head_dim,
                 window_ttt_update_mode=window_ttt_update_mode,
                 window_ttt_chunk_size=window_ttt_chunk_size,
+                ttt_layer_type=ttt_layer_type,
+                ttt_mini_batch_size=ttt_mini_batch_size,
+                ttt_base_lr=ttt_base_lr,
+                ttt_use_gate=ttt_use_gate,
+                ttt_scan_checkpoint_group_size=ttt_scan_checkpoint_group_size,
+                vittt_padding_mode=vittt_padding_mode,
             )
             blocks.append(block)
 
@@ -844,6 +850,12 @@ class PDEBlock(nn.Module):
         vittt_head_dim=32,
         window_ttt_update_mode="full_batch",
         window_ttt_chunk_size=16,
+        ttt_layer_type="linear",
+        ttt_mini_batch_size=16,
+        ttt_base_lr=1.0,
+        ttt_use_gate=False,
+        ttt_scan_checkpoint_group_size=0,
+        vittt_padding_mode="zero",
     ):
         super().__init__()
         """
@@ -913,50 +925,39 @@ class PDEBlock(nn.Module):
                 update_mode=window_ttt_update_mode,
                 chunk_size=window_ttt_chunk_size,
             )
+        elif token_mixer_type == "ttt_sequence":
+            self.cpe = None
+            self.attn = TTTWindowAttention2DTime(
+                dim,
+                num_heads=num_heads,
+                ttt_layer_type=ttt_layer_type,
+                ttt_base_lr=ttt_base_lr,
+                mini_batch_size=ttt_mini_batch_size,
+                use_gate=ttt_use_gate,
+                scan_checkpoint_group_size=ttt_scan_checkpoint_group_size,
+            )
+        elif token_mixer_type == "vittt":
+            self.cpe = None
+            self.attn = PDEViTTTWindowBlock(
+                dim,
+                num_heads=num_heads,
+                qkv_bias=qkv_bias,
+                inner_lr=vittt_inner_lr,
+                proj_drop=drop,
+                padding_mode=vittt_padding_mode,
+            )
         else:
-            if vittt_head_dim <= 0 or dim % vittt_head_dim != 0:
-                raise ValueError(
-                    f"Global ViTTT dim={dim} must be divisible by "
-                    f"vittt_head_dim={vittt_head_dim}."
-                )
-            self.cpe = DepthwiseCPE2D(dim)
-            if token_mixer_type == "global_linear_ttt":
-                self.attn = GlobalLinearTTTMixer(
-                    dim,
-                    num_heads=dim // vittt_head_dim,
-                    qkv_bias=True,
-                    inner_lr=vittt_inner_lr,
-                )
-            else:
-                self.attn = GlobalViTTTMixer(
-                    dim,
-                    num_heads=dim // vittt_head_dim,
-                    qkv_bias=True,
-                    inner_lr=vittt_inner_lr,
-                    rope_type=(
-                        ("periodic" if periodic else "standard")
-                        if token_mixer_type == "global_h_vittt"
-                        else "none"
-                    ),
-                )
+            raise AssertionError(f"Unhandled token mixer: {token_mixer_type}")
 
         self.drop_path = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
         self.norm2 = norm_layer(dim)
         mlp_hidden_dim = int(dim * mlp_ratio)
-        if token_mixer_type == "global_h_vittt":
-            self.mlp = ConvEnhancedMlp(
-                in_features=dim,
-                hidden_features=mlp_hidden_dim,
-                act_layer=act_layer,
-                drop=drop,
-            )
-        else:
-            self.mlp = Mlp(
-                in_features=dim,
-                hidden_features=mlp_hidden_dim,
-                act_layer=act_layer,
-                drop=drop,
-            )
+        self.mlp = Mlp(
+            in_features=dim,
+            hidden_features=mlp_hidden_dim,
+            act_layer=act_layer,
+            drop=drop,
+        )
         self.window_size = window_size
 
         self.adain_2 = AdaLayerNormZero(dim, num_embeddings=None, norm_type="layer_norm")
@@ -1063,7 +1064,7 @@ class PDEBlock(nn.Module):
 
         if self.token_mixer_type == "attention":
             x_msa = self.attn(x_msa, attn_mask=attn_mask)
-        elif self.token_mixer_type in WINDOW_TTT_TOKEN_MIXERS:
+        elif self.token_mixer_type in {"window_linear_ttt", "window_fullbatch_mlp_ttt"}:
             x_msa = self.attn(
                 x_msa,
                 height=H,
@@ -1071,8 +1072,21 @@ class PDEBlock(nn.Module):
                 periodic=self.periodic,
                 windows_per_sample=num_windows_total,
             )
+        elif self.token_mixer_type == "ttt_sequence":
+            x_msa = self.attn(x_msa, attn_mask=attn_mask)
+        elif self.token_mixer_type == "vittt":
+            if attn_mask is not None:
+                raise NotImplementedError(
+                    "Window ViT3 does not support non-periodic shifted-window masks."
+                )
+            x_msa = self.attn(
+                x_msa,
+                h=self.window_size,
+                w=self.window_size,
+                periodic=self.periodic,
+            )
         else:
-            x_msa = self.attn(x_msa, height=H, width=W, periodic=self.periodic)
+            raise AssertionError(f"Unhandled token mixer: {self.token_mixer_type}")
         x_msa = x_msa * (1 + msa_gate[:, None])
 
         x = x + self.drop_path(x_msa)
@@ -1080,10 +1094,7 @@ class PDEBlock(nn.Module):
         x_mlp = self.norm2(x)
 
         x_mlp = x_mlp * (1 + mlp_scale[:, None]) + mlp_shift[:, None]
-        if self.token_mixer_type == "global_h_vittt":
-            x_mlp = self.mlp(x_mlp, height=H, width=W, periodic=self.periodic)
-        else:
-            x_mlp = self.mlp(x_mlp)
+        x_mlp = self.mlp(x_mlp)
         x_mlp = x_mlp * (1 + mlp_gate[:, None])
         x = x + self.drop_path(x_mlp)
 
@@ -1294,6 +1305,12 @@ class PDEImpl(nn.Module):
             vittt_head_dim: int = 32,
             window_ttt_update_mode: str = "full_batch",
             window_ttt_chunk_size: int = 16,
+            ttt_layer_type: str = "linear",
+            ttt_mini_batch_size: int = 16,
+            ttt_base_lr: float = 1.0,
+            ttt_use_gate: bool = False,
+            ttt_scan_checkpoint_group_size: int = 0,
+            vittt_padding_mode: str = "zero",
             **kwargs
     ):
         super().__init__()
@@ -1323,6 +1340,12 @@ class PDEImpl(nn.Module):
             'vittt_head_dim': vittt_head_dim,
             'window_ttt_update_mode': window_ttt_update_mode,
             'window_ttt_chunk_size': window_ttt_chunk_size,
+            'ttt_layer_type': ttt_layer_type,
+            'ttt_mini_batch_size': ttt_mini_batch_size,
+            'ttt_base_lr': ttt_base_lr,
+            'ttt_use_gate': ttt_use_gate,
+            'ttt_scan_checkpoint_group_size': ttt_scan_checkpoint_group_size,
+            'vittt_padding_mode': vittt_padding_mode,
         }
 
         if patch_size is not None:
@@ -1404,16 +1427,10 @@ class PDEImpl(nn.Module):
         # Keep the newly introduced ViTTT components aligned with their
         # official initialization without changing the original PDE layers.
         for module in self.modules():
-            if isinstance(module, GlobalViTTTMixer):
-                module.reset_official_projection_parameters()
-            elif isinstance(module, GlobalLinearTTTMixer):
+            if isinstance(module, GlobalLinearTTTMixer):
                 module.reset_ttt_parameters()
             elif isinstance(module, WindowFullBatchMLPTTTMixer):
                 module.reset_ttt_parameters()
-            elif isinstance(module, DepthwiseCPE2D):
-                module.reset_official_parameters()
-            elif isinstance(module, ConvEnhancedMlp):
-                module.reset_official_parameters()
 
         # Initialize patch_embed like nn.Linear (instead of nn.Conv2d):
         w = self.x_embedder.proj.weight.data
@@ -1555,6 +1572,12 @@ class PDETransformer(ModelMixin, ConfigMixin):
             vittt_head_dim: int = 32,
             window_ttt_update_mode: str = "full_batch",
             window_ttt_chunk_size: int = 16,
+            ttt_layer_type: str = "linear",
+            ttt_mini_batch_size: int = 16,
+            ttt_base_lr: float = 1.0,
+            ttt_use_gate: bool = False,
+            ttt_scan_checkpoint_group_size: int = 0,
+            vittt_padding_mode: str = "zero",
             **kwargs
     ):
         super(PDETransformer, self).__init__()
@@ -1563,7 +1586,13 @@ class PDETransformer(ModelMixin, ConfigMixin):
                 'token_mixer_type': token_mixer_type, 'vittt_inner_lr': vittt_inner_lr,
                 'vittt_head_dim': vittt_head_dim,
                 'window_ttt_update_mode': window_ttt_update_mode,
-                'window_ttt_chunk_size': window_ttt_chunk_size}
+                'window_ttt_chunk_size': window_ttt_chunk_size,
+                'ttt_layer_type': ttt_layer_type,
+                'ttt_mini_batch_size': ttt_mini_batch_size,
+                'ttt_base_lr': ttt_base_lr,
+                'ttt_use_gate': ttt_use_gate,
+                'ttt_scan_checkpoint_group_size': ttt_scan_checkpoint_group_size,
+                'vittt_padding_mode': vittt_padding_mode}
 
         args.update(kwargs)
 

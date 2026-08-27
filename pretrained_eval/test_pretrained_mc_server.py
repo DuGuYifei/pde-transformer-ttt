@@ -231,9 +231,8 @@ def parse_args() -> argparse.Namespace:
         "--token-mixer-type",
         choices=(
             "attention",
-            "global_vittt",
-            "global_h_vittt",
-            "global_linear_ttt",
+            "ttt_sequence",
+            "vittt",
             "window_linear_ttt",
             "window_fullbatch_mlp_ttt",
         ),
@@ -631,6 +630,12 @@ def build_checkpoint_strategy(args: argparse.Namespace, checkpoint_path: Path) -
         vittt_head_dim=args.vittt_head_dim,
         window_ttt_update_mode=args.window_ttt_update_mode,
         window_ttt_chunk_size=args.window_ttt_chunk_size,
+        ttt_layer_type=args.ttt_layer_type,
+        ttt_mini_batch_size=args.ttt_mini_batch_size,
+        ttt_base_lr=args.ttt_base_lr,
+        ttt_use_gate=args.ttt_use_gate,
+        ttt_scan_checkpoint_group_size=args.ttt_scan_checkpoint_group_size,
+        vittt_padding_mode=args.vittt_padding_mode,
     )
     strategy = SingleStepSupervised(
         model=model,

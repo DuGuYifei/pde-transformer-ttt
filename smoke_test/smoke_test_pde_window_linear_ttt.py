@@ -17,8 +17,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 WINDOW_CONFIG = (
     REPO_ROOT / "server_example" / "pdes_window-linear-ttt_128_60sims.yaml"
 )
-GLOBAL_CONFIG = (
-    REPO_ROOT / "server_example" / "pdes_global-linear-ttt_128_60sims.yaml"
+ATTENTION_CONFIG = (
+    REPO_ROOT / "server_example" / "pdes_attention_128_100ep_60sims.yaml"
 )
 
 
@@ -39,14 +39,12 @@ def load_experiment_modules():
         "pdetransformer.core.mixed_channels.pde_transformer"
     )
     linear = importlib.import_module("pdetransformer.core.pde_vittt_global_linear")
-    global_vittt = importlib.import_module("pdetransformer.core.pde_vittt_global")
-    return pde, linear, global_vittt
+    return pde, linear
 
 
-pde_module, linear_module, global_vittt_module = load_experiment_modules()
+pde_module, linear_module = load_experiment_modules()
 PDETransformer = pde_module.PDETransformer
 GlobalLinearTTTMixer = linear_module.GlobalLinearTTTMixer
-DepthwiseCPE2D = global_vittt_module.DepthwiseCPE2D
 WindowAttention2DTime = pde_module.WindowAttention2DTime
 
 
@@ -107,7 +105,7 @@ def assert_window_model_integration():
     ]
     assert len(mixers) == 22
     assert len({id(module.w0) for module in mixers}) == 22
-    assert not any(isinstance(module, DepthwiseCPE2D) for module in model.modules())
+    assert not any(type(module).__name__ == "DepthwiseCPE2D" for module in model.modules())
     assert not any(
         isinstance(module, WindowAttention2DTime) for module in model.modules()
     )
@@ -212,16 +210,16 @@ def assert_pretrained_round_trip():
 
 def assert_matched_config_and_entrypoint():
     window = OmegaConf.to_container(OmegaConf.load(WINDOW_CONFIG), resolve=True)
-    global_linear = OmegaConf.to_container(
-        OmegaConf.load(GLOBAL_CONFIG), resolve=True
+    attention = OmegaConf.to_container(
+        OmegaConf.load(ATTENTION_CONFIG), resolve=True
     )
     assert window["token_mixer_type"] == "window_linear_ttt"
-    assert global_linear["token_mixer_type"] == "global_linear_ttt"
-    for config in (window, global_linear):
+    assert attention["token_mixer_type"] == "attention"
+    for config in (window, attention):
         config.pop("run_root")
         config.pop("run_name")
         config.pop("token_mixer_type")
-    assert window == global_linear
+    assert window == attention
 
     mixed_channels = sys.modules["pdetransformer.core.mixed_channels"]
     mixed_channels.PDETransformer = pde_module.PDETransformer
