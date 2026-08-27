@@ -21,9 +21,6 @@ OFFICIAL_VITTT_ROOT = REPO_ROOT.parent / "_external_research" / "ViTTT-latest" /
 UPSTREAM_REPO = REPO_ROOT.parent / "pde-transformer"
 CONFIG_PATHS = {
     "attention": REPO_ROOT / "server_example" / "pdes_attention_128_100ep_60sims.yaml",
-    "global_vittt": REPO_ROOT
-    / "server_example"
-    / "pdes_global-vittt_128_60sims.yaml",
     "global_h_vittt": REPO_ROOT
     / "server_example"
     / "pdes_global-h-vittt_128_60sims.yaml",
@@ -183,7 +180,8 @@ def assert_fair_training_configs():
         # Duration is checked by each experiment-specific test.
         config.pop("max_epochs")
         comparable.append(config)
-    assert comparable[0] == comparable[1] == comparable[2]
+    assert comparable
+    assert all(config == comparable[0] for config in comparable[1:])
 
 
 def load_official_ttt():
@@ -438,10 +436,6 @@ def main():
         ("H-style component backward", assert_h_components_backward),
         ("global periodic boundary", assert_global_periodic_boundary),
         ("fair training configurations", assert_fair_training_configs),
-        (
-            "ViTTT-PDE full-model integration",
-            lambda: assert_full_model_uses_global_tokens("global_vittt"),
-        ),
         (
             "H-ViTTT-PDE full-model integration",
             lambda: assert_full_model_uses_global_tokens("global_h_vittt"),
