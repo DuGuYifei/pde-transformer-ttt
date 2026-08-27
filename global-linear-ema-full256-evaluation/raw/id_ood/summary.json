@@ -1,0 +1,152 @@
+{
+  "metadata": {
+    "model_source": "checkpoint",
+    "checkpoint": "/home/yifeiliu/working/runs_global_linear_ema_full256/pdes_global-linear-ttt-ema_s_256_full_100ep/checkpoints/epoch-epoch=099.ckpt",
+    "hf_model_source": "thuerey-group/pde-transformer",
+    "subfolder": "mc-s",
+    "work_dir": "/home/yifeiliu/working",
+    "data_dir": "/home/yifeiliu/working/datasets_test",
+    "data_dir_warning_non_official": false,
+    "dataset_profile": "legacy_small",
+    "strict_test_split": true,
+    "id_ood_test": true,
+    "id_ood_manifest_path": "/home/yifeiliu/working/datasets_test/manifest.json",
+    "run_root": "/home/yifeiliu/working/runs_global_linear_ema_full256",
+    "run_name": "pdes_global-linear-ttt-ema_s_256_full_100ep",
+    "model_type": "PDE-S",
+    "in_channels": 2,
+    "out_channels": 2,
+    "patch_size": 4,
+    "periodic": true,
+    "carrier_token_active": false,
+    "token_mixer_type": "global_linear_ttt",
+    "resolved_token_mixer_type": "global_linear_ttt",
+    "use_ttt_window_attention": false,
+    "use_ttt_state_cache_train": false,
+    "ttt_layer_type": "linear",
+    "ttt_mini_batch_size": 16,
+    "ttt_base_lr": 1.0,
+    "ttt_use_gate": false,
+    "ttt_scan_checkpoint_group_size": 0,
+    "vittt_inner_lr": 1.0,
+    "vittt_padding_mode": "zero",
+    "attention_ttt_type": "ttt_sequence",
+    "attention_ttt_gate_init": 0.1,
+    "attention_ttt_bidirectional": true,
+    "downsample_factor": 1,
+    "sample_size": 256,
+    "test_unrolling_steps": 29,
+    "max_channels": 2,
+    "rollout_steps": 30,
+    "eval_k": [
+      1,
+      10,
+      20,
+      29
+    ],
+    "datasets": [
+      "diff",
+      "hyp",
+      "burgers",
+      "kdv",
+      "ks",
+      "fisher",
+      "gs_alpha",
+      "gs_beta",
+      "gs_gamma",
+      "gs_delta",
+      "gs_epsilon",
+      "gs_theta",
+      "gs_iota",
+      "gs_kappa",
+      "sh",
+      "decay_turb",
+      "kolm_flow"
+    ],
+    "batch_size": 8,
+    "num_workers": 2,
+    "seed": 42,
+    "max_batches_per_dataset": null,
+    "torch_version": "2.5.1+cu121",
+    "device": "cuda:0",
+    "cuda_device_count": 1,
+    "config_path": "server_example/pdes_global-linear-ttt-ema_256_full.yaml",
+    "output_dir": "/home/yifeiliu/working/eval_global_linear_ema_full256/raw/id_ood",
+    "cache_modes_run": [
+      "off"
+    ],
+    "overall_started_at": "2026-07-29T20:55:11",
+    "overall_ended_at": "2026-07-29T20:59:50",
+    "overall_elapsed_seconds": 278.79671708960086
+  },
+  "params": {
+    "total": 33361952,
+    "trainable": 33361952,
+    "total_m": "33.36M",
+    "trainable_m": "33.36M"
+  },
+  "aggregates_by_cache_mode": {
+    "off": {
+      "macro": {
+        "nRMSE_1": 0.06534557515645727,
+        "nRMSE_10": 0.5182631975587677,
+        "nRMSE_20": 0.8637730430543812,
+        "nRMSE_29": 1.0428548211755317
+      },
+      "micro": {
+        "nRMSE_1": 0.06534557515645728,
+        "nRMSE_10": 0.5182631975587677,
+        "nRMSE_20": 0.8637730430543812,
+        "nRMSE_29": 1.0428548211755315
+      },
+      "conditions": {
+        "id": {
+          "count": 51,
+          "macro": {
+            "nRMSE_1": 0.04946090697365649,
+            "nRMSE_10": 0.4683238627279506,
+            "nRMSE_20": 0.7957082089840197,
+            "nRMSE_29": 0.9675538539886475
+          },
+          "micro": {
+            "nRMSE_1": 0.04946090697365649,
+            "nRMSE_10": 0.4683238627279506,
+            "nRMSE_20": 0.7957082089840197,
+            "nRMSE_29": 0.9675538539886475
+          }
+        },
+        "ood_low": {
+          "count": 51,
+          "macro": {
+            "nRMSE_1": 0.07885059365527887,
+            "nRMSE_10": 0.5920395079781028,
+            "nRMSE_20": 0.9398411266943989,
+            "nRMSE_29": 1.0488885740439096
+          },
+          "micro": {
+            "nRMSE_1": 0.07885059365527887,
+            "nRMSE_10": 0.5920395079781028,
+            "nRMSE_20": 0.9398411266943988,
+            "nRMSE_29": 1.0488885740439098
+          }
+        },
+        "ood_high": {
+          "count": 51,
+          "macro": {
+            "nRMSE_1": 0.0677252223386484,
+            "nRMSE_10": 0.49442623073563857,
+            "nRMSE_20": 0.8557697248225119,
+            "nRMSE_29": 1.1121220483499417
+          },
+          "micro": {
+            "nRMSE_1": 0.0677252223386484,
+            "nRMSE_10": 0.49442623073563857,
+            "nRMSE_20": 0.8557697248225119,
+            "nRMSE_29": 1.1121220483499414
+          }
+        }
+      },
+      "total_evaluated_trajectories": 153
+    }
+  }
+}

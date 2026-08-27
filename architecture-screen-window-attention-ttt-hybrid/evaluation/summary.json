@@ -1,0 +1,101 @@
+{
+  "metadata": {
+    "model_source": "checkpoint",
+    "checkpoint": "/home/yifeiliu/working/runs_v2/pdes_attention-ttt-mlp-bidir_128_60sims/checkpoints/epoch-epoch=096.ckpt",
+    "hf_model_source": "thuerey-group/pde-transformer",
+    "subfolder": "mc-s",
+    "work_dir": "/home/yifeiliu/working",
+    "data_dir": "/home/yifeiliu/working/datasets_official",
+    "data_dir_warning_non_official": false,
+    "run_root": "/home/yifeiliu/working/runs_v2",
+    "run_name": "pdes_attention-ttt-mlp-bidir_128_60sims",
+    "model_type": "PDE-S",
+    "in_channels": 2,
+    "out_channels": 2,
+    "patch_size": 4,
+    "periodic": true,
+    "carrier_token_active": false,
+    "token_mixer_type": "attention_ttt",
+    "resolved_token_mixer_type": "attention_ttt",
+    "use_ttt_window_attention": false,
+    "use_ttt_state_cache_train": false,
+    "ttt_layer_type": "mlp",
+    "ttt_mini_batch_size": 64,
+    "ttt_base_lr": 1.0,
+    "ttt_use_gate": false,
+    "ttt_scan_checkpoint_group_size": 0,
+    "vittt_inner_lr": 1.0,
+    "vittt_padding_mode": "zero",
+    "attention_ttt_type": "ttt_sequence",
+    "attention_ttt_gate_init": 0.1,
+    "attention_ttt_bidirectional": true,
+    "downsample_factor": 2,
+    "sample_size": 128,
+    "test_unrolling_steps": 29,
+    "max_channels": 2,
+    "rollout_steps": 30,
+    "eval_k": [
+      1,
+      10,
+      20,
+      29
+    ],
+    "datasets": [
+      "diff",
+      "hyp",
+      "burgers",
+      "kdv",
+      "ks",
+      "fisher",
+      "gs_alpha",
+      "gs_beta",
+      "gs_gamma",
+      "gs_delta",
+      "gs_epsilon",
+      "gs_theta",
+      "gs_iota",
+      "gs_kappa",
+      "sh",
+      "decay_turb",
+      "kolm_flow"
+    ],
+    "batch_size": 8,
+    "num_workers": 2,
+    "seed": 42,
+    "max_batches_per_dataset": null,
+    "torch_version": "2.5.1+cu121",
+    "device": "cuda:0",
+    "cuda_device_count": 1,
+    "config_path": "server_example/pdes_attention-ttt-mlp-bidir_128_60sims.yaml",
+    "output_dir": "/home/yifeiliu/working/runs_v2/pdes_attention-ttt-mlp-bidir_128_60sims/test_results/official_best_epoch096_batch8_cacheoff",
+    "cache_modes_run": [
+      "off"
+    ],
+    "overall_started_at": "2026-08-16T23:39:47",
+    "overall_ended_at": "2026-08-16T23:55:55",
+    "overall_elapsed_seconds": 967.6012634020299
+  },
+  "params": {
+    "total": 43118032,
+    "trainable": 43118032,
+    "total_m": "43.12M",
+    "trainable_m": "43.12M"
+  },
+  "aggregates_by_cache_mode": {
+    "off": {
+      "macro": {
+        "nRMSE_1": 0.1064829661127399,
+        "nRMSE_10": 0.8305019220417622,
+        "nRMSE_20": 1.0623158461673587,
+        "nRMSE_29": 1.1748775037830952
+      },
+      "micro": {
+        "nRMSE_1": 0.06797730765545686,
+        "nRMSE_10": 0.8774615959412261,
+        "nRMSE_20": 0.9956257166068769,
+        "nRMSE_29": 1.0561376186004892
+      },
+      "total_evaluated_trajectories": 787
+    }
+  }
+}

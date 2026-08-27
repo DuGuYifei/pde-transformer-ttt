@@ -1,0 +1,691 @@
+/home/yifeiliu/venv/lib/python3.12/site-packages/timm/models/layers/__init__.py:49: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+/home/yifeiliu/server_06_vittt/pdetransformer/data/pbdl_dataloader/dataset.py:6: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+[93m[1mWarning:[22m ./datasets/ is not a valid directory. No local datasets will be available.[0m
+config: server_example/pdes_attention-ttt-mlp-bidir_128_60sims.yaml
+work_dir: /home/yifeiliu/working
+data_dir: /home/yifeiliu/working/datasets
+run_root: /home/yifeiliu/working/runs_v2
+run_name: pdes_attention-ttt-mlp-bidir_128_60sims
+model_type: PDE-S
+in_channels: 2 out_channels: 2 patch_size: 4
+periodic: True carrier_token_active: False
+checkpoint_path: /home/yifeiliu/working/runs_v2/pdes_attention-ttt-mlp-bidir_128_60sims/checkpoints/last.ckpt
+torch: 2.5.1+cu121
+cuda available: True
+cuda device count: 2
+precision: 32-true
+devices: 2 strategy: ddp
+accumulate_grad_batches: 16
+use_ttt_window_attention: False
+token_mixer_type: attention_ttt resolved: attention_ttt
+use_ttt_state_cache_train: False
+ttt_layer_type: mlp
+ttt_mini_batch_size: 64
+ttt_base_lr: 1.0
+ttt_use_gate: False
+ttt_scan_checkpoint_group_size: 0
+vittt_inner_lr: 1.0
+vittt_padding_mode: zero
+attention_ttt_type: ttt_sequence
+attention_ttt_gate_init: 0.1
+attention_ttt_bidirectional: True
+learning_rate: 4e-05
+generate_data: False low_res: True
+downsample_factor: 2 sample_size: 128 test_unrolling_steps: 29 max_channels: 2
+/home/yifeiliu/venv/lib/python3.12/site-packages/torch/functional.py:534: UserWarning: torch.meshgrid: in an upcoming release, it will be required to pass the indexing argument. (Triggered internally at ../aten/src/ATen/native/TensorShape.cpp:3595.)
+  return _VF.meshgrid(tensors, **kwargs)  # type: ignore[attr-defined]
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+starting fresh training run 
+Initializing distributed: GLOBAL_RANK: 0, MEMBER: 1/2
+/home/yifeiliu/venv/lib/python3.12/site-packages/timm/models/layers/__init__.py:49: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+/home/yifeiliu/server_06_vittt/pdetransformer/data/pbdl_dataloader/dataset.py:6: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+/home/yifeiliu/venv/lib/python3.12/site-packages/torch/functional.py:534: UserWarning: torch.meshgrid: in an upcoming release, it will be required to pass the indexing argument. (Triggered internally at ../aten/src/ATen/native/TensorShape.cpp:3595.)
+  return _VF.meshgrid(tensors, **kwargs)  # type: ignore[attr-defined]
+Initializing distributed: GLOBAL_RANK: 1, MEMBER: 2/2
+----------------------------------------------------------------------------------------------------
+distributed_backend=nccl
+All distributed processes registered. Starting with 2 processes
+----------------------------------------------------------------------------------------------------
+
+[96m[1mSuccess:[22m Loaded diff with 60 simulations (50 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded diff with 60 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded hyp with 60 simulations (50 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded hyp with 60 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded burgers with 60 simulations (50 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded burgers with 60 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded kdv with 60 simulations (50 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded kdv with 60 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded ks with 60 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded ks_test with 5 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded fisher with 60 simulations (50 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded fisher with 60 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_alpha with 10 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_alpha_test with 3 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_beta with 10 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_beta_test with 3 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_gamma with 10 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_gamma_test with 3 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_delta with 100 simulations (80 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_delta with 100 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_epsilon with 10 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_epsilon_test with 3 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_theta with 100 simulations (80 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_theta with 100 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_iota with 100 simulations (80 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_iota with 100 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_kappa with 100 simulations (80 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_kappa with 100 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded sh with 60 simulations (50 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded sh with 60 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded decay_turb with 60 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded decay_turb_test with 5 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded kolm_flow with 60 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded kolm_flow_test with 5 simulations and 1 samples each.[0m
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0,1]
+LOCAL_RANK: 1 - CUDA_VISIBLE_DEVICES: [0,1]
+┏━━━┳━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃   ┃ Name  ┃ Type           ┃ Params ┃ Mode  ┃ FLOPs ┃
+┡━━━╇━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ 0 │ model │ PDETransformer │ 43.1 M │ train │     0 │
+└───┴───────┴────────────────┴────────┴───────┴───────┘
+Trainable params: 43.1 M                                                        
+Non-trainable params: 0                                                         
+Total params: 43.1 M                                                            
+Total estimated model params size (MB): 172                                     
+Modules in train mode: 698                                                      
+Modules in eval mode: 0                                                         
+Total FLOPs: 0                                                                  
+[93m[1mWarning:[22m ./datasets/ is not a valid directory. No local datasets will be available.[0m
+config: server_example/pdes_attention-ttt-mlp-bidir_128_60sims.yaml
+work_dir: /home/yifeiliu/working
+data_dir: /home/yifeiliu/working/datasets
+run_root: /home/yifeiliu/working/runs_v2
+run_name: pdes_attention-ttt-mlp-bidir_128_60sims
+model_type: PDE-S
+in_channels: 2 out_channels: 2 patch_size: 4
+periodic: True carrier_token_active: False
+checkpoint_path: /home/yifeiliu/working/runs_v2/pdes_attention-ttt-mlp-bidir_128_60sims/checkpoints/last.ckpt
+torch: 2.5.1+cu121
+cuda available: True
+cuda device count: 2
+precision: 32-true
+devices: 2 strategy: ddp
+accumulate_grad_batches: 16
+use_ttt_window_attention: False
+token_mixer_type: attention_ttt resolved: attention_ttt
+use_ttt_state_cache_train: False
+ttt_layer_type: mlp
+ttt_mini_batch_size: 64
+ttt_base_lr: 1.0
+ttt_use_gate: False
+ttt_scan_checkpoint_group_size: 0
+vittt_inner_lr: 1.0
+vittt_padding_mode: zero
+attention_ttt_type: ttt_sequence
+attention_ttt_gate_init: 0.1
+attention_ttt_bidirectional: True
+learning_rate: 4e-05
+generate_data: False low_res: True
+downsample_factor: 2 sample_size: 128 test_unrolling_steps: 29 max_channels: 2
+starting fresh training run 
+[96m[1mSuccess:[22m Loaded diff with 60 simulations (50 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded diff with 60 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded hyp with 60 simulations (50 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded hyp with 60 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded burgers with 60 simulations (50 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded burgers with 60 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded kdv with 60 simulations (50 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded kdv with 60 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded ks with 60 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded ks_test with 5 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded fisher with 60 simulations (50 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded fisher with 60 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_alpha with 10 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_alpha_test with 3 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_beta with 10 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_beta_test with 3 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_gamma with 10 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_gamma_test with 3 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_delta with 100 simulations (80 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_delta with 100 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_epsilon with 10 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_epsilon_test with 3 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_theta with 100 simulations (80 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_theta with 100 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_iota with 100 simulations (80 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_iota with 100 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_kappa with 100 simulations (80 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_kappa with 100 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded sh with 60 simulations (50 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded sh with 60 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded decay_turb with 60 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded decay_turb_test with 5 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded kolm_flow with 60 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded kolm_flow_test with 5 simulations and 1 samples each.[0m
+/home/yifeiliu/venv/lib/python3.12/site-packages/lightning/pytorch/utilities/data.py:79: Trying to infer the `batch_size` from an ambiguous collection. The batch size we found is 4. To avoid any miscalculations, use `self.log(..., batch_size=batch_size)`.
+/home/yifeiliu/venv/lib/python3.12/site-packages/lightning/pytorch/utilities/data.py:79: Trying to infer the `batch_size` from an ambiguous collection. The batch size we found is 2. To avoid any miscalculations, use `self.log(..., batch_size=batch_size)`.
+/home/yifeiliu/venv/lib/python3.12/site-packages/lightning/pytorch/utilities/data.py:79: Trying to infer the `batch_size` from an ambiguous collection. The batch size we found is 1. To avoid any miscalculations, use `self.log(..., batch_size=batch_size)`.
+[val] epoch 1/100 global_step=81 | val/loss=0.178688, val/loss_epoch=0.178688
+[train] epoch 1/100 global_step=81 elapsed=14.4 min | loss=0.329338, loss_epoch=0.329338, loss_step=0.1132, val/loss=0.178688, val/loss_epoch=0.178688
+[val] epoch 1/100 global_step=81 | val/loss=0.178688, val/loss_epoch=0.178688
+[train] epoch 1/100 global_step=81 elapsed=14.4 min | loss=0.329338, loss_epoch=0.329338, loss_step=0.1132, val/loss=0.178688, val/loss_epoch=0.178688
+[val] epoch 2/100 global_step=162 | val/loss=0.074585, val/loss_epoch=0.074585
+[train] epoch 2/100 global_step=162 elapsed=14.4 min | loss=0.111815, loss_epoch=0.111815, loss_step=0.0543017, val/loss=0.074585, val/loss_epoch=0.074585
+[val] epoch 2/100 global_step=162 | val/loss=0.074585, val/loss_epoch=0.074585
+[train] epoch 2/100 global_step=162 elapsed=14.4 min | loss=0.111815, loss_epoch=0.111815, loss_step=0.0543017, val/loss=0.074585, val/loss_epoch=0.074585
+[val] epoch 3/100 global_step=243 | val/loss=0.0553747, val/loss_epoch=0.0553747
+[train] epoch 3/100 global_step=243 elapsed=14.4 min | loss=0.0637954, loss_epoch=0.0637954, loss_step=0.0421206, val/loss=0.0553747, val/loss_epoch=0.0553747
+[val] epoch 3/100 global_step=243 | val/loss=0.0553747, val/loss_epoch=0.0553747
+[train] epoch 3/100 global_step=243 elapsed=14.4 min | loss=0.0637954, loss_epoch=0.0637954, loss_step=0.0421206, val/loss=0.0553747, val/loss_epoch=0.0553747
+[val] epoch 4/100 global_step=324 | val/loss=0.0471571, val/loss_epoch=0.0471571
+[train] epoch 4/100 global_step=324 elapsed=14.4 min | loss=0.0511327, loss_epoch=0.0511327, loss_step=0.0210198, val/loss=0.0471571, val/loss_epoch=0.0471571
+[val] epoch 4/100 global_step=324 | val/loss=0.0471571, val/loss_epoch=0.0471571
+[train] epoch 4/100 global_step=324 elapsed=14.4 min | loss=0.0511327, loss_epoch=0.0511327, loss_step=0.0210198, val/loss=0.0471571, val/loss_epoch=0.0471571
+[val] epoch 5/100 global_step=405 | val/loss=0.0427165, val/loss_epoch=0.0427165
+[train] epoch 5/100 global_step=405 elapsed=14.4 min | loss=0.0443753, loss_epoch=0.0443753, loss_step=0.03356, val/loss=0.0427165, val/loss_epoch=0.0427165
+[val] epoch 5/100 global_step=405 | val/loss=0.0427165, val/loss_epoch=0.0427165
+[train] epoch 5/100 global_step=405 elapsed=14.4 min | loss=0.0443753, loss_epoch=0.0443753, loss_step=0.03356, val/loss=0.0427165, val/loss_epoch=0.0427165
+[val] epoch 6/100 global_step=486 | val/loss=0.0392859, val/loss_epoch=0.0392859
+[train] epoch 6/100 global_step=486 elapsed=14.4 min | loss=0.0410353, loss_epoch=0.0410353, loss_step=0.0455731, val/loss=0.0392859, val/loss_epoch=0.0392859
+[val] epoch 6/100 global_step=486 | val/loss=0.0392859, val/loss_epoch=0.0392859
+[train] epoch 6/100 global_step=486 elapsed=14.4 min | loss=0.0410353, loss_epoch=0.0410353, loss_step=0.0455731, val/loss=0.0392859, val/loss_epoch=0.0392859
+[val] epoch 7/100 global_step=567 | val/loss=0.0386363, val/loss_epoch=0.0386363
+[train] epoch 7/100 global_step=567 elapsed=14.4 min | loss=0.0379073, loss_epoch=0.0379073, loss_step=0.0489564, val/loss=0.0386363, val/loss_epoch=0.0386363
+[val] epoch 7/100 global_step=567 | val/loss=0.0386363, val/loss_epoch=0.0386363
+[train] epoch 7/100 global_step=567 elapsed=14.4 min | loss=0.0379073, loss_epoch=0.0379073, loss_step=0.0489564, val/loss=0.0386363, val/loss_epoch=0.0386363
+[val] epoch 8/100 global_step=648 | val/loss=0.0358204, val/loss_epoch=0.0358204
+[train] epoch 8/100 global_step=648 elapsed=14.4 min | loss=0.0364499, loss_epoch=0.0364499, loss_step=0.05838, val/loss=0.0358204, val/loss_epoch=0.0358204
+[val] epoch 8/100 global_step=648 | val/loss=0.0358204, val/loss_epoch=0.0358204
+[train] epoch 8/100 global_step=648 elapsed=14.4 min | loss=0.0364499, loss_epoch=0.0364499, loss_step=0.05838, val/loss=0.0358204, val/loss_epoch=0.0358204
+[val] epoch 9/100 global_step=729 | val/loss=0.0336218, val/loss_epoch=0.0336218
+[train] epoch 9/100 global_step=729 elapsed=14.4 min | loss=0.0343356, loss_epoch=0.0343356, loss_step=0.0339143, val/loss=0.0336218, val/loss_epoch=0.0336218
+[val] epoch 9/100 global_step=729 | val/loss=0.0336218, val/loss_epoch=0.0336218
+[train] epoch 9/100 global_step=729 elapsed=14.4 min | loss=0.0343356, loss_epoch=0.0343356, loss_step=0.0339143, val/loss=0.0336218, val/loss_epoch=0.0336218
+[val] epoch 10/100 global_step=810 | val/loss=0.0331863, val/loss_epoch=0.0331863
+[train] epoch 10/100 global_step=810 elapsed=14.4 min | loss=0.033438, loss_epoch=0.033438, loss_step=0.0227575, val/loss=0.0331863, val/loss_epoch=0.0331863
+[val] epoch 10/100 global_step=810 | val/loss=0.0331863, val/loss_epoch=0.0331863
+[train] epoch 10/100 global_step=810 elapsed=14.4 min | loss=0.033438, loss_epoch=0.033438, loss_step=0.0227575, val/loss=0.0331863, val/loss_epoch=0.0331863
+[val] epoch 11/100 global_step=891 | val/loss=0.0313735, val/loss_epoch=0.0313735
+[train] epoch 11/100 global_step=891 elapsed=14.4 min | loss=0.031515, loss_epoch=0.031515, loss_step=0.00927017, val/loss=0.0313735, val/loss_epoch=0.0313735
+[val] epoch 11/100 global_step=891 | val/loss=0.0313735, val/loss_epoch=0.0313735
+[train] epoch 11/100 global_step=891 elapsed=14.4 min | loss=0.031515, loss_epoch=0.031515, loss_step=0.00927017, val/loss=0.0313735, val/loss_epoch=0.0313735
+[val] epoch 12/100 global_step=972 | val/loss=0.0302511, val/loss_epoch=0.0302511
+[train] epoch 12/100 global_step=972 elapsed=14.4 min | loss=0.0307307, loss_epoch=0.0307307, loss_step=0.0357427, val/loss=0.0302511, val/loss_epoch=0.0302511
+[val] epoch 12/100 global_step=972 | val/loss=0.0302511, val/loss_epoch=0.0302511
+[train] epoch 12/100 global_step=972 elapsed=14.4 min | loss=0.0307307, loss_epoch=0.0307307, loss_step=0.0357427, val/loss=0.0302511, val/loss_epoch=0.0302511
+[val] epoch 13/100 global_step=1053 | val/loss=0.0296583, val/loss_epoch=0.0296583
+[train] epoch 13/100 global_step=1053 elapsed=14.4 min | loss=0.0295085, loss_epoch=0.0295085, loss_step=0.0508875, val/loss=0.0296583, val/loss_epoch=0.0296583
+[val] epoch 13/100 global_step=1053 | val/loss=0.0296583, val/loss_epoch=0.0296583
+[train] epoch 13/100 global_step=1053 elapsed=14.4 min | loss=0.0295085, loss_epoch=0.0295085, loss_step=0.0508875, val/loss=0.0296583, val/loss_epoch=0.0296583
+[val] epoch 14/100 global_step=1134 | val/loss=0.0284428, val/loss_epoch=0.0284428
+[train] epoch 14/100 global_step=1134 elapsed=14.4 min | loss=0.0286959, loss_epoch=0.0286959, loss_step=0.0145965, val/loss=0.0284428, val/loss_epoch=0.0284428
+[val] epoch 14/100 global_step=1134 | val/loss=0.0284428, val/loss_epoch=0.0284428
+[train] epoch 14/100 global_step=1134 elapsed=14.4 min | loss=0.0286959, loss_epoch=0.0286959, loss_step=0.0145965, val/loss=0.0284428, val/loss_epoch=0.0284428
+[val] epoch 15/100 global_step=1215 | val/loss=0.0278429, val/loss_epoch=0.0278429
+[train] epoch 15/100 global_step=1215 elapsed=14.4 min | loss=0.0275548, loss_epoch=0.0275548, loss_step=0.0125255, val/loss=0.0278429, val/loss_epoch=0.0278429
+[val] epoch 15/100 global_step=1215 | val/loss=0.0278429, val/loss_epoch=0.0278429
+[train] epoch 15/100 global_step=1215 elapsed=14.4 min | loss=0.0275548, loss_epoch=0.0275548, loss_step=0.0125255, val/loss=0.0278429, val/loss_epoch=0.0278429
+[val] epoch 16/100 global_step=1296 | val/loss=0.0272844, val/loss_epoch=0.0272844
+[train] epoch 16/100 global_step=1296 elapsed=14.4 min | loss=0.0262991, loss_epoch=0.0262991, loss_step=0.0247681, val/loss=0.0272844, val/loss_epoch=0.0272844
+[val] epoch 16/100 global_step=1296 | val/loss=0.0272844, val/loss_epoch=0.0272844
+[train] epoch 16/100 global_step=1296 elapsed=14.4 min | loss=0.0262991, loss_epoch=0.0262991, loss_step=0.0247681, val/loss=0.0272844, val/loss_epoch=0.0272844
+[val] epoch 17/100 global_step=1377 | val/loss=0.0253507, val/loss_epoch=0.0253507
+[train] epoch 17/100 global_step=1377 elapsed=14.4 min | loss=0.0255403, loss_epoch=0.0255403, loss_step=0.0245677, val/loss=0.0253507, val/loss_epoch=0.0253507
+[val] epoch 17/100 global_step=1377 | val/loss=0.0253507, val/loss_epoch=0.0253507
+[train] epoch 17/100 global_step=1377 elapsed=14.4 min | loss=0.0255403, loss_epoch=0.0255403, loss_step=0.0245677, val/loss=0.0253507, val/loss_epoch=0.0253507
+[val] epoch 18/100 global_step=1458 | val/loss=0.0248648, val/loss_epoch=0.0248648
+[train] epoch 18/100 global_step=1458 elapsed=14.4 min | loss=0.024389, loss_epoch=0.024389, loss_step=0.0132715, val/loss=0.0248648, val/loss_epoch=0.0248648
+[val] epoch 18/100 global_step=1458 | val/loss=0.0248648, val/loss_epoch=0.0248648
+[train] epoch 18/100 global_step=1458 elapsed=14.4 min | loss=0.024389, loss_epoch=0.024389, loss_step=0.0132715, val/loss=0.0248648, val/loss_epoch=0.0248648
+[val] epoch 19/100 global_step=1539 | val/loss=0.0230406, val/loss_epoch=0.0230406
+[train] epoch 19/100 global_step=1539 elapsed=14.4 min | loss=0.023645, loss_epoch=0.023645, loss_step=0.0241248, val/loss=0.0230406, val/loss_epoch=0.0230406
+[val] epoch 19/100 global_step=1539 | val/loss=0.0230406, val/loss_epoch=0.0230406
+[train] epoch 19/100 global_step=1539 elapsed=14.4 min | loss=0.023645, loss_epoch=0.023645, loss_step=0.0241248, val/loss=0.0230406, val/loss_epoch=0.0230406
+[val] epoch 20/100 global_step=1620 | val/loss=0.0222487, val/loss_epoch=0.0222487
+[train] epoch 20/100 global_step=1620 elapsed=14.4 min | loss=0.0225316, loss_epoch=0.0225316, loss_step=0.0455344, val/loss=0.0222487, val/loss_epoch=0.0222487
+[val] epoch 20/100 global_step=1620 | val/loss=0.0222487, val/loss_epoch=0.0222487
+[train] epoch 20/100 global_step=1620 elapsed=14.4 min | loss=0.0225316, loss_epoch=0.0225316, loss_step=0.0455344, val/loss=0.0222487, val/loss_epoch=0.0222487
+[val] epoch 21/100 global_step=1701 | val/loss=0.0226204, val/loss_epoch=0.0226204
+[train] epoch 21/100 global_step=1701 elapsed=14.4 min | loss=0.0216364, loss_epoch=0.0216364, loss_step=0.0146948, val/loss=0.0226204, val/loss_epoch=0.0226204
+[val] epoch 21/100 global_step=1701 | val/loss=0.0226204, val/loss_epoch=0.0226204
+[train] epoch 21/100 global_step=1701 elapsed=14.4 min | loss=0.0216364, loss_epoch=0.0216364, loss_step=0.0146948, val/loss=0.0226204, val/loss_epoch=0.0226204
+[val] epoch 22/100 global_step=1782 | val/loss=0.0217254, val/loss_epoch=0.0217254
+[train] epoch 22/100 global_step=1782 elapsed=14.4 min | loss=0.0204172, loss_epoch=0.0204172, loss_step=0.00560419, val/loss=0.0217254, val/loss_epoch=0.0217254
+[val] epoch 22/100 global_step=1782 | val/loss=0.0217254, val/loss_epoch=0.0217254
+[train] epoch 22/100 global_step=1782 elapsed=14.4 min | loss=0.0204172, loss_epoch=0.0204172, loss_step=0.00560419, val/loss=0.0217254, val/loss_epoch=0.0217254
+[val] epoch 23/100 global_step=1863 | val/loss=0.0202166, val/loss_epoch=0.0202166
+[train] epoch 23/100 global_step=1863 elapsed=14.4 min | loss=0.0201413, loss_epoch=0.0201413, loss_step=0.0126227, val/loss=0.0202166, val/loss_epoch=0.0202166
+[val] epoch 23/100 global_step=1863 | val/loss=0.0202166, val/loss_epoch=0.0202166
+[train] epoch 23/100 global_step=1863 elapsed=14.4 min | loss=0.0201413, loss_epoch=0.0201413, loss_step=0.0126227, val/loss=0.0202166, val/loss_epoch=0.0202166
+[val] epoch 24/100 global_step=1944 | val/loss=0.0206245, val/loss_epoch=0.0206245
+[train] epoch 24/100 global_step=1944 elapsed=14.4 min | loss=0.0198091, loss_epoch=0.0198091, loss_step=0.0232085, val/loss=0.0206245, val/loss_epoch=0.0206245
+[val] epoch 24/100 global_step=1944 | val/loss=0.0206245, val/loss_epoch=0.0206245
+[train] epoch 24/100 global_step=1944 elapsed=14.4 min | loss=0.0198091, loss_epoch=0.0198091, loss_step=0.0232085, val/loss=0.0206245, val/loss_epoch=0.0206245
+[val] epoch 25/100 global_step=2025 | val/loss=0.0190779, val/loss_epoch=0.0190779
+[train] epoch 25/100 global_step=2025 elapsed=14.4 min | loss=0.0189776, loss_epoch=0.0189776, loss_step=0.00794454, val/loss=0.0190779, val/loss_epoch=0.0190779
+[val] epoch 25/100 global_step=2025 | val/loss=0.0190779, val/loss_epoch=0.0190779
+[train] epoch 25/100 global_step=2025 elapsed=14.4 min | loss=0.0189776, loss_epoch=0.0189776, loss_step=0.00794454, val/loss=0.0190779, val/loss_epoch=0.0190779
+[val] epoch 26/100 global_step=2106 | val/loss=0.0186704, val/loss_epoch=0.0186704
+[train] epoch 26/100 global_step=2106 elapsed=14.4 min | loss=0.0181765, loss_epoch=0.0181765, loss_step=0.0139781, val/loss=0.0186704, val/loss_epoch=0.0186704
+[val] epoch 26/100 global_step=2106 | val/loss=0.0186704, val/loss_epoch=0.0186704
+[train] epoch 26/100 global_step=2106 elapsed=14.4 min | loss=0.0181765, loss_epoch=0.0181765, loss_step=0.0139781, val/loss=0.0186704, val/loss_epoch=0.0186704
+[val] epoch 27/100 global_step=2187 | val/loss=0.0183988, val/loss_epoch=0.0183988
+[train] epoch 27/100 global_step=2187 elapsed=14.4 min | loss=0.0185519, loss_epoch=0.0185519, loss_step=0.00586747, val/loss=0.0183988, val/loss_epoch=0.0183988
+[val] epoch 27/100 global_step=2187 | val/loss=0.0183988, val/loss_epoch=0.0183988
+[train] epoch 27/100 global_step=2187 elapsed=14.4 min | loss=0.0185519, loss_epoch=0.0185519, loss_step=0.00586747, val/loss=0.0183988, val/loss_epoch=0.0183988
+[val] epoch 28/100 global_step=2268 | val/loss=0.0189538, val/loss_epoch=0.0189538
+[train] epoch 28/100 global_step=2268 elapsed=14.4 min | loss=0.0173554, loss_epoch=0.0173554, loss_step=0.0153165, val/loss=0.0189538, val/loss_epoch=0.0189538
+[val] epoch 28/100 global_step=2268 | val/loss=0.0189538, val/loss_epoch=0.0189538
+[train] epoch 28/100 global_step=2268 elapsed=14.4 min | loss=0.0173554, loss_epoch=0.0173554, loss_step=0.0153165, val/loss=0.0189538, val/loss_epoch=0.0189538
+[val] epoch 29/100 global_step=2349 | val/loss=0.0173041, val/loss_epoch=0.0173041
+[train] epoch 29/100 global_step=2349 elapsed=14.4 min | loss=0.0174595, loss_epoch=0.0174595, loss_step=0.0200258, val/loss=0.0173041, val/loss_epoch=0.0173041
+[val] epoch 29/100 global_step=2349 | val/loss=0.0173041, val/loss_epoch=0.0173041
+[train] epoch 29/100 global_step=2349 elapsed=14.4 min | loss=0.0174595, loss_epoch=0.0174595, loss_step=0.0200258, val/loss=0.0173041, val/loss_epoch=0.0173041
+[val] epoch 30/100 global_step=2430 | val/loss=0.0172982, val/loss_epoch=0.0172982
+[train] epoch 30/100 global_step=2430 elapsed=14.4 min | loss=0.0164322, loss_epoch=0.0164322, loss_step=0.0146896, val/loss=0.0172982, val/loss_epoch=0.0172982
+[val] epoch 30/100 global_step=2430 | val/loss=0.0172982, val/loss_epoch=0.0172982
+[train] epoch 30/100 global_step=2430 elapsed=14.4 min | loss=0.0164322, loss_epoch=0.0164322, loss_step=0.0146896, val/loss=0.0172982, val/loss_epoch=0.0172982
+[val] epoch 31/100 global_step=2511 | val/loss=0.017066, val/loss_epoch=0.017066
+[train] epoch 31/100 global_step=2511 elapsed=14.4 min | loss=0.0181901, loss_epoch=0.0181901, loss_step=0.00958766, val/loss=0.017066, val/loss_epoch=0.017066
+[val] epoch 31/100 global_step=2511 | val/loss=0.017066, val/loss_epoch=0.017066
+[train] epoch 31/100 global_step=2511 elapsed=14.4 min | loss=0.0181901, loss_epoch=0.0181901, loss_step=0.00958766, val/loss=0.017066, val/loss_epoch=0.017066
+[val] epoch 32/100 global_step=2592 | val/loss=0.0169851, val/loss_epoch=0.0169851
+[train] epoch 32/100 global_step=2592 elapsed=14.4 min | loss=0.0166592, loss_epoch=0.0166592, loss_step=0.0125532, val/loss=0.0169851, val/loss_epoch=0.0169851
+[val] epoch 32/100 global_step=2592 | val/loss=0.0169851, val/loss_epoch=0.0169851
+[train] epoch 32/100 global_step=2592 elapsed=14.4 min | loss=0.0166592, loss_epoch=0.0166592, loss_step=0.0125532, val/loss=0.0169851, val/loss_epoch=0.0169851
+[val] epoch 33/100 global_step=2673 | val/loss=0.0165134, val/loss_epoch=0.0165134
+[train] epoch 33/100 global_step=2673 elapsed=14.4 min | loss=0.015828, loss_epoch=0.015828, loss_step=0.0148731, val/loss=0.0165134, val/loss_epoch=0.0165134
+[val] epoch 33/100 global_step=2673 | val/loss=0.0165134, val/loss_epoch=0.0165134
+[train] epoch 33/100 global_step=2673 elapsed=14.4 min | loss=0.015828, loss_epoch=0.015828, loss_step=0.0148731, val/loss=0.0165134, val/loss_epoch=0.0165134
+[val] epoch 34/100 global_step=2754 | val/loss=0.0165214, val/loss_epoch=0.0165214
+[train] epoch 34/100 global_step=2754 elapsed=14.4 min | loss=0.0156432, loss_epoch=0.0156432, loss_step=0.00163233, val/loss=0.0165214, val/loss_epoch=0.0165214
+[val] epoch 34/100 global_step=2754 | val/loss=0.0165214, val/loss_epoch=0.0165214
+[train] epoch 34/100 global_step=2754 elapsed=14.4 min | loss=0.0156432, loss_epoch=0.0156432, loss_step=0.00163233, val/loss=0.0165214, val/loss_epoch=0.0165214
+[val] epoch 35/100 global_step=2835 | val/loss=0.0161556, val/loss_epoch=0.0161556
+[train] epoch 35/100 global_step=2835 elapsed=14.4 min | loss=0.0152821, loss_epoch=0.0152821, loss_step=0.00971966, val/loss=0.0161556, val/loss_epoch=0.0161556
+[val] epoch 35/100 global_step=2835 | val/loss=0.0161556, val/loss_epoch=0.0161556
+[train] epoch 35/100 global_step=2835 elapsed=14.4 min | loss=0.0152821, loss_epoch=0.0152821, loss_step=0.00971966, val/loss=0.0161556, val/loss_epoch=0.0161556
+[val] epoch 36/100 global_step=2916 | val/loss=0.0163836, val/loss_epoch=0.0163836
+[train] epoch 36/100 global_step=2916 elapsed=14.4 min | loss=0.015247, loss_epoch=0.015247, loss_step=0.0110903, val/loss=0.0163836, val/loss_epoch=0.0163836
+[val] epoch 36/100 global_step=2916 | val/loss=0.0163836, val/loss_epoch=0.0163836
+[train] epoch 36/100 global_step=2916 elapsed=14.4 min | loss=0.015247, loss_epoch=0.015247, loss_step=0.0110903, val/loss=0.0163836, val/loss_epoch=0.0163836
+[val] epoch 37/100 global_step=2997 | val/loss=0.0149086, val/loss_epoch=0.0149086
+[train] epoch 37/100 global_step=2997 elapsed=14.4 min | loss=0.0145982, loss_epoch=0.0145982, loss_step=0.0220851, val/loss=0.0149086, val/loss_epoch=0.0149086
+[val] epoch 37/100 global_step=2997 | val/loss=0.0149086, val/loss_epoch=0.0149086
+[train] epoch 37/100 global_step=2997 elapsed=14.4 min | loss=0.0145982, loss_epoch=0.0145982, loss_step=0.0220851, val/loss=0.0149086, val/loss_epoch=0.0149086
+[val] epoch 38/100 global_step=3078 | val/loss=0.0152267, val/loss_epoch=0.0152267
+[train] epoch 38/100 global_step=3078 elapsed=14.4 min | loss=0.0143032, loss_epoch=0.0143032, loss_step=0.0104491, val/loss=0.0152267, val/loss_epoch=0.0152267
+[val] epoch 38/100 global_step=3078 | val/loss=0.0152267, val/loss_epoch=0.0152267
+[train] epoch 38/100 global_step=3078 elapsed=14.4 min | loss=0.0143032, loss_epoch=0.0143032, loss_step=0.0104491, val/loss=0.0152267, val/loss_epoch=0.0152267
+[val] epoch 39/100 global_step=3159 | val/loss=0.0146809, val/loss_epoch=0.0146809
+[train] epoch 39/100 global_step=3159 elapsed=14.4 min | loss=0.0142397, loss_epoch=0.0142397, loss_step=0.0174729, val/loss=0.0146809, val/loss_epoch=0.0146809
+[val] epoch 39/100 global_step=3159 | val/loss=0.0146809, val/loss_epoch=0.0146809
+[train] epoch 39/100 global_step=3159 elapsed=14.4 min | loss=0.0142397, loss_epoch=0.0142397, loss_step=0.0174729, val/loss=0.0146809, val/loss_epoch=0.0146809
+[val] epoch 40/100 global_step=3240 | val/loss=0.0143201, val/loss_epoch=0.0143201
+[train] epoch 40/100 global_step=3240 elapsed=14.4 min | loss=0.0143314, loss_epoch=0.0143314, loss_step=0.025124, val/loss=0.0143201, val/loss_epoch=0.0143201
+[val] epoch 40/100 global_step=3240 | val/loss=0.0143201, val/loss_epoch=0.0143201
+[train] epoch 40/100 global_step=3240 elapsed=14.4 min | loss=0.0143314, loss_epoch=0.0143314, loss_step=0.025124, val/loss=0.0143201, val/loss_epoch=0.0143201
+[val] epoch 41/100 global_step=3321 | val/loss=0.014252, val/loss_epoch=0.014252
+[train] epoch 41/100 global_step=3321 elapsed=14.4 min | loss=0.0133374, loss_epoch=0.0133374, loss_step=0.00425288, val/loss=0.014252, val/loss_epoch=0.014252
+[val] epoch 41/100 global_step=3321 | val/loss=0.014252, val/loss_epoch=0.014252
+[train] epoch 41/100 global_step=3321 elapsed=14.4 min | loss=0.0133374, loss_epoch=0.0133374, loss_step=0.00425288, val/loss=0.014252, val/loss_epoch=0.014252
+[val] epoch 42/100 global_step=3402 | val/loss=0.0140965, val/loss_epoch=0.0140965
+[train] epoch 42/100 global_step=3402 elapsed=14.4 min | loss=0.0134422, loss_epoch=0.0134422, loss_step=0.0141508, val/loss=0.0140965, val/loss_epoch=0.0140965
+[val] epoch 42/100 global_step=3402 | val/loss=0.0140965, val/loss_epoch=0.0140965
+[train] epoch 42/100 global_step=3402 elapsed=14.4 min | loss=0.0134422, loss_epoch=0.0134422, loss_step=0.0141508, val/loss=0.0140965, val/loss_epoch=0.0140965
+[val] epoch 43/100 global_step=3483 | val/loss=0.0142459, val/loss_epoch=0.0142459
+[train] epoch 43/100 global_step=3483 elapsed=14.4 min | loss=0.0135822, loss_epoch=0.0135822, loss_step=0.0155442, val/loss=0.0142459, val/loss_epoch=0.0142459
+[val] epoch 43/100 global_step=3483 | val/loss=0.0142459, val/loss_epoch=0.0142459
+[train] epoch 43/100 global_step=3483 elapsed=14.4 min | loss=0.0135822, loss_epoch=0.0135822, loss_step=0.0155442, val/loss=0.0142459, val/loss_epoch=0.0142459
+[val] epoch 44/100 global_step=3564 | val/loss=0.0138566, val/loss_epoch=0.0138566
+[train] epoch 44/100 global_step=3564 elapsed=14.4 min | loss=0.0133043, loss_epoch=0.0133043, loss_step=0.019998, val/loss=0.0138566, val/loss_epoch=0.0138566
+[val] epoch 44/100 global_step=3564 | val/loss=0.0138566, val/loss_epoch=0.0138566
+[train] epoch 44/100 global_step=3564 elapsed=14.4 min | loss=0.0133043, loss_epoch=0.0133043, loss_step=0.019998, val/loss=0.0138566, val/loss_epoch=0.0138566
+[val] epoch 45/100 global_step=3645 | val/loss=0.0131807, val/loss_epoch=0.0131807
+[train] epoch 45/100 global_step=3645 elapsed=14.4 min | loss=0.0124786, loss_epoch=0.0124786, loss_step=0.00386381, val/loss=0.0131807, val/loss_epoch=0.0131807
+[val] epoch 45/100 global_step=3645 | val/loss=0.0131807, val/loss_epoch=0.0131807
+[train] epoch 45/100 global_step=3645 elapsed=14.4 min | loss=0.0124786, loss_epoch=0.0124786, loss_step=0.00386381, val/loss=0.0131807, val/loss_epoch=0.0131807
+[val] epoch 46/100 global_step=3726 | val/loss=0.0132407, val/loss_epoch=0.0132407
+[train] epoch 46/100 global_step=3726 elapsed=14.4 min | loss=0.0125032, loss_epoch=0.0125032, loss_step=0.0225895, val/loss=0.0132407, val/loss_epoch=0.0132407
+[val] epoch 46/100 global_step=3726 | val/loss=0.0132407, val/loss_epoch=0.0132407
+[train] epoch 46/100 global_step=3726 elapsed=14.4 min | loss=0.0125032, loss_epoch=0.0125032, loss_step=0.0225895, val/loss=0.0132407, val/loss_epoch=0.0132407
+[val] epoch 47/100 global_step=3807 | val/loss=0.0133326, val/loss_epoch=0.0133326
+[train] epoch 47/100 global_step=3807 elapsed=14.4 min | loss=0.0125911, loss_epoch=0.0125911, loss_step=0.0186841, val/loss=0.0133326, val/loss_epoch=0.0133326
+[val] epoch 47/100 global_step=3807 | val/loss=0.0133326, val/loss_epoch=0.0133326
+[train] epoch 47/100 global_step=3807 elapsed=14.4 min | loss=0.0125911, loss_epoch=0.0125911, loss_step=0.0186841, val/loss=0.0133326, val/loss_epoch=0.0133326
+[val] epoch 48/100 global_step=3888 | val/loss=0.0129042, val/loss_epoch=0.0129042
+[train] epoch 48/100 global_step=3888 elapsed=14.4 min | loss=0.0121701, loss_epoch=0.0121701, loss_step=0.0191048, val/loss=0.0129042, val/loss_epoch=0.0129042
+[val] epoch 48/100 global_step=3888 | val/loss=0.0129042, val/loss_epoch=0.0129042
+[train] epoch 48/100 global_step=3888 elapsed=14.4 min | loss=0.0121701, loss_epoch=0.0121701, loss_step=0.0191048, val/loss=0.0129042, val/loss_epoch=0.0129042
+[val] epoch 49/100 global_step=3969 | val/loss=0.0137278, val/loss_epoch=0.0137278
+[train] epoch 49/100 global_step=3969 elapsed=14.4 min | loss=0.0124288, loss_epoch=0.0124288, loss_step=0.0124434, val/loss=0.0137278, val/loss_epoch=0.0137278
+[val] epoch 49/100 global_step=3969 | val/loss=0.0137278, val/loss_epoch=0.0137278
+[train] epoch 49/100 global_step=3969 elapsed=14.4 min | loss=0.0124288, loss_epoch=0.0124288, loss_step=0.0124434, val/loss=0.0137278, val/loss_epoch=0.0137278
+[val] epoch 50/100 global_step=4050 | val/loss=0.0124057, val/loss_epoch=0.0124057
+[train] epoch 50/100 global_step=4050 elapsed=14.4 min | loss=0.0118232, loss_epoch=0.0118232, loss_step=0.0185793, val/loss=0.0124057, val/loss_epoch=0.0124057
+[val] epoch 50/100 global_step=4050 | val/loss=0.0124057, val/loss_epoch=0.0124057
+[train] epoch 50/100 global_step=4050 elapsed=14.4 min | loss=0.0118232, loss_epoch=0.0118232, loss_step=0.0185793, val/loss=0.0124057, val/loss_epoch=0.0124057
+[val] epoch 51/100 global_step=4131 | val/loss=0.0123746, val/loss_epoch=0.0123746
+[train] epoch 51/100 global_step=4131 elapsed=14.4 min | loss=0.0122494, loss_epoch=0.0122494, loss_step=0.00360583, val/loss=0.0123746, val/loss_epoch=0.0123746
+[val] epoch 51/100 global_step=4131 | val/loss=0.0123746, val/loss_epoch=0.0123746
+[train] epoch 51/100 global_step=4131 elapsed=14.4 min | loss=0.0122494, loss_epoch=0.0122494, loss_step=0.00360583, val/loss=0.0123746, val/loss_epoch=0.0123746
+[val] epoch 52/100 global_step=4212 | val/loss=0.0123725, val/loss_epoch=0.0123725
+[train] epoch 52/100 global_step=4212 elapsed=14.4 min | loss=0.0115522, loss_epoch=0.0115522, loss_step=0.00781622, val/loss=0.0123725, val/loss_epoch=0.0123725
+[val] epoch 52/100 global_step=4212 | val/loss=0.0123725, val/loss_epoch=0.0123725
+[train] epoch 52/100 global_step=4212 elapsed=14.4 min | loss=0.0115522, loss_epoch=0.0115522, loss_step=0.00781622, val/loss=0.0123725, val/loss_epoch=0.0123725
+[val] epoch 53/100 global_step=4293 | val/loss=0.0127374, val/loss_epoch=0.0127374
+[train] epoch 53/100 global_step=4293 elapsed=14.4 min | loss=0.0118026, loss_epoch=0.0118026, loss_step=0.0115642, val/loss=0.0127374, val/loss_epoch=0.0127374
+[val] epoch 53/100 global_step=4293 | val/loss=0.0127374, val/loss_epoch=0.0127374
+[train] epoch 53/100 global_step=4293 elapsed=14.4 min | loss=0.0118026, loss_epoch=0.0118026, loss_step=0.0115642, val/loss=0.0127374, val/loss_epoch=0.0127374
+[val] epoch 54/100 global_step=4374 | val/loss=0.0121154, val/loss_epoch=0.0121154
+[train] epoch 54/100 global_step=4374 elapsed=14.4 min | loss=0.0110131, loss_epoch=0.0110131, loss_step=0.00902976, val/loss=0.0121154, val/loss_epoch=0.0121154
+[val] epoch 54/100 global_step=4374 | val/loss=0.0121154, val/loss_epoch=0.0121154
+[train] epoch 54/100 global_step=4374 elapsed=14.4 min | loss=0.0110131, loss_epoch=0.0110131, loss_step=0.00902976, val/loss=0.0121154, val/loss_epoch=0.0121154
+[val] epoch 55/100 global_step=4455 | val/loss=0.0118772, val/loss_epoch=0.0118772
+[train] epoch 55/100 global_step=4455 elapsed=14.4 min | loss=0.0110637, loss_epoch=0.0110637, loss_step=0.0274234, val/loss=0.0118772, val/loss_epoch=0.0118772
+[val] epoch 55/100 global_step=4455 | val/loss=0.0118772, val/loss_epoch=0.0118772
+[train] epoch 55/100 global_step=4455 elapsed=14.4 min | loss=0.0110637, loss_epoch=0.0110637, loss_step=0.0274234, val/loss=0.0118772, val/loss_epoch=0.0118772
+[val] epoch 56/100 global_step=4536 | val/loss=0.0120559, val/loss_epoch=0.0120559
+[train] epoch 56/100 global_step=4536 elapsed=14.4 min | loss=0.0116829, loss_epoch=0.0116829, loss_step=0.00493783, val/loss=0.0120559, val/loss_epoch=0.0120559
+[val] epoch 56/100 global_step=4536 | val/loss=0.0120559, val/loss_epoch=0.0120559
+[train] epoch 56/100 global_step=4536 elapsed=14.4 min | loss=0.0116829, loss_epoch=0.0116829, loss_step=0.00493783, val/loss=0.0120559, val/loss_epoch=0.0120559
+[val] epoch 57/100 global_step=4617 | val/loss=0.0117326, val/loss_epoch=0.0117326
+[train] epoch 57/100 global_step=4617 elapsed=14.4 min | loss=0.0108106, loss_epoch=0.0108106, loss_step=0.0193355, val/loss=0.0117326, val/loss_epoch=0.0117326
+[val] epoch 57/100 global_step=4617 | val/loss=0.0117326, val/loss_epoch=0.0117326
+[train] epoch 57/100 global_step=4617 elapsed=14.4 min | loss=0.0108106, loss_epoch=0.0108106, loss_step=0.0193355, val/loss=0.0117326, val/loss_epoch=0.0117326
+[val] epoch 58/100 global_step=4698 | val/loss=0.0131349, val/loss_epoch=0.0131349
+[train] epoch 58/100 global_step=4698 elapsed=14.4 min | loss=0.0111175, loss_epoch=0.0111175, loss_step=0.00682273, val/loss=0.0131349, val/loss_epoch=0.0131349
+[val] epoch 58/100 global_step=4698 | val/loss=0.0131349, val/loss_epoch=0.0131349
+[train] epoch 58/100 global_step=4698 elapsed=14.4 min | loss=0.0111175, loss_epoch=0.0111175, loss_step=0.00682273, val/loss=0.0131349, val/loss_epoch=0.0131349
+[val] epoch 59/100 global_step=4779 | val/loss=0.0115937, val/loss_epoch=0.0115937
+[train] epoch 59/100 global_step=4779 elapsed=14.4 min | loss=0.0108323, loss_epoch=0.0108323, loss_step=0.0144508, val/loss=0.0115937, val/loss_epoch=0.0115937
+[val] epoch 59/100 global_step=4779 | val/loss=0.0115937, val/loss_epoch=0.0115937
+[train] epoch 59/100 global_step=4779 elapsed=14.4 min | loss=0.0108323, loss_epoch=0.0108323, loss_step=0.0144508, val/loss=0.0115937, val/loss_epoch=0.0115937
+[val] epoch 60/100 global_step=4860 | val/loss=0.011481, val/loss_epoch=0.011481
+[train] epoch 60/100 global_step=4860 elapsed=14.4 min | loss=0.0107775, loss_epoch=0.0107775, loss_step=0.00299867, val/loss=0.011481, val/loss_epoch=0.011481
+[val] epoch 60/100 global_step=4860 | val/loss=0.011481, val/loss_epoch=0.011481
+[train] epoch 60/100 global_step=4860 elapsed=14.4 min | loss=0.0107775, loss_epoch=0.0107775, loss_step=0.00299867, val/loss=0.011481, val/loss_epoch=0.011481
+[val] epoch 61/100 global_step=4941 | val/loss=0.0113881, val/loss_epoch=0.0113881
+[train] epoch 61/100 global_step=4941 elapsed=14.4 min | loss=0.0106917, loss_epoch=0.0106917, loss_step=0.0334774, val/loss=0.0113881, val/loss_epoch=0.0113881
+[val] epoch 61/100 global_step=4941 | val/loss=0.0113881, val/loss_epoch=0.0113881
+[train] epoch 61/100 global_step=4941 elapsed=14.4 min | loss=0.0106917, loss_epoch=0.0106917, loss_step=0.0334774, val/loss=0.0113881, val/loss_epoch=0.0113881
+[val] epoch 62/100 global_step=5022 | val/loss=0.0108797, val/loss_epoch=0.0108797
+[train] epoch 62/100 global_step=5022 elapsed=14.4 min | loss=0.0102734, loss_epoch=0.0102734, loss_step=0.00566322, val/loss=0.0108797, val/loss_epoch=0.0108797
+[val] epoch 62/100 global_step=5022 | val/loss=0.0108797, val/loss_epoch=0.0108797
+[train] epoch 62/100 global_step=5022 elapsed=14.4 min | loss=0.0102734, loss_epoch=0.0102734, loss_step=0.00566322, val/loss=0.0108797, val/loss_epoch=0.0108797
+[val] epoch 63/100 global_step=5103 | val/loss=0.0108348, val/loss_epoch=0.0108348
+[train] epoch 63/100 global_step=5103 elapsed=14.4 min | loss=0.0100518, loss_epoch=0.0100518, loss_step=0.0351001, val/loss=0.0108348, val/loss_epoch=0.0108348
+[val] epoch 63/100 global_step=5103 | val/loss=0.0108348, val/loss_epoch=0.0108348
+[train] epoch 63/100 global_step=5103 elapsed=14.4 min | loss=0.0100518, loss_epoch=0.0100518, loss_step=0.0351001, val/loss=0.0108348, val/loss_epoch=0.0108348
+[val] epoch 64/100 global_step=5184 | val/loss=0.0123043, val/loss_epoch=0.0123043
+[train] epoch 64/100 global_step=5184 elapsed=14.4 min | loss=0.0107118, loss_epoch=0.0107118, loss_step=0.00543216, val/loss=0.0123043, val/loss_epoch=0.0123043
+[val] epoch 64/100 global_step=5184 | val/loss=0.0123043, val/loss_epoch=0.0123043
+[train] epoch 64/100 global_step=5184 elapsed=14.4 min | loss=0.0107118, loss_epoch=0.0107118, loss_step=0.00543216, val/loss=0.0123043, val/loss_epoch=0.0123043
+[val] epoch 65/100 global_step=5265 | val/loss=0.0151755, val/loss_epoch=0.0151755
+[train] epoch 65/100 global_step=5265 elapsed=14.4 min | loss=0.0111259, loss_epoch=0.0111259, loss_step=0.00848766, val/loss=0.0151755, val/loss_epoch=0.0151755
+[val] epoch 65/100 global_step=5265 | val/loss=0.0151755, val/loss_epoch=0.0151755
+[train] epoch 65/100 global_step=5265 elapsed=14.4 min | loss=0.0111259, loss_epoch=0.0111259, loss_step=0.00848766, val/loss=0.0151755, val/loss_epoch=0.0151755
+[val] epoch 66/100 global_step=5346 | val/loss=0.0108216, val/loss_epoch=0.0108216
+[train] epoch 66/100 global_step=5346 elapsed=14.4 min | loss=0.0107145, loss_epoch=0.0107145, loss_step=0.0273575, val/loss=0.0108216, val/loss_epoch=0.0108216
+[val] epoch 66/100 global_step=5346 | val/loss=0.0108216, val/loss_epoch=0.0108216
+[train] epoch 66/100 global_step=5346 elapsed=14.4 min | loss=0.0107145, loss_epoch=0.0107145, loss_step=0.0273575, val/loss=0.0108216, val/loss_epoch=0.0108216
+[val] epoch 67/100 global_step=5427 | val/loss=0.0105092, val/loss_epoch=0.0105092
+[train] epoch 67/100 global_step=5427 elapsed=14.4 min | loss=0.00963396, loss_epoch=0.00963396, loss_step=0.00178992, val/loss=0.0105092, val/loss_epoch=0.0105092
+[val] epoch 67/100 global_step=5427 | val/loss=0.0105092, val/loss_epoch=0.0105092
+[train] epoch 67/100 global_step=5427 elapsed=14.4 min | loss=0.00963396, loss_epoch=0.00963396, loss_step=0.00178992, val/loss=0.0105092, val/loss_epoch=0.0105092
+[val] epoch 68/100 global_step=5508 | val/loss=0.010648, val/loss_epoch=0.010648
+[train] epoch 68/100 global_step=5508 elapsed=14.4 min | loss=0.00959234, loss_epoch=0.00959234, loss_step=0.0067574, val/loss=0.010648, val/loss_epoch=0.010648
+[val] epoch 68/100 global_step=5508 | val/loss=0.010648, val/loss_epoch=0.010648
+[train] epoch 68/100 global_step=5508 elapsed=14.4 min | loss=0.00959234, loss_epoch=0.00959234, loss_step=0.0067574, val/loss=0.010648, val/loss_epoch=0.010648
+[val] epoch 69/100 global_step=5589 | val/loss=0.0105635, val/loss_epoch=0.0105635
+[train] epoch 69/100 global_step=5589 elapsed=14.4 min | loss=0.00954489, loss_epoch=0.00954489, loss_step=0.012812, val/loss=0.0105635, val/loss_epoch=0.0105635
+[val] epoch 69/100 global_step=5589 | val/loss=0.0105635, val/loss_epoch=0.0105635
+[train] epoch 69/100 global_step=5589 elapsed=14.4 min | loss=0.00954489, loss_epoch=0.00954489, loss_step=0.012812, val/loss=0.0105635, val/loss_epoch=0.0105635
+[val] epoch 70/100 global_step=5670 | val/loss=0.0108037, val/loss_epoch=0.0108037
+[train] epoch 70/100 global_step=5670 elapsed=14.4 min | loss=0.00975037, loss_epoch=0.00975037, loss_step=0.0030835, val/loss=0.0108037, val/loss_epoch=0.0108037
+[val] epoch 70/100 global_step=5670 | val/loss=0.0108037, val/loss_epoch=0.0108037
+[train] epoch 70/100 global_step=5670 elapsed=14.4 min | loss=0.00975037, loss_epoch=0.00975037, loss_step=0.0030835, val/loss=0.0108037, val/loss_epoch=0.0108037
+[val] epoch 71/100 global_step=5751 | val/loss=0.0103939, val/loss_epoch=0.0103939
+[train] epoch 71/100 global_step=5751 elapsed=14.4 min | loss=0.00960649, loss_epoch=0.00960649, loss_step=0.0116952, val/loss=0.0103939, val/loss_epoch=0.0103939
+[val] epoch 71/100 global_step=5751 | val/loss=0.0103939, val/loss_epoch=0.0103939
+[train] epoch 71/100 global_step=5751 elapsed=14.4 min | loss=0.00960649, loss_epoch=0.00960649, loss_step=0.0116952, val/loss=0.0103939, val/loss_epoch=0.0103939
+[val] epoch 72/100 global_step=5832 | val/loss=0.0104308, val/loss_epoch=0.0104308
+[train] epoch 72/100 global_step=5832 elapsed=14.4 min | loss=0.00914655, loss_epoch=0.00914655, loss_step=0.00684207, val/loss=0.0104308, val/loss_epoch=0.0104308
+[val] epoch 72/100 global_step=5832 | val/loss=0.0104308, val/loss_epoch=0.0104308
+[train] epoch 72/100 global_step=5832 elapsed=14.4 min | loss=0.00914655, loss_epoch=0.00914655, loss_step=0.00684207, val/loss=0.0104308, val/loss_epoch=0.0104308
+[val] epoch 73/100 global_step=5913 | val/loss=0.010061, val/loss_epoch=0.010061
+[train] epoch 73/100 global_step=5913 elapsed=14.4 min | loss=0.00926328, loss_epoch=0.00926328, loss_step=0.00679285, val/loss=0.010061, val/loss_epoch=0.010061
+[val] epoch 73/100 global_step=5913 | val/loss=0.010061, val/loss_epoch=0.010061
+[train] epoch 73/100 global_step=5913 elapsed=14.4 min | loss=0.00926328, loss_epoch=0.00926328, loss_step=0.00679285, val/loss=0.010061, val/loss_epoch=0.010061
+[val] epoch 74/100 global_step=5994 | val/loss=0.0103175, val/loss_epoch=0.0103175
+[train] epoch 74/100 global_step=5994 elapsed=14.4 min | loss=0.00921572, loss_epoch=0.00921572, loss_step=0.0104633, val/loss=0.0103175, val/loss_epoch=0.0103175
+[val] epoch 74/100 global_step=5994 | val/loss=0.0103175, val/loss_epoch=0.0103175
+[train] epoch 74/100 global_step=5994 elapsed=14.4 min | loss=0.00921572, loss_epoch=0.00921572, loss_step=0.0104633, val/loss=0.0103175, val/loss_epoch=0.0103175
+[val] epoch 75/100 global_step=6075 | val/loss=0.0123591, val/loss_epoch=0.0123591
+[train] epoch 75/100 global_step=6075 elapsed=14.4 min | loss=0.00923258, loss_epoch=0.00923258, loss_step=0.00671124, val/loss=0.0123591, val/loss_epoch=0.0123591
+[val] epoch 75/100 global_step=6075 | val/loss=0.0123591, val/loss_epoch=0.0123591
+[train] epoch 75/100 global_step=6075 elapsed=14.4 min | loss=0.00923258, loss_epoch=0.00923258, loss_step=0.00671124, val/loss=0.0123591, val/loss_epoch=0.0123591
+[val] epoch 76/100 global_step=6156 | val/loss=0.00991291, val/loss_epoch=0.00991291
+[train] epoch 76/100 global_step=6156 elapsed=14.4 min | loss=0.00956813, loss_epoch=0.00956813, loss_step=0.00655931, val/loss=0.00991291, val/loss_epoch=0.00991291
+[val] epoch 76/100 global_step=6156 | val/loss=0.00991291, val/loss_epoch=0.00991291
+[train] epoch 76/100 global_step=6156 elapsed=14.4 min | loss=0.00956813, loss_epoch=0.00956813, loss_step=0.00655931, val/loss=0.00991291, val/loss_epoch=0.00991291
+[val] epoch 77/100 global_step=6237 | val/loss=0.00963001, val/loss_epoch=0.00963001
+[train] epoch 77/100 global_step=6237 elapsed=14.4 min | loss=0.00870291, loss_epoch=0.00870291, loss_step=0.00321558, val/loss=0.00963001, val/loss_epoch=0.00963001
+[val] epoch 77/100 global_step=6237 | val/loss=0.00963001, val/loss_epoch=0.00963001
+[train] epoch 77/100 global_step=6237 elapsed=14.4 min | loss=0.00870291, loss_epoch=0.00870291, loss_step=0.00321558, val/loss=0.00963001, val/loss_epoch=0.00963001
+[val] epoch 78/100 global_step=6318 | val/loss=0.0112073, val/loss_epoch=0.0112073
+[train] epoch 78/100 global_step=6318 elapsed=14.4 min | loss=0.0089296, loss_epoch=0.0089296, loss_step=0.00635634, val/loss=0.0112073, val/loss_epoch=0.0112073
+[val] epoch 78/100 global_step=6318 | val/loss=0.0112073, val/loss_epoch=0.0112073
+[train] epoch 78/100 global_step=6318 elapsed=14.4 min | loss=0.0089296, loss_epoch=0.0089296, loss_step=0.00635634, val/loss=0.0112073, val/loss_epoch=0.0112073
+[val] epoch 79/100 global_step=6399 | val/loss=0.0160602, val/loss_epoch=0.0160602
+[train] epoch 79/100 global_step=6399 elapsed=14.4 min | loss=0.0139783, loss_epoch=0.0139783, loss_step=0.00293039, val/loss=0.0160602, val/loss_epoch=0.0160602
+[val] epoch 79/100 global_step=6399 | val/loss=0.0160602, val/loss_epoch=0.0160602
+[train] epoch 79/100 global_step=6399 elapsed=14.4 min | loss=0.0139783, loss_epoch=0.0139783, loss_step=0.00293039, val/loss=0.0160602, val/loss_epoch=0.0160602
+[val] epoch 80/100 global_step=6480 | val/loss=0.0102468, val/loss_epoch=0.0102468
+[train] epoch 80/100 global_step=6480 elapsed=14.4 min | loss=0.0106084, loss_epoch=0.0106084, loss_step=0.00820094, val/loss=0.0102468, val/loss_epoch=0.0102468
+[val] epoch 80/100 global_step=6480 | val/loss=0.0102468, val/loss_epoch=0.0102468
+[train] epoch 80/100 global_step=6480 elapsed=14.4 min | loss=0.0106084, loss_epoch=0.0106084, loss_step=0.00820094, val/loss=0.0102468, val/loss_epoch=0.0102468
+[val] epoch 81/100 global_step=6561 | val/loss=0.00965044, val/loss_epoch=0.00965044
+[train] epoch 81/100 global_step=6561 elapsed=14.4 min | loss=0.00886878, loss_epoch=0.00886878, loss_step=0.00525932, val/loss=0.00965044, val/loss_epoch=0.00965044
+[val] epoch 81/100 global_step=6561 | val/loss=0.00965044, val/loss_epoch=0.00965044
+[train] epoch 81/100 global_step=6561 elapsed=14.4 min | loss=0.00886878, loss_epoch=0.00886878, loss_step=0.00525932, val/loss=0.00965044, val/loss_epoch=0.00965044
+[val] epoch 82/100 global_step=6642 | val/loss=0.00967057, val/loss_epoch=0.00967057
+[train] epoch 82/100 global_step=6642 elapsed=14.4 min | loss=0.00891274, loss_epoch=0.00891274, loss_step=0.00631122, val/loss=0.00967057, val/loss_epoch=0.00967057
+[val] epoch 82/100 global_step=6642 | val/loss=0.00967057, val/loss_epoch=0.00967057
+[train] epoch 82/100 global_step=6642 elapsed=14.4 min | loss=0.00891274, loss_epoch=0.00891274, loss_step=0.00631122, val/loss=0.00967057, val/loss_epoch=0.00967057
+[val] epoch 83/100 global_step=6723 | val/loss=0.00942101, val/loss_epoch=0.00942101
+[train] epoch 83/100 global_step=6723 elapsed=14.4 min | loss=0.00828258, loss_epoch=0.00828258, loss_step=0.00572668, val/loss=0.00942101, val/loss_epoch=0.00942101
+[val] epoch 83/100 global_step=6723 | val/loss=0.00942101, val/loss_epoch=0.00942101
+[train] epoch 83/100 global_step=6723 elapsed=14.4 min | loss=0.00828258, loss_epoch=0.00828258, loss_step=0.00572668, val/loss=0.00942101, val/loss_epoch=0.00942101
+[val] epoch 84/100 global_step=6804 | val/loss=0.00928418, val/loss_epoch=0.00928418
+[train] epoch 84/100 global_step=6804 elapsed=14.4 min | loss=0.00832657, loss_epoch=0.00832657, loss_step=0.00837223, val/loss=0.00928418, val/loss_epoch=0.00928418
+[val] epoch 84/100 global_step=6804 | val/loss=0.00928418, val/loss_epoch=0.00928418
+[train] epoch 84/100 global_step=6804 elapsed=14.4 min | loss=0.00832657, loss_epoch=0.00832657, loss_step=0.00837223, val/loss=0.00928418, val/loss_epoch=0.00928418
+[val] epoch 85/100 global_step=6885 | val/loss=0.00963371, val/loss_epoch=0.00963371
+[train] epoch 85/100 global_step=6885 elapsed=14.4 min | loss=0.00915185, loss_epoch=0.00915185, loss_step=0.00784622, val/loss=0.00963371, val/loss_epoch=0.00963371
+[val] epoch 85/100 global_step=6885 | val/loss=0.00963371, val/loss_epoch=0.00963371
+[train] epoch 85/100 global_step=6885 elapsed=14.4 min | loss=0.00915185, loss_epoch=0.00915185, loss_step=0.00784622, val/loss=0.00963371, val/loss_epoch=0.00963371
+[val] epoch 86/100 global_step=6966 | val/loss=0.00937714, val/loss_epoch=0.00937714
+[train] epoch 86/100 global_step=6966 elapsed=14.4 min | loss=0.00826855, loss_epoch=0.00826855, loss_step=0.00299215, val/loss=0.00937714, val/loss_epoch=0.00937714
+[val] epoch 86/100 global_step=6966 | val/loss=0.00937714, val/loss_epoch=0.00937714
+[train] epoch 86/100 global_step=6966 elapsed=14.4 min | loss=0.00826855, loss_epoch=0.00826855, loss_step=0.00299215, val/loss=0.00937714, val/loss_epoch=0.00937714
+[val] epoch 87/100 global_step=7047 | val/loss=0.00916804, val/loss_epoch=0.00916804
+[train] epoch 87/100 global_step=7047 elapsed=14.4 min | loss=0.00815058, loss_epoch=0.00815058, loss_step=0.0130453, val/loss=0.00916804, val/loss_epoch=0.00916804
+[val] epoch 87/100 global_step=7047 | val/loss=0.00916804, val/loss_epoch=0.00916804
+[train] epoch 87/100 global_step=7047 elapsed=14.4 min | loss=0.00815058, loss_epoch=0.00815058, loss_step=0.0130453, val/loss=0.00916804, val/loss_epoch=0.00916804
+[val] epoch 88/100 global_step=7128 | val/loss=0.00921232, val/loss_epoch=0.00921232
+[train] epoch 88/100 global_step=7128 elapsed=14.4 min | loss=0.00814836, loss_epoch=0.00814836, loss_step=0.00610129, val/loss=0.00921232, val/loss_epoch=0.00921232
+[val] epoch 88/100 global_step=7128 | val/loss=0.00921232, val/loss_epoch=0.00921232
+[train] epoch 88/100 global_step=7128 elapsed=14.4 min | loss=0.00814836, loss_epoch=0.00814836, loss_step=0.00610129, val/loss=0.00921232, val/loss_epoch=0.00921232
+[val] epoch 89/100 global_step=7209 | val/loss=0.00895763, val/loss_epoch=0.00895763
+[train] epoch 89/100 global_step=7209 elapsed=14.4 min | loss=0.00829861, loss_epoch=0.00829861, loss_step=0.00512875, val/loss=0.00895763, val/loss_epoch=0.00895763
+[val] epoch 89/100 global_step=7209 | val/loss=0.00895763, val/loss_epoch=0.00895763
+[train] epoch 89/100 global_step=7209 elapsed=14.4 min | loss=0.00829861, loss_epoch=0.00829861, loss_step=0.00512875, val/loss=0.00895763, val/loss_epoch=0.00895763
+[val] epoch 90/100 global_step=7290 | val/loss=0.00921724, val/loss_epoch=0.00921724
+[train] epoch 90/100 global_step=7290 elapsed=14.4 min | loss=0.00832177, loss_epoch=0.00832177, loss_step=0.00414936, val/loss=0.00921724, val/loss_epoch=0.00921724
+[val] epoch 90/100 global_step=7290 | val/loss=0.00921724, val/loss_epoch=0.00921724
+[train] epoch 90/100 global_step=7290 elapsed=14.4 min | loss=0.00832177, loss_epoch=0.00832177, loss_step=0.00414936, val/loss=0.00921724, val/loss_epoch=0.00921724
+[val] epoch 91/100 global_step=7371 | val/loss=0.00899526, val/loss_epoch=0.00899526
+[train] epoch 91/100 global_step=7371 elapsed=14.4 min | loss=0.00803547, loss_epoch=0.00803547, loss_step=0.00495044, val/loss=0.00899526, val/loss_epoch=0.00899526
+[val] epoch 91/100 global_step=7371 | val/loss=0.00899526, val/loss_epoch=0.00899526
+[train] epoch 91/100 global_step=7371 elapsed=14.4 min | loss=0.00803547, loss_epoch=0.00803547, loss_step=0.00495044, val/loss=0.00899526, val/loss_epoch=0.00899526
+[val] epoch 92/100 global_step=7452 | val/loss=0.0089916, val/loss_epoch=0.0089916
+[train] epoch 92/100 global_step=7452 elapsed=14.4 min | loss=0.00823832, loss_epoch=0.00823832, loss_step=0.000763644, val/loss=0.0089916, val/loss_epoch=0.0089916
+[val] epoch 92/100 global_step=7452 | val/loss=0.0089916, val/loss_epoch=0.0089916
+[train] epoch 92/100 global_step=7452 elapsed=14.4 min | loss=0.00823832, loss_epoch=0.00823832, loss_step=0.000763644, val/loss=0.0089916, val/loss_epoch=0.0089916
+[val] epoch 93/100 global_step=7533 | val/loss=0.0087269, val/loss_epoch=0.0087269
+[train] epoch 93/100 global_step=7533 elapsed=14.4 min | loss=0.00771772, loss_epoch=0.00771772, loss_step=0.00555444, val/loss=0.0087269, val/loss_epoch=0.0087269
+[val] epoch 93/100 global_step=7533 | val/loss=0.0087269, val/loss_epoch=0.0087269
+[train] epoch 93/100 global_step=7533 elapsed=14.4 min | loss=0.00771772, loss_epoch=0.00771772, loss_step=0.00555444, val/loss=0.0087269, val/loss_epoch=0.0087269
+[val] epoch 94/100 global_step=7614 | val/loss=0.00890176, val/loss_epoch=0.00890176
+[train] epoch 94/100 global_step=7614 elapsed=14.4 min | loss=0.00778631, loss_epoch=0.00778631, loss_step=0.0154753, val/loss=0.00890176, val/loss_epoch=0.00890176
+[val] epoch 94/100 global_step=7614 | val/loss=0.00890176, val/loss_epoch=0.00890176
+[train] epoch 94/100 global_step=7614 elapsed=14.4 min | loss=0.00778631, loss_epoch=0.00778631, loss_step=0.0154753, val/loss=0.00890176, val/loss_epoch=0.00890176
+[val] epoch 95/100 global_step=7695 | val/loss=0.00875111, val/loss_epoch=0.00875111
+[train] epoch 95/100 global_step=7695 elapsed=14.4 min | loss=0.00784766, loss_epoch=0.00784766, loss_step=0.00647446, val/loss=0.00875111, val/loss_epoch=0.00875111
+[val] epoch 95/100 global_step=7695 | val/loss=0.00875111, val/loss_epoch=0.00875111
+[train] epoch 95/100 global_step=7695 elapsed=14.4 min | loss=0.00784766, loss_epoch=0.00784766, loss_step=0.00647446, val/loss=0.00875111, val/loss_epoch=0.00875111
+[val] epoch 96/100 global_step=7776 | val/loss=0.00993042, val/loss_epoch=0.00993042
+[train] epoch 96/100 global_step=7776 elapsed=14.4 min | loss=0.00792098, loss_epoch=0.00792098, loss_step=0.00715373, val/loss=0.00993042, val/loss_epoch=0.00993042
+[val] epoch 96/100 global_step=7776 | val/loss=0.00993042, val/loss_epoch=0.00993042
+[train] epoch 96/100 global_step=7776 elapsed=14.4 min | loss=0.00792098, loss_epoch=0.00792098, loss_step=0.00715373, val/loss=0.00993042, val/loss_epoch=0.00993042
+[val] epoch 97/100 global_step=7857 | val/loss=0.00857125, val/loss_epoch=0.00857125
+[train] epoch 97/100 global_step=7857 elapsed=14.4 min | loss=0.00761796, loss_epoch=0.00761796, loss_step=0.0106416, val/loss=0.00857125, val/loss_epoch=0.00857125
+[val] epoch 97/100 global_step=7857 | val/loss=0.00857125, val/loss_epoch=0.00857125
+[train] epoch 97/100 global_step=7857 elapsed=14.4 min | loss=0.00761796, loss_epoch=0.00761796, loss_step=0.0106416, val/loss=0.00857125, val/loss_epoch=0.00857125
+[val] epoch 98/100 global_step=7938 | val/loss=0.00873172, val/loss_epoch=0.00873172
+[train] epoch 98/100 global_step=7938 elapsed=14.4 min | loss=0.00728156, loss_epoch=0.00728156, loss_step=0.00111187, val/loss=0.00873172, val/loss_epoch=0.00873172
+[val] epoch 98/100 global_step=7938 | val/loss=0.00873172, val/loss_epoch=0.00873172
+[train] epoch 98/100 global_step=7938 elapsed=14.4 min | loss=0.00728156, loss_epoch=0.00728156, loss_step=0.00111187, val/loss=0.00873172, val/loss_epoch=0.00873172
+[val] epoch 99/100 global_step=8019 | val/loss=0.00889624, val/loss_epoch=0.00889624
+[train] epoch 99/100 global_step=8019 elapsed=14.4 min | loss=0.00761117, loss_epoch=0.00761117, loss_step=0.0152854, val/loss=0.00889624, val/loss_epoch=0.00889624
+[val] epoch 99/100 global_step=8019 | val/loss=0.00889624, val/loss_epoch=0.00889624
+[train] epoch 99/100 global_step=8019 elapsed=14.4 min | loss=0.00761117, loss_epoch=0.00761117, loss_step=0.0152854, val/loss=0.00889624, val/loss_epoch=0.00889624
+[val] epoch 100/100 global_step=8100 | val/loss=0.00861898, val/loss_epoch=0.00861898
+[train] epoch 100/100 global_step=8100 elapsed=14.4 min | loss=0.0077252, loss_epoch=0.0077252, loss_step=0.00177717, val/loss=0.00861898, val/loss_epoch=0.00861898
+`Trainer.fit` stopped: `max_epochs=100` reached.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0,1]
+LOCAL_RANK: 1 - CUDA_VISIBLE_DEVICES: [0,1]
+/home/yifeiliu/venv/lib/python3.12/site-packages/lightning/pytorch/trainer/connectors/data_connector.py:217: Using `DistributedSampler` with the dataloaders. During `trainer.validate()`, it is recommended to use `Trainer(devices=1, num_nodes=1)` to ensure each sample/batch gets evaluated exactly once. Otherwise, multi-device settings use `DistributedSampler` that replicates some samples to make sure all devices have same batch size in case of uneven inputs.
+[val] epoch 100/100 global_step=8100 | val/loss=0.00861898, val/loss_epoch=0.00861898
+[train] epoch 100/100 global_step=8100 elapsed=14.4 min | loss=0.0077252, loss_epoch=0.0077252, loss_step=0.00177717, val/loss=0.00861898, val/loss_epoch=0.00861898
+[val] epoch 101/100 global_step=8100 | val/loss=0.00861898, val/loss_epoch=0.00861898
+last checkpoint: /home/yifeiliu/working/runs_v2/pdes_attention-ttt-mlp-bidir_128_60sims/checkpoints/last.ckpt
+best checkpoints: [val] epoch 101/100 global_step=8100 | val/loss=0.00861898, val/loss_epoch=0.00861898
+last checkpoint: /home/yifeiliu/working/runs_v2/pdes_attention-ttt-mlp-bidir_128_60sims/checkpoints/last.ckpt
+best checkpoints: {'/home/yifeiliu/working/runs_v2/pdes_attention-ttt-mlp-bidir_128_60sims/checkpoints/epoch-epoch=092.ckpt': tensor(0.0087, device='cuda:1'), '/home/yifeiliu/working/runs_v2/pdes_attention-ttt-mlp-bidir_128_60sims/checkpoints/epoch-epoch=096.ckpt': tensor(0.0086, device='cuda:1'), '/home/yifeiliu/working/runs_v2/pdes_attention-ttt-mlp-bidir_128_60sims/checkpoints/epoch-epoch=099.ckpt': tensor(0.0086, device='cuda:1')}
+validation: [{'val/loss_epoch': 0.008618980646133423}]
+
+DIR: /home/yifeiliu/working/runs_v2/pdes_attention-ttt-mlp-bidir_128_60sims/checkpoints
+  epoch-epoch=092.ckpt | 494.3 MB
+  epoch-epoch=096.ckpt | 494.3 MB
+  epoch-epoch=099.ckpt | 494.3 MB
+  last.ckpt | 494.3 MB
+
+DIR: /home/yifeiliu/working/runs_v2/train_once/checkpoints
+  not found
+
+DIR: /home/yifeiliu/working/runs_v2/inference_cache_off/checkpoints
+  not found
+
+DIR: /home/yifeiliu/working/runs_v2/inference_cache_on/checkpoints
+  not found
+
+DIR: /home/yifeiliu/server_06_vittt/lightning_logs/version_0/checkpoints
+  not found
+
+DIR: /home/yifeiliu/server_06_vittt/lightning_logs/version_1/checkpoints
+  not found
+
+=== Evaluating inference_cache_off ===
+{'/home/yifeiliu/working/runs_v2/pdes_attention-ttt-mlp-bidir_128_60sims/checkpoints/epoch-epoch=092.ckpt': tensor(0.0087, device='cuda:0'), '/home/yifeiliu/working/runs_v2/pdes_attention-ttt-mlp-bidir_128_60sims/checkpoints/epoch-epoch=096.ckpt': tensor(0.0086, device='cuda:0'), '/home/yifeiliu/working/runs_v2/pdes_attention-ttt-mlp-bidir_128_60sims/checkpoints/epoch-epoch=099.ckpt': tensor(0.0086, device='cuda:0')}
+validation: [{'val/loss_epoch': 0.008618980646133423}]
+
+DIR: /home/yifeiliu/working/runs_v2/pdes_attention-ttt-mlp-bidir_128_60sims/checkpoints
+  epoch-epoch=092.ckpt | 494.3 MB
+  epoch-epoch=096.ckpt | 494.3 MB
+  epoch-epoch=099.ckpt | 494.3 MB
+  last.ckpt | 494.3 MB
+
+DIR: /home/yifeiliu/working/runs_v2/train_once/checkpoints
+  not found
+
+DIR: /home/yifeiliu/working/runs_v2/inference_cache_off/checkpoints
+  not found
+
+DIR: /home/yifeiliu/working/runs_v2/inference_cache_on/checkpoints
+  not found
+
+DIR: /home/yifeiliu/server_06_vittt/lightning_logs/version_0/checkpoints
+  not found
+
+DIR: /home/yifeiliu/server_06_vittt/lightning_logs/version_1/checkpoints
+  not found
+
+=== Evaluating inference_cache_off ===
+  0%|          | 0/28 [00:00<?, ?it/s]  4%|▎         | 1/28 [00:00<00:05,  4.91it/s]  7%|▋         | 2/28 [00:00<00:05,  5.01it/s]  0%|          | 0/28 [00:00<?, ?it/s] 11%|█         | 3/28 [00:00<00:04,  5.01it/s] 14%|█▍        | 4/28 [00:00<00:05,  4.55it/s]  4%|▎         | 1/28 [00:00<00:11,  2.34it/s] 18%|█▊        | 5/28 [00:01<00:05,  4.18it/s]  7%|▋         | 2/28 [00:00<00:08,  2.97it/s] 21%|██▏       | 6/28 [00:01<00:05,  3.95it/s] 11%|█         | 3/28 [00:00<00:07,  3.25it/s] 25%|██▌       | 7/28 [00:01<00:05,  3.81it/s] 14%|█▍        | 4/28 [00:01<00:07,  3.39it/s] 29%|██▊       | 8/28 [00:01<00:05,  3.73it/s] 18%|█▊        | 5/28 [00:01<00:06,  3.46it/s] 32%|███▏      | 9/28 [00:02<00:05,  3.66it/s] 21%|██▏       | 6/28 [00:01<00:06,  3.51it/s] 36%|███▌      | 10/28 [00:02<00:04,  3.62it/s] 25%|██▌       | 7/28 [00:02<00:05,  3.51it/s] 39%|███▉      | 11/28 [00:02<00:04,  3.59it/s] 29%|██▊       | 8/28 [00:02<00:05,  3.52it/s] 43%|████▎     | 12/28 [00:03<00:04,  3.56it/s] 32%|███▏      | 9/28 [00:02<00:05,  3.52it/s] 46%|████▋     | 13/28 [00:03<00:04,  3.54it/s] 36%|███▌      | 10/28 [00:02<00:05,  3.51it/s] 50%|█████     | 14/28 [00:03<00:03,  3.52it/s] 39%|███▉      | 11/28 [00:03<00:04,  3.49it/s] 54%|█████▎    | 15/28 [00:03<00:03,  3.50it/s] 43%|████▎     | 12/28 [00:03<00:04,  3.47it/s] 57%|█████▋    | 16/28 [00:04<00:03,  3.47it/s] 46%|████▋     | 13/28 [00:03<00:04,  3.45it/s] 61%|██████    | 17/28 [00:04<00:03,  3.46it/s] 50%|█████     | 14/28 [00:04<00:04,  3.45it/s] 64%|██████▍   | 18/28 [00:04<00:02,  3.47it/s] 54%|█████▎    | 15/28 [00:04<00:03,  3.47it/s] 68%|██████▊   | 19/28 [00:05<00:02,  3.50it/s] 57%|█████▋    | 16/28 [00:04<00:03,  3.48it/s] 71%|███████▏  | 20/28 [00:05<00:02,  3.50it/s] 61%|██████    | 17/28 [00:04<00:03,  3.48it/s] 75%|███████▌  | 21/28 [00:05<00:01,  3.50it/s] 64%|██████▍   | 18/28 [00:05<00:02,  3.51it/s] 79%|███████▊  | 22/28 [00:05<00:01,  3.50it/s] 68%|██████▊   | 19/28 [00:05<00:02,  3.51it/s] 82%|████████▏ | 23/28 [00:06<00:01,  3.50it/s] 71%|███████▏  | 20/28 [00:05<00:02,  3.51it/s] 86%|████████▌ | 24/28 [00:06<00:01,  3.50it/s] 75%|███████▌  | 21/28 [00:06<00:01,  3.50it/s] 89%|████████▉ | 25/28 [00:06<00:00,  3.49it/s] 79%|███████▊  | 22/28 [00:06<00:01,  3.50it/s] 93%|█████████▎| 26/28 [00:07<00:00,  3.49it/s] 82%|████████▏ | 23/28 [00:06<00:01,  3.48it/s] 96%|█████████▋| 27/28 [00:07<00:00,  3.49it/s] 86%|████████▌ | 24/28 [00:06<00:01,  3.49it/s]100%|██████████| 28/28 [00:07<00:00,  3.50it/s]100%|██████████| 28/28 [00:07<00:00,  3.64it/s]
+{
+  "name": "inference_cache_off",
+  "checkpoint": "/home/yifeiliu/working/runs_v2/pdes_attention-ttt-mlp-bidir_128_60sims/checkpoints/last.ckpt",
+  "max_epochs": 100,
+  "val_metrics": [
+    {
+      "val/loss_epoch": 0.008618980646133423
+    }
+  ],
+  "use_ttt_state_cache_inference": false,
+  "use_ttt_state_cache_train": false,
+  "prediction_shape": [
+    4,
+    29,
+    2,
+    128,
+    128
+  ],
+  "reference_shape": [
+    4,
+    29,
+    2,
+    128,
+    128
+  ],
+  "rollout_mse": 0.008590114302933216
+}
+cache off rollout mse: 0.008590114302933216
+prediction shape: (4, 29, 2, 128, 128)
+ 89%|████████▉ | 25/28 [00:07<00:00,  3.60it/s] 93%|█████████▎| 26/28 [00:07<00:00,  3.93it/s] 96%|█████████▋| 27/28 [00:07<00:00,  4.22it/s]100%|██████████| 28/28 [00:07<00:00,  4.46it/s]100%|██████████| 28/28 [00:07<00:00,  3.58it/s]
+{
+  "name": "inference_cache_off",
+  "checkpoint": "/home/yifeiliu/working/runs_v2/pdes_attention-ttt-mlp-bidir_128_60sims/checkpoints/last.ckpt",
+  "max_epochs": 100,
+  "val_metrics": [
+    {
+      "val/loss_epoch": 0.008618980646133423
+    }
+  ],
+  "use_ttt_state_cache_inference": false,
+  "use_ttt_state_cache_train": false,
+  "prediction_shape": [
+    4,
+    29,
+    2,
+    128,
+    128
+  ],
+  "reference_shape": [
+    4,
+    29,
+    2,
+    128,
+    128
+  ],
+  "rollout_mse": 1.0608162879943848
+}
+cache off rollout mse: 1.0608162879943848
+prediction shape: (4, 29, 2, 128, 128)

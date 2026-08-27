@@ -1,0 +1,105 @@
+{
+  "metadata": {
+    "model_source": "from_pretrained",
+    "checkpoint": null,
+    "hf_model_source": "/home/yifeiliu/working/pretrained_weights/pde-transformer",
+    "subfolder": "mc-b",
+    "work_dir": "/home/yifeiliu/working",
+    "data_dir": "/home/yifeiliu/working/datasets_ape2d_full",
+    "data_dir_warning_non_official": false,
+    "dataset_profile": "full_paper",
+    "strict_test_split": true,
+    "id_ood_test": false,
+    "id_ood_manifest_path": null,
+    "run_root": "/home/yifeiliu/working/runs_global_linear_b_ema_full256",
+    "run_name": "pdes_global-linear-ttt-b-ema_256_full_100ep",
+    "model_type": "PDE-B",
+    "in_channels": 2,
+    "out_channels": 2,
+    "patch_size": 4,
+    "periodic": true,
+    "carrier_token_active": false,
+    "token_mixer_type": "global_linear_ttt",
+    "resolved_token_mixer_type": "attention",
+    "use_ttt_window_attention": false,
+    "use_ttt_state_cache_train": false,
+    "ttt_layer_type": "linear",
+    "ttt_mini_batch_size": 16,
+    "ttt_base_lr": 1.0,
+    "ttt_use_gate": false,
+    "ttt_scan_checkpoint_group_size": 0,
+    "vittt_inner_lr": 1.0,
+    "vittt_padding_mode": "zero",
+    "attention_ttt_type": "ttt_sequence",
+    "attention_ttt_gate_init": 0.1,
+    "attention_ttt_bidirectional": true,
+    "downsample_factor": 1,
+    "sample_size": 256,
+    "test_unrolling_steps": 29,
+    "max_channels": 2,
+    "rollout_steps": 30,
+    "eval_k": [
+      1,
+      10,
+      20,
+      29
+    ],
+    "datasets": [
+      "diff",
+      "burgers",
+      "kdv",
+      "ks",
+      "fisher",
+      "gs_alpha",
+      "gs_beta",
+      "gs_gamma",
+      "gs_delta",
+      "gs_epsilon",
+      "gs_theta",
+      "gs_iota",
+      "gs_kappa",
+      "sh",
+      "decay_turb",
+      "kolm_flow"
+    ],
+    "batch_size": 8,
+    "num_workers": 2,
+    "seed": 42,
+    "max_batches_per_dataset": null,
+    "torch_version": "2.5.1+cu121",
+    "device": "cuda:0",
+    "cuda_device_count": 1,
+    "config_path": "/home/yifeiliu/server_17_global_linear_b_ema_full256/server_example/pdes_global-linear-ttt-b-ema_256_full.yaml",
+    "output_dir": "/home/yifeiliu/working/eval_official_mc_b_full256/full_test",
+    "cache_modes_run": [
+      "off"
+    ],
+    "overall_started_at": "2026-08-15T20:10:25",
+    "overall_ended_at": "2026-08-15T20:28:17",
+    "overall_elapsed_seconds": 1071.836105313152
+  },
+  "params": {
+    "total": 130591568,
+    "trainable": 130591568,
+    "total_m": "130.59M",
+    "trainable_m": "130.59M"
+  },
+  "aggregates_by_cache_mode": {
+    "off": {
+      "macro": {
+        "nRMSE_1": 0.03888296247692779,
+        "nRMSE_10": 0.32877892221013705,
+        "nRMSE_20": 0.6037699535799523,
+        "nRMSE_29": 0.7251174496486783
+      },
+      "micro": {
+        "nRMSE_1": 0.043388836922891,
+        "nRMSE_10": 0.29789555444436916,
+        "nRMSE_20": 0.5090997740451028,
+        "nRMSE_29": 0.6124038075699526
+      },
+      "conditions": {},
+      "total_evaluated_trajectories": 850
+    }
+  }
+}

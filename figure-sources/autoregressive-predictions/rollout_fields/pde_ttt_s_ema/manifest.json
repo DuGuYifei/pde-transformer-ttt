@@ -1,0 +1,349 @@
+{
+  "checkpoint": "/home/yifeiliu/working/runs_global_linear_s_ema_3seed_full256/pdes_global-linear-ttt-s-ema_256_full_seed42_100ep/checkpoints/ema-best.ckpt",
+  "data_dir": "/home/yifeiliu/working/datasets_ape2d_full",
+  "dataset_profile": "full_paper",
+  "hf_model_source": null,
+  "model_label": "pde_ttt_s_ema",
+  "model_source": "checkpoint",
+  "records": [
+    {
+      "channel": 0,
+      "pde": "diff",
+      "prediction_shape": [
+        7,
+        256,
+        256
+      ],
+      "selected_test_trajectories": 100,
+      "source_file": "diff.hdf5",
+      "steps": [
+        0,
+        5,
+        10,
+        15,
+        20,
+        25,
+        29
+      ],
+      "trajectory_index": 0
+    },
+    {
+      "channel": 0,
+      "pde": "burgers",
+      "prediction_shape": [
+        7,
+        256,
+        256
+      ],
+      "selected_test_trajectories": 100,
+      "source_file": "burgers.hdf5",
+      "steps": [
+        0,
+        5,
+        10,
+        15,
+        20,
+        25,
+        29
+      ],
+      "trajectory_index": 0
+    },
+    {
+      "channel": 1,
+      "pde": "kdv",
+      "prediction_shape": [
+        7,
+        256,
+        256
+      ],
+      "selected_test_trajectories": 100,
+      "source_file": "kdv.hdf5",
+      "steps": [
+        0,
+        5,
+        10,
+        15,
+        20,
+        25,
+        29
+      ],
+      "trajectory_index": 0
+    },
+    {
+      "channel": 0,
+      "pde": "ks",
+      "prediction_shape": [
+        7,
+        256,
+        256
+      ],
+      "selected_test_trajectories": 50,
+      "source_file": "ks_test.hdf5",
+      "steps": [
+        0,
+        5,
+        10,
+        15,
+        20,
+        25,
+        29
+      ],
+      "trajectory_index": 0
+    },
+    {
+      "channel": 0,
+      "pde": "fisher",
+      "prediction_shape": [
+        7,
+        256,
+        256
+      ],
+      "selected_test_trajectories": 100,
+      "source_file": "fisher.hdf5",
+      "steps": [
+        0,
+        5,
+        10,
+        15,
+        20,
+        25,
+        29
+      ],
+      "trajectory_index": 0
+    },
+    {
+      "channel": 1,
+      "pde": "gs_alpha",
+      "prediction_shape": [
+        7,
+        256,
+        256
+      ],
+      "selected_test_trajectories": 30,
+      "source_file": "gs_alpha_test.hdf5",
+      "steps": [
+        0,
+        5,
+        10,
+        15,
+        20,
+        25,
+        29
+      ],
+      "trajectory_index": 0
+    },
+    {
+      "channel": 1,
+      "pde": "gs_beta",
+      "prediction_shape": [
+        7,
+        256,
+        256
+      ],
+      "selected_test_trajectories": 30,
+      "source_file": "gs_beta_test.hdf5",
+      "steps": [
+        0,
+        5,
+        10,
+        15,
+        20,
+        25,
+        29
+      ],
+      "trajectory_index": 0
+    },
+    {
+      "channel": 0,
+      "pde": "gs_gamma",
+      "prediction_shape": [
+        7,
+        256,
+        256
+      ],
+      "selected_test_trajectories": 30,
+      "source_file": "gs_gamma_test.hdf5",
+      "steps": [
+        0,
+        5,
+        10,
+        15,
+        20,
+        25,
+        29
+      ],
+      "trajectory_index": 0
+    },
+    {
+      "channel": 0,
+      "pde": "gs_delta",
+      "prediction_shape": [
+        7,
+        256,
+        256
+      ],
+      "selected_test_trajectories": 20,
+      "source_file": "gs_delta.hdf5",
+      "steps": [
+        0,
+        5,
+        10,
+        15,
+        20,
+        25,
+        29
+      ],
+      "trajectory_index": 0
+    },
+    {
+      "channel": 0,
+      "pde": "gs_epsilon",
+      "prediction_shape": [
+        7,
+        256,
+        256
+      ],
+      "selected_test_trajectories": 30,
+      "source_file": "gs_epsilon_test.hdf5",
+      "steps": [
+        0,
+        5,
+        10,
+        15,
+        20,
+        25,
+        29
+      ],
+      "trajectory_index": 0
+    },
+    {
+      "channel": 0,
+      "pde": "gs_theta",
+      "prediction_shape": [
+        7,
+        256,
+        256
+      ],
+      "selected_test_trajectories": 20,
+      "source_file": "gs_theta.hdf5",
+      "steps": [
+        0,
+        5,
+        10,
+        15,
+        20,
+        25,
+        29
+      ],
+      "trajectory_index": 0
+    },
+    {
+      "channel": 0,
+      "pde": "gs_iota",
+      "prediction_shape": [
+        7,
+        256,
+        256
+      ],
+      "selected_test_trajectories": 20,
+      "source_file": "gs_iota.hdf5",
+      "steps": [
+        0,
+        5,
+        10,
+        15,
+        20,
+        25,
+        29
+      ],
+      "trajectory_index": 0
+    },
+    {
+      "channel": 0,
+      "pde": "gs_kappa",
+      "prediction_shape": [
+        7,
+        256,
+        256
+      ],
+      "selected_test_trajectories": 20,
+      "source_file": "gs_kappa.hdf5",
+      "steps": [
+        0,
+        5,
+        10,
+        15,
+        20,
+        25,
+        29
+      ],
+      "trajectory_index": 0
+    },
+    {
+      "channel": 0,
+      "pde": "sh",
+      "prediction_shape": [
+        7,
+        256,
+        256
+      ],
+      "selected_test_trajectories": 100,
+      "source_file": "sh.hdf5",
+      "steps": [
+        0,
+        5,
+        10,
+        15,
+        20,
+        25,
+        29
+      ],
+      "trajectory_index": 0
+    },
+    {
+      "channel": 0,
+      "pde": "decay_turb",
+      "prediction_shape": [
+        7,
+        256,
+        256
+      ],
+      "selected_test_trajectories": 50,
+      "source_file": "decay_turb_test.hdf5",
+      "steps": [
+        0,
+        5,
+        10,
+        15,
+        20,
+        25,
+        29
+      ],
+      "trajectory_index": 0
+    },
+    {
+      "channel": 0,
+      "pde": "kolm_flow",
+      "prediction_shape": [
+        7,
+        256,
+        256
+      ],
+      "selected_test_trajectories": 50,
+      "source_file": "kolm_flow_test.hdf5",
+      "steps": [
+        0,
+        5,
+        10,
+        15,
+        20,
+        25,
+        29
+      ],
+      "trajectory_index": 0
+    }
+  ],
+  "rollout_steps": 30,
+  "sample_size": 256,
+  "subfolder": null
+}

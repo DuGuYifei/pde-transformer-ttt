@@ -1,0 +1,388 @@
+{
+  "metadata": {
+    "model_source": "checkpoint",
+    "checkpoint": "/home/yifeiliu/working/runs_v2/pdes_attention-ttt-mlp-bidir_128_60sims/checkpoints/epoch-epoch=096.ckpt",
+    "hf_model_source": "thuerey-group/pde-transformer",
+    "subfolder": "mc-s",
+    "work_dir": "/home/yifeiliu/working",
+    "data_dir": "/home/yifeiliu/working/datasets_official",
+    "data_dir_warning_non_official": false,
+    "run_root": "/home/yifeiliu/working/runs_v2",
+    "run_name": "pdes_attention-ttt-mlp-bidir_128_60sims",
+    "model_type": "PDE-S",
+    "in_channels": 2,
+    "out_channels": 2,
+    "patch_size": 4,
+    "periodic": true,
+    "carrier_token_active": false,
+    "token_mixer_type": "attention_ttt",
+    "resolved_token_mixer_type": "attention_ttt",
+    "use_ttt_window_attention": false,
+    "use_ttt_state_cache_train": false,
+    "ttt_layer_type": "mlp",
+    "ttt_mini_batch_size": 64,
+    "ttt_base_lr": 1.0,
+    "ttt_use_gate": false,
+    "ttt_scan_checkpoint_group_size": 0,
+    "vittt_inner_lr": 1.0,
+    "vittt_padding_mode": "zero",
+    "attention_ttt_type": "ttt_sequence",
+    "attention_ttt_gate_init": 0.1,
+    "attention_ttt_bidirectional": true,
+    "downsample_factor": 2,
+    "sample_size": 128,
+    "test_unrolling_steps": 29,
+    "max_channels": 2,
+    "rollout_steps": 30,
+    "eval_k": [
+      1,
+      10,
+      20,
+      29
+    ],
+    "datasets": [
+      "diff",
+      "hyp",
+      "burgers",
+      "kdv",
+      "ks",
+      "fisher",
+      "gs_alpha",
+      "gs_beta",
+      "gs_gamma",
+      "gs_delta",
+      "gs_epsilon",
+      "gs_theta",
+      "gs_iota",
+      "gs_kappa",
+      "sh",
+      "decay_turb",
+      "kolm_flow"
+    ],
+    "batch_size": 8,
+    "num_workers": 2,
+    "seed": 42,
+    "max_batches_per_dataset": null,
+    "torch_version": "2.5.1+cu121",
+    "device": "cuda:0",
+    "cuda_device_count": 1,
+    "config_path": "server_example/pdes_attention-ttt-mlp-bidir_128_60sims.yaml",
+    "output_dir": "/home/yifeiliu/working/runs_v2/pdes_attention-ttt-mlp-bidir_128_60sims/test_results/official_best_epoch096_batch8_cacheoff",
+    "cache_mode": "off",
+    "started_at": "2026-08-16T23:39:47",
+    "ended_at": "2026-08-16T23:55:55",
+    "elapsed_seconds": 967.5982402646914
+  },
+  "params": {
+    "total": 43118032,
+    "trainable": 43118032,
+    "total_m": "43.12M",
+    "trainable_m": "43.12M"
+  },
+  "per_dataset": {
+    "diff": {
+      "dataset_name": "diff",
+      "num_test_trajectories": 60,
+      "num_evaluated_trajectories": 60,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        128,
+        128
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.0636039599776268,
+      "nRMSE_10": 0.3346236526966095,
+      "nRMSE_20": 0.7542298634847006,
+      "nRMSE_29": 1.3239032586415609,
+      "elapsed_seconds": 58.69989476073533
+    },
+    "hyp": {
+      "dataset_name": "hyp",
+      "num_test_trajectories": 60,
+      "num_evaluated_trajectories": 60,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        128,
+        128
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.08937537670135498,
+      "nRMSE_10": 0.3413039167722066,
+      "nRMSE_20": 0.6606078068415324,
+      "nRMSE_29": 1.0492350141207376,
+      "elapsed_seconds": 58.36724518891424
+    },
+    "burgers": {
+      "dataset_name": "burgers",
+      "num_test_trajectories": 60,
+      "num_evaluated_trajectories": 60,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        128,
+        128
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.08159895340601603,
+      "nRMSE_10": 0.5320046106974284,
+      "nRMSE_20": 0.9925986846288045,
+      "nRMSE_29": 1.297450351715088,
+      "elapsed_seconds": 58.507104174699634
+    },
+    "kdv": {
+      "dataset_name": "kdv",
+      "num_test_trajectories": 60,
+      "num_evaluated_trajectories": 60,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        128,
+        128
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.10468760430812836,
+      "nRMSE_10": 0.6272973934809367,
+      "nRMSE_20": 1.1913013855616252,
+      "nRMSE_29": 1.5794764439264932,
+      "elapsed_seconds": 58.49672148283571
+    },
+    "ks": {
+      "dataset_name": "ks",
+      "num_test_trajectories": 5,
+      "num_evaluated_trajectories": 5,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        128,
+        128
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.09716041088104248,
+      "nRMSE_10": 1.2731127738952637,
+      "nRMSE_20": 1.621109390258789,
+      "nRMSE_29": 2.076929473876953,
+      "elapsed_seconds": 6.366555419750512
+    },
+    "fisher": {
+      "dataset_name": "fisher",
+      "num_test_trajectories": 60,
+      "num_evaluated_trajectories": 60,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        128,
+        128
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.0324897937476635,
+      "nRMSE_10": 0.3993661681811015,
+      "nRMSE_20": 0.6605328500270844,
+      "nRMSE_29": 0.5558754622936248,
+      "elapsed_seconds": 58.275123379193246
+    },
+    "gs_alpha": {
+      "dataset_name": "gs_alpha",
+      "num_test_trajectories": 3,
+      "num_evaluated_trajectories": 3,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        128,
+        128
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.08708685636520386,
+      "nRMSE_10": 0.848771890004476,
+      "nRMSE_20": 1.2286083698272705,
+      "nRMSE_29": 1.420554478963216,
+      "elapsed_seconds": 5.477709427010268
+    },
+    "gs_beta": {
+      "dataset_name": "gs_beta",
+      "num_test_trajectories": 3,
+      "num_evaluated_trajectories": 3,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        128,
+        128
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.13816479841868082,
+      "nRMSE_10": 1.1749083995819092,
+      "nRMSE_20": 1.5081397692362468,
+      "nRMSE_29": 1.3476484616597493,
+      "elapsed_seconds": 5.487918838858604
+    },
+    "gs_gamma": {
+      "dataset_name": "gs_gamma",
+      "num_test_trajectories": 3,
+      "num_evaluated_trajectories": 3,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        128,
+        128
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.15825671950976053,
+      "nRMSE_10": 0.7760361035664877,
+      "nRMSE_20": 1.0311195055643718,
+      "nRMSE_29": 1.1353516578674316,
+      "elapsed_seconds": 5.445739154703915
+    },
+    "gs_delta": {
+      "dataset_name": "gs_delta",
+      "num_test_trajectories": 100,
+      "num_evaluated_trajectories": 100,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        128,
+        128
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.054281435310840606,
+      "nRMSE_10": 1.226954460144043,
+      "nRMSE_20": 1.0752703428268433,
+      "nRMSE_29": 0.9536046028137207,
+      "elapsed_seconds": 95.90129396691918
+    },
+    "gs_epsilon": {
+      "dataset_name": "gs_epsilon",
+      "num_test_trajectories": 3,
+      "num_evaluated_trajectories": 3,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        128,
+        128
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.08593619863192241,
+      "nRMSE_10": 0.5900789101918539,
+      "nRMSE_20": 1.0690579414367676,
+      "nRMSE_29": 1.217555046081543,
+      "elapsed_seconds": 5.436441018246114
+    },
+    "gs_theta": {
+      "dataset_name": "gs_theta",
+      "num_test_trajectories": 100,
+      "num_evaluated_trajectories": 100,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        128,
+        128
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.04086682185530663,
+      "nRMSE_10": 1.1789393043518066,
+      "nRMSE_20": 1.0583828449249268,
+      "nRMSE_29": 0.9768567228317261,
+      "elapsed_seconds": 95.97174973692745
+    },
+    "gs_iota": {
+      "dataset_name": "gs_iota",
+      "num_test_trajectories": 100,
+      "num_evaluated_trajectories": 100,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        128,
+        128
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.0411864461004734,
+      "nRMSE_10": 1.2259890699386597,
+      "nRMSE_20": 1.0077638149261474,
+      "nRMSE_29": 0.9251677465438842,
+      "elapsed_seconds": 96.11993349483237
+    },
+    "gs_kappa": {
+      "dataset_name": "gs_kappa",
+      "num_test_trajectories": 100,
+      "num_evaluated_trajectories": 100,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        128,
+        128
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.07114468276500702,
+      "nRMSE_10": 1.228876085281372,
+      "nRMSE_20": 1.1972351169586182,
+      "nRMSE_29": 1.0174888134002686,
+      "elapsed_seconds": 95.98724852502346
+    },
+    "sh": {
+      "dataset_name": "sh",
+      "num_test_trajectories": 60,
+      "num_evaluated_trajectories": 60,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        128,
+        128
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.0950704296429952,
+      "nRMSE_10": 0.7649880011876424,
+      "nRMSE_20": 1.0273201704025268,
+      "nRMSE_29": 0.9870001633961996,
+      "elapsed_seconds": 58.230702185072005
+    },
+    "decay_turb": {
+      "dataset_name": "decay_turb",
+      "num_test_trajectories": 5,
+      "num_evaluated_trajectories": 5,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        128,
+        128
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.27222552299499514,
+      "nRMSE_10": 0.6059031963348389,
+      "nRMSE_20": 0.7296660900115967,
+      "nRMSE_29": 0.879976749420166,
+      "elapsed_seconds": 6.371452007442713
+    },
+    "kolm_flow": {
+      "dataset_name": "kolm_flow",
+      "num_test_trajectories": 5,
+      "num_evaluated_trajectories": 5,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        128,
+        128
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.2970744132995605,
+      "nRMSE_10": 0.9893787384033204,
+      "nRMSE_20": 1.2464254379272461,
+      "nRMSE_29": 1.2288431167602538,
+      "elapsed_seconds": 6.298606943339109
+    }
+  },
+  "aggregate": {
+    "macro": {
+      "nRMSE_1": 0.1064829661127399,
+      "nRMSE_10": 0.8305019220417622,
+      "nRMSE_20": 1.0623158461673587,
+      "nRMSE_29": 1.1748775037830952
+    },
+    "micro": {
+      "nRMSE_1": 0.06797730765545686,
+      "nRMSE_10": 0.8774615959412261,
+      "nRMSE_20": 0.9956257166068769,
+      "nRMSE_29": 1.0561376186004892
+    },
+    "total_evaluated_trajectories": 787
+  }
+}

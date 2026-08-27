@@ -1,0 +1,59 @@
+{
+  "purpose": "Machine-readable and provenance evidence retained for the PDE-TTT thesis",
+  "code_snapshots": {
+    "pde_ttt": {
+      "branch": "thesis/pde-ttt",
+      "commit": "5b3bf08"
+    },
+    "full_map_vit3": {
+      "branch": "thesis/full-map-vit3",
+      "commit": "e3059c6"
+    },
+    "window_ttt": {
+      "branch": "thesis/window-ttt",
+      "commit": "a11a1a8"
+    },
+    "window_attention_ttt_hybrid": {
+      "branch": "thesis/window-attention-ttt-hybrid",
+      "commit": "efef9c8"
+    }
+  },
+  "architecture_screen": {
+    "resolution": 128,
+    "pde_families": 17,
+    "rollout_steps": 29,
+    "models": {
+      "pde_transformer_s": "architecture-screen-baseline",
+      "window_ttt_linear": "architecture-screen-window-ttt-linear",
+      "window_ttt_mlp": "architecture-screen-window-ttt-mlp",
+      "window_sequential_ttt": "architecture-screen-window-sequential",
+      "window_vit3": "architecture-screen-window-vit3",
+      "window_attention_ttt_hybrid": "architecture-screen-window-attention-ttt-hybrid",
+      "full_map_vit3": "architecture-screen-full-map-vit3",
+      "pde_ttt_s": "architecture-screen-pde-ttt"
+    }
+  },
+  "full256": {
+    "matched_pde_s": "global-linear-full256-evaluation",
+    "ema_development": "global-linear-ema-full256-evaluation",
+    "ema_three_seed": "global-linear-s-ema-3seed-full256-evaluation",
+    "raw_best_three_seed": "global-linear-s-rawbest-3seed-full256-evaluation",
+    "pde_b": "global-linear-b-ema-full256-evaluation",
+    "efficiency": "efficiency-benchmarks/p-vs-global-linear-ttt"
+  },
+  "figure_sources": {
+    "result_figures": "figure-sources/generate_result_figures.py",
+    "all_29_step_family_statistics": "figure-sources/data/full256_all29_family_statistics.csv",
+    "seed42_training_metrics": "figure-sources/data/pde_ttt_s_seed42_ema_enabled_training_metrics.csv",
+    "autoregressive_predictions": "figure-sources/autoregressive-predictions"
+  },
+  "intentional_exclusions": [
+    "checkpoints and model weights",
+    "HDF5 datasets",
+    "notebooks and caches",
+    "temporal TTT and R29 experiments",
+    "ordinary non-hierarchical full-map ViT3",
+    "thesis drafts and rendered thesis PDFs"
+  ]
+}
+

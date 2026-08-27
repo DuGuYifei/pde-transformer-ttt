@@ -1,0 +1,3336 @@
+{
+  "metadata": {
+    "model_source": "checkpoint",
+    "checkpoint": "/home/yifeiliu/working/runs_global_linear_b_ema_full256/pdes_global-linear-ttt-b-ema_256_full_100ep/checkpoints/ema-best.ckpt",
+    "hf_model_source": "thuerey-group/pde-transformer",
+    "subfolder": "mc-s",
+    "work_dir": "/home/yifeiliu/working",
+    "data_dir": "/home/yifeiliu/working/datasets_test",
+    "data_dir_warning_non_official": false,
+    "dataset_profile": "legacy_small",
+    "strict_test_split": true,
+    "id_ood_test": true,
+    "id_ood_manifest_path": "/home/yifeiliu/working/datasets_test/manifest.json",
+    "run_root": "/home/yifeiliu/working/runs_global_linear_b_ema_full256",
+    "run_name": "pdes_global-linear-ttt-b-ema_256_full_100ep",
+    "model_type": "PDE-B",
+    "in_channels": 2,
+    "out_channels": 2,
+    "patch_size": 4,
+    "periodic": true,
+    "carrier_token_active": false,
+    "token_mixer_type": "global_linear_ttt",
+    "resolved_token_mixer_type": "global_linear_ttt",
+    "use_ttt_window_attention": false,
+    "use_ttt_state_cache_train": false,
+    "ttt_layer_type": "linear",
+    "ttt_mini_batch_size": 16,
+    "ttt_base_lr": 1.0,
+    "ttt_use_gate": false,
+    "ttt_scan_checkpoint_group_size": 0,
+    "vittt_inner_lr": 1.0,
+    "vittt_padding_mode": "zero",
+    "attention_ttt_type": "ttt_sequence",
+    "attention_ttt_gate_init": 0.1,
+    "attention_ttt_bidirectional": true,
+    "downsample_factor": 1,
+    "sample_size": 256,
+    "test_unrolling_steps": 29,
+    "max_channels": 2,
+    "rollout_steps": 30,
+    "eval_k": [
+      1,
+      10,
+      20,
+      29
+    ],
+    "datasets": [
+      "diff",
+      "hyp",
+      "burgers",
+      "kdv",
+      "ks",
+      "fisher",
+      "gs_alpha",
+      "gs_beta",
+      "gs_gamma",
+      "gs_delta",
+      "gs_epsilon",
+      "gs_theta",
+      "gs_iota",
+      "gs_kappa",
+      "sh",
+      "decay_turb",
+      "kolm_flow"
+    ],
+    "batch_size": 8,
+    "num_workers": 2,
+    "seed": 42,
+    "max_batches_per_dataset": null,
+    "torch_version": "2.5.1+cu121",
+    "device": "cuda:0",
+    "cuda_device_count": 1,
+    "config_path": "/home/yifeiliu/server_17_global_linear_b_ema_full256/server_example/pdes_global-linear-ttt-b-ema_256_full.yaml",
+    "output_dir": "/home/yifeiliu/working/eval_global_linear_b_ema_full256/ema/id_ood",
+    "cache_mode": "off",
+    "started_at": "2026-08-11T07:18:13",
+    "ended_at": "2026-08-11T07:24:23",
+    "elapsed_seconds": 370.2503544697538
+  },
+  "params": {
+    "total": 130968608,
+    "trainable": 130968608,
+    "total_m": "130.97M",
+    "trainable_m": "130.97M"
+  },
+  "per_dataset": {
+    "diff": {
+      "dataset_name": "diff",
+      "test_split": {
+        "requested_dataset_name": "diff",
+        "source_dataset_name": "diff",
+        "source_file": "/home/yifeiliu/working/datasets_test/diff.hdf5",
+        "source_file_name": "diff.hdf5",
+        "source_num_simulations": 9,
+        "source_num_frames": 30,
+        "selected_sim_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "selected_num_simulations": 9,
+        "samples_per_simulation": 1
+      },
+      "num_test_trajectories": 9,
+      "num_evaluated_trajectories": 9,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        256,
+        256
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.07127991318702698,
+      "nRMSE_10": 0.23074707885583243,
+      "nRMSE_20": 0.29625221424632603,
+      "nRMSE_29": 0.3456023732821147,
+      "conditions": {
+        "id": {
+          "count": 3,
+          "nRMSE_1": 0.026249122340232134,
+          "nRMSE_10": 0.06379085779190063,
+          "nRMSE_20": 0.1036918933192889,
+          "nRMSE_29": 0.1280504365762075
+        },
+        "ood_low": {
+          "count": 3,
+          "nRMSE_1": 0.1289608385413885,
+          "nRMSE_10": 0.40168599784374237,
+          "nRMSE_20": 0.4873754382133484,
+          "nRMSE_29": 0.5504255493481954
+        },
+        "ood_high": {
+          "count": 3,
+          "nRMSE_1": 0.05862977231542269,
+          "nRMSE_10": 0.2267643709977468,
+          "nRMSE_20": 0.2976892938216527,
+          "nRMSE_29": 0.3583310892184575
+        }
+      },
+      "trajectories": [
+        {
+          "sim_id": 0,
+          "condition": "id",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Viscosity X": 0.0275,
+            "Viscosity Y": 0.0275
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.012399864383041859,
+          "nRMSE_10": 0.04207632318139076,
+          "nRMSE_20": 0.09084339439868927,
+          "nRMSE_29": 0.1296444684267044
+        },
+        {
+          "sim_id": 1,
+          "condition": "id",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Viscosity X": 0.0275,
+            "Viscosity Y": 0.0275
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.06336624920368195,
+          "nRMSE_10": 0.12884610891342163,
+          "nRMSE_20": 0.18094897270202637,
+          "nRMSE_29": 0.19316338002681732
+        },
+        {
+          "sim_id": 2,
+          "condition": "id",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Viscosity X": 0.0275,
+            "Viscosity Y": 0.0275
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.002981253433972597,
+          "nRMSE_10": 0.02045014128088951,
+          "nRMSE_20": 0.03928331285715103,
+          "nRMSE_29": 0.06134346127510071
+        },
+        {
+          "sim_id": 3,
+          "condition": "ood_low",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Viscosity X": 0.00475,
+            "Viscosity Y": 0.00475
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.08468259871006012,
+          "nRMSE_10": 0.2993830740451813,
+          "nRMSE_20": 0.4070005714893341,
+          "nRMSE_29": 0.47790801525115967
+        },
+        {
+          "sim_id": 4,
+          "condition": "ood_low",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Viscosity X": 0.00475,
+            "Viscosity Y": 0.00475
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.27630552649497986,
+          "nRMSE_10": 0.698641836643219,
+          "nRMSE_20": 0.7098295092582703,
+          "nRMSE_29": 0.7341039776802063
+        },
+        {
+          "sim_id": 5,
+          "condition": "ood_low",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Viscosity X": 0.00475,
+            "Viscosity Y": 0.00475
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.025894390419125557,
+          "nRMSE_10": 0.20703308284282684,
+          "nRMSE_20": 0.3452962338924408,
+          "nRMSE_29": 0.4392646551132202
+        },
+        {
+          "sim_id": 6,
+          "condition": "ood_high",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Viscosity X": 0.0525,
+            "Viscosity Y": 0.0525
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.04461139068007469,
+          "nRMSE_10": 0.15209810435771942,
+          "nRMSE_20": 0.1872478872537613,
+          "nRMSE_29": 0.22505606710910797
+        },
+        {
+          "sim_id": 7,
+          "condition": "ood_high",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Viscosity X": 0.0525,
+            "Viscosity Y": 0.0525
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.10269621759653091,
+          "nRMSE_10": 0.312470406293869,
+          "nRMSE_20": 0.3444788455963135,
+          "nRMSE_29": 0.37631064653396606
+        },
+        {
+          "sim_id": 8,
+          "condition": "ood_high",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Viscosity X": 0.0525,
+            "Viscosity Y": 0.0525
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.028581708669662476,
+          "nRMSE_10": 0.21572460234165192,
+          "nRMSE_20": 0.3613411486148834,
+          "nRMSE_29": 0.4736265540122986
+        }
+      ],
+      "elapsed_seconds": 10.63646985590458
+    },
+    "hyp": {
+      "dataset_name": "hyp",
+      "test_split": {
+        "requested_dataset_name": "hyp",
+        "source_dataset_name": "hyp",
+        "source_file": "/home/yifeiliu/working/datasets_test/hyp.hdf5",
+        "source_file_name": "hyp.hdf5",
+        "source_num_simulations": 9,
+        "source_num_frames": 30,
+        "selected_sim_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "selected_num_simulations": 9,
+        "samples_per_simulation": 1
+      },
+      "num_test_trajectories": 9,
+      "num_evaluated_trajectories": 9,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        256,
+        256
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.10776172081629436,
+      "nRMSE_10": 0.4053887724876404,
+      "nRMSE_20": 0.5716889831754897,
+      "nRMSE_29": 0.8490245838960012,
+      "conditions": {
+        "id": {
+          "count": 3,
+          "nRMSE_1": 0.10796680673956871,
+          "nRMSE_10": 0.3839620053768158,
+          "nRMSE_20": 0.5514034032821655,
+          "nRMSE_29": 0.8465985357761383
+        },
+        "ood_low": {
+          "count": 3,
+          "nRMSE_1": 0.09589741379022598,
+          "nRMSE_10": 0.3784979283809662,
+          "nRMSE_20": 0.5500275691350301,
+          "nRMSE_29": 0.7476827104886373
+        },
+        "ood_high": {
+          "count": 3,
+          "nRMSE_1": 0.11942095806201299,
+          "nRMSE_10": 0.45370638370513916,
+          "nRMSE_20": 0.6136360168457031,
+          "nRMSE_29": 0.9527925153573354
+        }
+      },
+      "trajectories": [
+        {
+          "sim_id": 0,
+          "condition": "id",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Hyper-Diffusivity": 0.000275
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.07571698725223541,
+          "nRMSE_10": 0.2979641258716583,
+          "nRMSE_20": 0.3653077781200409,
+          "nRMSE_29": 0.38947612047195435
+        },
+        {
+          "sim_id": 1,
+          "condition": "id",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Hyper-Diffusivity": 0.000275
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.20795804262161255,
+          "nRMSE_10": 0.600336492061615,
+          "nRMSE_20": 0.9099496603012085,
+          "nRMSE_29": 1.7088085412979126
+        },
+        {
+          "sim_id": 2,
+          "condition": "id",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Hyper-Diffusivity": 0.000275
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.04022539034485817,
+          "nRMSE_10": 0.2535853981971741,
+          "nRMSE_20": 0.3789527714252472,
+          "nRMSE_29": 0.441510945558548
+        },
+        {
+          "sim_id": 3,
+          "condition": "ood_low",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Hyper-Diffusivity": 4.75e-05
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.07644657790660858,
+          "nRMSE_10": 0.3946059048175812,
+          "nRMSE_20": 0.5167738199234009,
+          "nRMSE_29": 0.5453795194625854
+        },
+        {
+          "sim_id": 4,
+          "condition": "ood_low",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Hyper-Diffusivity": 4.75e-05
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.1788167655467987,
+          "nRMSE_10": 0.4588584005832672,
+          "nRMSE_20": 0.6766568422317505,
+          "nRMSE_29": 1.151516318321228
+        },
+        {
+          "sim_id": 5,
+          "condition": "ood_low",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Hyper-Diffusivity": 4.75e-05
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.03242889791727066,
+          "nRMSE_10": 0.28202947974205017,
+          "nRMSE_20": 0.45665204524993896,
+          "nRMSE_29": 0.5461522936820984
+        },
+        {
+          "sim_id": 6,
+          "condition": "ood_high",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Hyper-Diffusivity": 0.0005250000000000001
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.08559451252222061,
+          "nRMSE_10": 0.30880504846572876,
+          "nRMSE_20": 0.34562385082244873,
+          "nRMSE_29": 0.3685866594314575
+        },
+        {
+          "sim_id": 7,
+          "condition": "ood_high",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Hyper-Diffusivity": 0.0005250000000000001
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.2153906226158142,
+          "nRMSE_10": 0.7672470808029175,
+          "nRMSE_20": 1.1260986328125,
+          "nRMSE_29": 2.079399347305298
+        },
+        {
+          "sim_id": 8,
+          "condition": "ood_high",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Hyper-Diffusivity": 0.0005250000000000001
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.05727773904800415,
+          "nRMSE_10": 0.28506702184677124,
+          "nRMSE_20": 0.36918556690216064,
+          "nRMSE_29": 0.41039153933525085
+        }
+      ],
+      "elapsed_seconds": 10.230203154031187
+    },
+    "burgers": {
+      "dataset_name": "burgers",
+      "test_split": {
+        "requested_dataset_name": "burgers",
+        "source_dataset_name": "burgers",
+        "source_file": "/home/yifeiliu/working/datasets_test/burgers.hdf5",
+        "source_file_name": "burgers.hdf5",
+        "source_num_simulations": 9,
+        "source_num_frames": 30,
+        "selected_sim_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "selected_num_simulations": 9,
+        "samples_per_simulation": 1
+      },
+      "num_test_trajectories": 9,
+      "num_evaluated_trajectories": 9,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        256,
+        256
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.03233591870715221,
+      "nRMSE_10": 0.1890701154867808,
+      "nRMSE_20": 0.3233165260818269,
+      "nRMSE_29": 0.40187711517016095,
+      "conditions": {
+        "id": {
+          "count": 3,
+          "nRMSE_1": 0.030806710322697956,
+          "nRMSE_10": 0.18710433940092722,
+          "nRMSE_20": 0.32213324805100757,
+          "nRMSE_29": 0.40077054500579834
+        },
+        "ood_low": {
+          "count": 3,
+          "nRMSE_1": 0.04070852758983771,
+          "nRMSE_10": 0.2023454631368319,
+          "nRMSE_20": 0.3369627942641576,
+          "nRMSE_29": 0.4153682390848796
+        },
+        "ood_high": {
+          "count": 3,
+          "nRMSE_1": 0.025492515104512375,
+          "nRMSE_10": 0.17776053150494894,
+          "nRMSE_20": 0.31085359553496045,
+          "nRMSE_29": 0.38949254155158997
+        }
+      },
+      "trajectories": [
+        {
+          "sim_id": 0,
+          "condition": "id",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Viscosity": 0.000175
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.05736896023154259,
+          "nRMSE_10": 0.16487210988998413,
+          "nRMSE_20": 0.27310633659362793,
+          "nRMSE_29": 0.344620943069458
+        },
+        {
+          "sim_id": 1,
+          "condition": "id",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Viscosity": 0.000175
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.027129946276545525,
+          "nRMSE_10": 0.3115754723548889,
+          "nRMSE_20": 0.45329907536506653,
+          "nRMSE_29": 0.49959585070610046
+        },
+        {
+          "sim_id": 2,
+          "condition": "id",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Viscosity": 0.000175
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.00792122446000576,
+          "nRMSE_10": 0.08486543595790863,
+          "nRMSE_20": 0.2399943321943283,
+          "nRMSE_29": 0.35809484124183655
+        },
+        {
+          "sim_id": 3,
+          "condition": "ood_low",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Viscosity": 4.75e-05
+          },
+          "numerical_overrides": {
+            "Sub Steps": 100
+          },
+          "nRMSE_1": 0.08596663922071457,
+          "nRMSE_10": 0.1935206651687622,
+          "nRMSE_20": 0.2950282394886017,
+          "nRMSE_29": 0.3622838854789734
+        },
+        {
+          "sim_id": 4,
+          "condition": "ood_low",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Viscosity": 4.75e-05
+          },
+          "numerical_overrides": {
+            "Sub Steps": 100
+          },
+          "nRMSE_1": 0.028223786503076553,
+          "nRMSE_10": 0.32788941264152527,
+          "nRMSE_20": 0.4736871123313904,
+          "nRMSE_29": 0.5228741765022278
+        },
+        {
+          "sim_id": 5,
+          "condition": "ood_low",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Viscosity": 4.75e-05
+          },
+          "numerical_overrides": {
+            "Sub Steps": 100
+          },
+          "nRMSE_1": 0.007935157045722008,
+          "nRMSE_10": 0.08562631160020828,
+          "nRMSE_20": 0.24217303097248077,
+          "nRMSE_29": 0.3609466552734375
+        },
+        {
+          "sim_id": 6,
+          "condition": "ood_high",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Viscosity": 0.00031499999999999996
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.04227884113788605,
+          "nRMSE_10": 0.1523919701576233,
+          "nRMSE_20": 0.2595402002334595,
+          "nRMSE_29": 0.3319397270679474
+        },
+        {
+          "sim_id": 7,
+          "condition": "ood_high",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Viscosity": 0.00031499999999999996
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.026289988309144974,
+          "nRMSE_10": 0.296799898147583,
+          "nRMSE_20": 0.4357580542564392,
+          "nRMSE_29": 0.4818604290485382
+        },
+        {
+          "sim_id": 8,
+          "condition": "ood_high",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Viscosity": 0.00031499999999999996
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.0079087158665061,
+          "nRMSE_10": 0.0840897262096405,
+          "nRMSE_20": 0.2372625321149826,
+          "nRMSE_29": 0.3546774685382843
+        }
+      ],
+      "elapsed_seconds": 10.356852017808706
+    },
+    "kdv": {
+      "dataset_name": "kdv",
+      "test_split": {
+        "requested_dataset_name": "kdv",
+        "source_dataset_name": "kdv",
+        "source_file": "/home/yifeiliu/working/datasets_test/kdv.hdf5",
+        "source_file_name": "kdv.hdf5",
+        "source_num_simulations": 9,
+        "source_num_frames": 30,
+        "selected_sim_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "selected_num_simulations": 9,
+        "samples_per_simulation": 1
+      },
+      "num_test_trajectories": 9,
+      "num_evaluated_trajectories": 9,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        256,
+        256
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.02742198735682501,
+      "nRMSE_10": 0.13340317540698582,
+      "nRMSE_20": 0.3485976192686293,
+      "nRMSE_29": 0.49385369486278957,
+      "conditions": {
+        "id": {
+          "count": 3,
+          "nRMSE_1": 0.027422665152698755,
+          "nRMSE_10": 0.13340458273887634,
+          "nRMSE_20": 0.3486000895500183,
+          "nRMSE_29": 0.4938551088174184
+        },
+        "ood_low": {
+          "count": 3,
+          "nRMSE_1": 0.027443334615478914,
+          "nRMSE_10": 0.13344911485910416,
+          "nRMSE_20": 0.3486774166425069,
+          "nRMSE_29": 0.49390138188997906
+        },
+        "ood_high": {
+          "count": 3,
+          "nRMSE_1": 0.027399966958910227,
+          "nRMSE_10": 0.13335582117239633,
+          "nRMSE_20": 0.3485153168439865,
+          "nRMSE_29": 0.4938045342763265
+        }
+      },
+      "trajectories": [
+        {
+          "sim_id": 0,
+          "condition": "id",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Domain Extent": 75.0,
+            "Viscosity": 0.000525
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.0639694407582283,
+          "nRMSE_10": 0.12070360034704208,
+          "nRMSE_20": 0.18582068383693695,
+          "nRMSE_29": 0.25367027521133423
+        },
+        {
+          "sim_id": 1,
+          "condition": "id",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Domain Extent": 75.0,
+            "Viscosity": 0.000525
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.011337477713823318,
+          "nRMSE_10": 0.21066507697105408,
+          "nRMSE_20": 0.7184993028640747,
+          "nRMSE_29": 1.016527533531189
+        },
+        {
+          "sim_id": 2,
+          "condition": "id",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Domain Extent": 75.0,
+            "Viscosity": 0.000525
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.006961076986044645,
+          "nRMSE_10": 0.06884507089853287,
+          "nRMSE_20": 0.14148028194904327,
+          "nRMSE_29": 0.21136751770973206
+        },
+        {
+          "sim_id": 3,
+          "condition": "ood_low",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Domain Extent": 75.0,
+            "Viscosity": 4.75e-05
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.06403092294931412,
+          "nRMSE_10": 0.12078722566366196,
+          "nRMSE_20": 0.18591566383838654,
+          "nRMSE_29": 0.25378894805908203
+        },
+        {
+          "sim_id": 4,
+          "condition": "ood_low",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Domain Extent": 75.0,
+            "Viscosity": 4.75e-05
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.011338023468852043,
+          "nRMSE_10": 0.21071477234363556,
+          "nRMSE_20": 0.7186346054077148,
+          "nRMSE_29": 1.016542911529541
+        },
+        {
+          "sim_id": 5,
+          "condition": "ood_low",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Domain Extent": 75.0,
+            "Viscosity": 4.75e-05
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.006961057428270578,
+          "nRMSE_10": 0.06884534657001495,
+          "nRMSE_20": 0.14148198068141937,
+          "nRMSE_29": 0.2113722860813141
+        },
+        {
+          "sim_id": 6,
+          "condition": "ood_high",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Domain Extent": 75.0,
+            "Viscosity": 0.0010500000000000002
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.06390195339918137,
+          "nRMSE_10": 0.12061251699924469,
+          "nRMSE_20": 0.1857174187898636,
+          "nRMSE_29": 0.2535410523414612
+        },
+        {
+          "sim_id": 7,
+          "condition": "ood_high",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Domain Extent": 75.0,
+            "Viscosity": 0.0010500000000000002
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.011336843483150005,
+          "nRMSE_10": 0.21061009168624878,
+          "nRMSE_20": 0.7183501124382019,
+          "nRMSE_29": 1.0165104866027832
+        },
+        {
+          "sim_id": 8,
+          "condition": "ood_high",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Domain Extent": 75.0,
+            "Viscosity": 0.0010500000000000002
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.006961103994399309,
+          "nRMSE_10": 0.06884485483169556,
+          "nRMSE_20": 0.14147841930389404,
+          "nRMSE_29": 0.2113620638847351
+        }
+      ],
+      "elapsed_seconds": 10.397671361919492
+    },
+    "ks": {
+      "dataset_name": "ks",
+      "test_split": {
+        "requested_dataset_name": "ks",
+        "source_dataset_name": "ks",
+        "source_file": "/home/yifeiliu/working/datasets_test/ks.hdf5",
+        "source_file_name": "ks.hdf5",
+        "source_num_simulations": 9,
+        "source_num_frames": 30,
+        "selected_sim_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "selected_num_simulations": 9,
+        "samples_per_simulation": 1
+      },
+      "num_test_trajectories": 9,
+      "num_evaluated_trajectories": 9,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        256,
+        256
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.015031753935747676,
+      "nRMSE_10": 0.28916948702600265,
+      "nRMSE_20": 0.7960661583476596,
+      "nRMSE_29": 1.2049819363488092,
+      "conditions": {
+        "id": {
+          "count": 3,
+          "nRMSE_1": 0.0100854920844237,
+          "nRMSE_10": 0.15260553359985352,
+          "nRMSE_20": 0.6257516741752625,
+          "nRMSE_29": 1.005050818125407
+        },
+        "ood_low": {
+          "count": 3,
+          "nRMSE_1": 0.014402138069272041,
+          "nRMSE_10": 0.3488937218983968,
+          "nRMSE_20": 0.9083747863769531,
+          "nRMSE_29": 1.5691641569137573
+        },
+        "ood_high": {
+          "count": 3,
+          "nRMSE_1": 0.020607632274429005,
+          "nRMSE_10": 0.36600921551386517,
+          "nRMSE_20": 0.8540719350179037,
+          "nRMSE_29": 1.0407308340072632
+        }
+      },
+      "trajectories": [
+        {
+          "sim_id": 0,
+          "condition": "id",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Domain Extent": 70.0
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.010543432086706161,
+          "nRMSE_10": 0.1455649733543396,
+          "nRMSE_20": 0.5757164359092712,
+          "nRMSE_29": 0.945810854434967
+        },
+        {
+          "sim_id": 1,
+          "condition": "id",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Domain Extent": 70.0
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.00981326773762703,
+          "nRMSE_10": 0.13475358486175537,
+          "nRMSE_20": 0.5293160080909729,
+          "nRMSE_29": 0.8685318827629089
+        },
+        {
+          "sim_id": 2,
+          "condition": "id",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Domain Extent": 70.0
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.009899776428937912,
+          "nRMSE_10": 0.17749804258346558,
+          "nRMSE_20": 0.7722225785255432,
+          "nRMSE_29": 1.2008097171783447
+        },
+        {
+          "sim_id": 3,
+          "condition": "ood_low",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Domain Extent": 9.5
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.012997569516301155,
+          "nRMSE_10": 0.3104221522808075,
+          "nRMSE_20": 0.8922879695892334,
+          "nRMSE_29": 1.8155614137649536
+        },
+        {
+          "sim_id": 4,
+          "condition": "ood_low",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Domain Extent": 9.5
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.016192207112908363,
+          "nRMSE_10": 0.4016256034374237,
+          "nRMSE_20": 0.9754321575164795,
+          "nRMSE_29": 1.3912601470947266
+        },
+        {
+          "sim_id": 5,
+          "condition": "ood_low",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Domain Extent": 9.5
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.014016637578606606,
+          "nRMSE_10": 0.33463340997695923,
+          "nRMSE_20": 0.8574042320251465,
+          "nRMSE_29": 1.5006709098815918
+        },
+        {
+          "sim_id": 6,
+          "condition": "ood_high",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Domain Extent": 136.5
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.02276523970067501,
+          "nRMSE_10": 0.35330671072006226,
+          "nRMSE_20": 0.878250002861023,
+          "nRMSE_29": 1.1351184844970703
+        },
+        {
+          "sim_id": 7,
+          "condition": "ood_high",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Domain Extent": 136.5
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.0196185652166605,
+          "nRMSE_10": 0.3855813443660736,
+          "nRMSE_20": 0.8321278691291809,
+          "nRMSE_29": 0.946609377861023
+        },
+        {
+          "sim_id": 8,
+          "condition": "ood_high",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Domain Extent": 136.5
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.0194390919059515,
+          "nRMSE_10": 0.3591395914554596,
+          "nRMSE_20": 0.8518379330635071,
+          "nRMSE_29": 1.0404646396636963
+        }
+      ],
+      "elapsed_seconds": 10.305506471078843
+    },
+    "fisher": {
+      "dataset_name": "fisher",
+      "test_split": {
+        "requested_dataset_name": "fisher",
+        "source_dataset_name": "fisher",
+        "source_file": "/home/yifeiliu/working/datasets_test/fisher.hdf5",
+        "source_file_name": "fisher.hdf5",
+        "source_num_simulations": 9,
+        "source_num_frames": 30,
+        "selected_sim_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "selected_num_simulations": 9,
+        "samples_per_simulation": 1
+      },
+      "num_test_trajectories": 9,
+      "num_evaluated_trajectories": 9,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        256,
+        256
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.0392838672010435,
+      "nRMSE_10": 0.29953976968924206,
+      "nRMSE_20": 0.33427391118473476,
+      "nRMSE_29": 0.31647229029072654,
+      "conditions": {
+        "id": {
+          "count": 3,
+          "nRMSE_1": 0.018478537909686565,
+          "nRMSE_10": 0.23775711903969446,
+          "nRMSE_20": 0.28822389741738635,
+          "nRMSE_29": 0.2793080806732178
+        },
+        "ood_low": {
+          "count": 3,
+          "nRMSE_1": 0.06290612990657489,
+          "nRMSE_10": 0.3498554776112239,
+          "nRMSE_20": 0.4577946960926056,
+          "nRMSE_29": 0.4432765543460846
+        },
+        "ood_high": {
+          "count": 3,
+          "nRMSE_1": 0.03646693409730991,
+          "nRMSE_10": 0.3110067347685496,
+          "nRMSE_20": 0.25680307547251385,
+          "nRMSE_29": 0.22683225572109222
+        }
+      },
+      "trajectories": [
+        {
+          "sim_id": 0,
+          "condition": "id",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Diffusivity": 0.01005,
+            "Reactivity": 10.0
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.019406436011195183,
+          "nRMSE_10": 0.07465838640928268,
+          "nRMSE_20": 0.09058108925819397,
+          "nRMSE_29": 0.13822442293167114
+        },
+        {
+          "sim_id": 1,
+          "condition": "id",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Diffusivity": 0.01005,
+            "Reactivity": 10.0
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.025643572211265564,
+          "nRMSE_10": 0.5273259878158569,
+          "nRMSE_20": 0.530068576335907,
+          "nRMSE_29": 0.36756807565689087
+        },
+        {
+          "sim_id": 2,
+          "condition": "id",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Diffusivity": 0.01005,
+            "Reactivity": 10.0
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.01038560550659895,
+          "nRMSE_10": 0.11128698289394379,
+          "nRMSE_20": 0.24402202665805817,
+          "nRMSE_29": 0.3321317434310913
+        },
+        {
+          "sim_id": 3,
+          "condition": "ood_low",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Diffusivity": 9.5e-05,
+            "Reactivity": 10.0
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.10751598328351974,
+          "nRMSE_10": 0.285634309053421,
+          "nRMSE_20": 0.28129833936691284,
+          "nRMSE_29": 0.2544276714324951
+        },
+        {
+          "sim_id": 4,
+          "condition": "ood_low",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Diffusivity": 9.5e-05,
+            "Reactivity": 10.0
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.06744229793548584,
+          "nRMSE_10": 0.6109722852706909,
+          "nRMSE_20": 0.7546630501747131,
+          "nRMSE_29": 0.6018568873405457
+        },
+        {
+          "sim_id": 5,
+          "condition": "ood_low",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Diffusivity": 9.5e-05,
+            "Reactivity": 10.0
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.01376010850071907,
+          "nRMSE_10": 0.15295983850955963,
+          "nRMSE_20": 0.3374226987361908,
+          "nRMSE_29": 0.473545104265213
+        },
+        {
+          "sim_id": 6,
+          "condition": "ood_high",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Diffusivity": 0.021,
+            "Reactivity": 10.0
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.03401486203074455,
+          "nRMSE_10": 0.11317698657512665,
+          "nRMSE_20": 0.09601500630378723,
+          "nRMSE_29": 0.12132105231285095
+        },
+        {
+          "sim_id": 7,
+          "condition": "ood_high",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Diffusivity": 0.021,
+            "Reactivity": 10.0
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.06761705130338669,
+          "nRMSE_10": 0.7421183586120605,
+          "nRMSE_20": 0.5064184069633484,
+          "nRMSE_29": 0.34034109115600586
+        },
+        {
+          "sim_id": 8,
+          "condition": "ood_high",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Diffusivity": 0.021,
+            "Reactivity": 10.0
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.007768888957798481,
+          "nRMSE_10": 0.07772485911846161,
+          "nRMSE_20": 0.16797581315040588,
+          "nRMSE_29": 0.21883462369441986
+        }
+      ],
+      "elapsed_seconds": 10.278938190080225
+    },
+    "gs_alpha": {
+      "dataset_name": "gs_alpha",
+      "test_split": {
+        "requested_dataset_name": "gs_alpha",
+        "source_dataset_name": "gs_alpha",
+        "source_file": "/home/yifeiliu/working/datasets_test/gs_alpha.hdf5",
+        "source_file_name": "gs_alpha.hdf5",
+        "source_num_simulations": 9,
+        "source_num_frames": 30,
+        "selected_sim_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "selected_num_simulations": 9,
+        "samples_per_simulation": 1
+      },
+      "num_test_trajectories": 9,
+      "num_evaluated_trajectories": 9,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        256,
+        256
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.029538038704130385,
+      "nRMSE_10": 0.34216054942872787,
+      "nRMSE_20": 0.6749696334203085,
+      "nRMSE_29": 0.8869986401663886,
+      "conditions": {
+        "id": {
+          "count": 3,
+          "nRMSE_1": 0.028736680125196774,
+          "nRMSE_10": 0.2933400173981984,
+          "nRMSE_20": 0.5199639797210693,
+          "nRMSE_29": 0.7442472775777181
+        },
+        "ood_low": {
+          "count": 3,
+          "nRMSE_1": 0.023288984472552936,
+          "nRMSE_10": 0.2074239949385325,
+          "nRMSE_20": 0.6377676129341125,
+          "nRMSE_29": 0.8527453541755676
+        },
+        "ood_high": {
+          "count": 3,
+          "nRMSE_1": 0.03658845027287801,
+          "nRMSE_10": 0.5257176458835602,
+          "nRMSE_20": 0.8671773473421732,
+          "nRMSE_29": 1.0640032291412354
+        }
+      },
+      "trajectories": [
+        {
+          "sim_id": 0,
+          "condition": "id",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Feed Rate": 0.008,
+            "Kill Rate": 0.046
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.02899436093866825,
+          "nRMSE_10": 0.3051261603832245,
+          "nRMSE_20": 0.5828438401222229,
+          "nRMSE_29": 0.8555608987808228
+        },
+        {
+          "sim_id": 1,
+          "condition": "id",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Feed Rate": 0.008,
+            "Kill Rate": 0.046
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.029770564287900925,
+          "nRMSE_10": 0.2615358829498291,
+          "nRMSE_20": 0.4971291720867157,
+          "nRMSE_29": 0.7048304080963135
+        },
+        {
+          "sim_id": 2,
+          "condition": "id",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Feed Rate": 0.008,
+            "Kill Rate": 0.046
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.02744511514902115,
+          "nRMSE_10": 0.31335800886154175,
+          "nRMSE_20": 0.4799189269542694,
+          "nRMSE_29": 0.6723505258560181
+        },
+        {
+          "sim_id": 3,
+          "condition": "ood_low",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Feed Rate": 0.0076,
+            "Kill Rate": 0.046
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.025031812489032745,
+          "nRMSE_10": 0.22648626565933228,
+          "nRMSE_20": 0.6214238405227661,
+          "nRMSE_29": 0.8714565634727478
+        },
+        {
+          "sim_id": 4,
+          "condition": "ood_low",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Feed Rate": 0.0076,
+            "Kill Rate": 0.046
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.0230892151594162,
+          "nRMSE_10": 0.20038989186286926,
+          "nRMSE_20": 0.5445113182067871,
+          "nRMSE_29": 0.7719084620475769
+        },
+        {
+          "sim_id": 5,
+          "condition": "ood_low",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Feed Rate": 0.0076,
+            "Kill Rate": 0.046
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.021745925769209862,
+          "nRMSE_10": 0.195395827293396,
+          "nRMSE_20": 0.7473676800727844,
+          "nRMSE_29": 0.9148710370063782
+        },
+        {
+          "sim_id": 6,
+          "condition": "ood_high",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Feed Rate": 0.008400000000000001,
+            "Kill Rate": 0.046
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.037809766829013824,
+          "nRMSE_10": 0.4852963387966156,
+          "nRMSE_20": 0.8602602481842041,
+          "nRMSE_29": 1.0773183107376099
+        },
+        {
+          "sim_id": 7,
+          "condition": "ood_high",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Feed Rate": 0.008400000000000001,
+            "Kill Rate": 0.046
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.033284373581409454,
+          "nRMSE_10": 0.587046205997467,
+          "nRMSE_20": 0.9341050982475281,
+          "nRMSE_29": 1.07210373878479
+        },
+        {
+          "sim_id": 8,
+          "condition": "ood_high",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Feed Rate": 0.008400000000000001,
+            "Kill Rate": 0.046
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.038671210408210754,
+          "nRMSE_10": 0.5048103928565979,
+          "nRMSE_20": 0.8071666955947876,
+          "nRMSE_29": 1.0425876379013062
+        }
+      ],
+      "elapsed_seconds": 10.402660411316901
+    },
+    "gs_beta": {
+      "dataset_name": "gs_beta",
+      "test_split": {
+        "requested_dataset_name": "gs_beta",
+        "source_dataset_name": "gs_beta",
+        "source_file": "/home/yifeiliu/working/datasets_test/gs_beta.hdf5",
+        "source_file_name": "gs_beta.hdf5",
+        "source_num_simulations": 9,
+        "source_num_frames": 30,
+        "selected_sim_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "selected_num_simulations": 9,
+        "samples_per_simulation": 1
+      },
+      "num_test_trajectories": 9,
+      "num_evaluated_trajectories": 9,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        256,
+        256
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.15193697810173035,
+      "nRMSE_10": 1.0534902546140883,
+      "nRMSE_20": 0.8264052669207255,
+      "nRMSE_29": 0.9891406695048014,
+      "conditions": {
+        "id": {
+          "count": 3,
+          "nRMSE_1": 0.09597877909739812,
+          "nRMSE_10": 1.2716169754664104,
+          "nRMSE_20": 0.9727376898129781,
+          "nRMSE_29": 0.9394496281941732
+        },
+        "ood_low": {
+          "count": 3,
+          "nRMSE_1": 0.14816542466481528,
+          "nRMSE_10": 1.0105775793393452,
+          "nRMSE_20": 1.1470208962758381,
+          "nRMSE_29": 1.161875327428182
+        },
+        "ood_high": {
+          "count": 3,
+          "nRMSE_1": 0.21166673302650452,
+          "nRMSE_10": 0.8782760500907898,
+          "nRMSE_20": 0.35945724447568256,
+          "nRMSE_29": 0.8660970528920492
+        }
+      },
+      "trajectories": [
+        {
+          "sim_id": 0,
+          "condition": "id",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Feed Rate": 0.02,
+            "Kill Rate": 0.046
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.08957313001155853,
+          "nRMSE_10": 1.1289325952529907,
+          "nRMSE_20": 1.067041039466858,
+          "nRMSE_29": 0.961180567741394
+        },
+        {
+          "sim_id": 1,
+          "condition": "id",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Feed Rate": 0.02,
+            "Kill Rate": 0.046
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.09308334439992905,
+          "nRMSE_10": 1.504867672920227,
+          "nRMSE_20": 0.9540973901748657,
+          "nRMSE_29": 1.0080071687698364
+        },
+        {
+          "sim_id": 2,
+          "condition": "id",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Feed Rate": 0.02,
+            "Kill Rate": 0.046
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.10527986288070679,
+          "nRMSE_10": 1.1810506582260132,
+          "nRMSE_20": 0.8970746397972107,
+          "nRMSE_29": 0.8491611480712891
+        },
+        {
+          "sim_id": 3,
+          "condition": "ood_low",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Feed Rate": 0.019,
+            "Kill Rate": 0.046
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.16071400046348572,
+          "nRMSE_10": 0.9936479926109314,
+          "nRMSE_20": 1.1088097095489502,
+          "nRMSE_29": 1.28568434715271
+        },
+        {
+          "sim_id": 4,
+          "condition": "ood_low",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Feed Rate": 0.019,
+            "Kill Rate": 0.046
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.14203375577926636,
+          "nRMSE_10": 1.021042823791504,
+          "nRMSE_20": 1.1060751676559448,
+          "nRMSE_29": 1.0841906070709229
+        },
+        {
+          "sim_id": 5,
+          "condition": "ood_low",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Feed Rate": 0.019,
+            "Kill Rate": 0.046
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.14174851775169373,
+          "nRMSE_10": 1.0170419216156006,
+          "nRMSE_20": 1.2261778116226196,
+          "nRMSE_29": 1.115751028060913
+        },
+        {
+          "sim_id": 6,
+          "condition": "ood_high",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Feed Rate": 0.021,
+            "Kill Rate": 0.046
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.2114824503660202,
+          "nRMSE_10": 0.8681738972663879,
+          "nRMSE_20": 0.36199885606765747,
+          "nRMSE_29": 0.8538658618927002
+        },
+        {
+          "sim_id": 7,
+          "condition": "ood_high",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Feed Rate": 0.021,
+            "Kill Rate": 0.046
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.21323759853839874,
+          "nRMSE_10": 0.880294680595398,
+          "nRMSE_20": 0.3551500737667084,
+          "nRMSE_29": 0.8709487915039062
+        },
+        {
+          "sim_id": 8,
+          "condition": "ood_high",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Feed Rate": 0.021,
+            "Kill Rate": 0.046
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.2102801501750946,
+          "nRMSE_10": 0.8863595724105835,
+          "nRMSE_20": 0.3612228035926819,
+          "nRMSE_29": 0.873476505279541
+        }
+      ],
+      "elapsed_seconds": 10.371030233800411
+    },
+    "gs_gamma": {
+      "dataset_name": "gs_gamma",
+      "test_split": {
+        "requested_dataset_name": "gs_gamma",
+        "source_dataset_name": "gs_gamma",
+        "source_file": "/home/yifeiliu/working/datasets_test/gs_gamma.hdf5",
+        "source_file_name": "gs_gamma.hdf5",
+        "source_num_simulations": 9,
+        "source_num_frames": 30,
+        "selected_sim_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "selected_num_simulations": 9,
+        "samples_per_simulation": 1
+      },
+      "num_test_trajectories": 9,
+      "num_evaluated_trajectories": 9,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        256,
+        256
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.0804925767911805,
+      "nRMSE_10": 0.5892779760890536,
+      "nRMSE_20": 0.9331554174423218,
+      "nRMSE_29": 1.0640595820215013,
+      "conditions": {
+        "id": {
+          "count": 3,
+          "nRMSE_1": 0.039172916362682976,
+          "nRMSE_10": 0.410041739543279,
+          "nRMSE_20": 0.7735445300738016,
+          "nRMSE_29": 0.9810523986816406
+        },
+        "ood_low": {
+          "count": 3,
+          "nRMSE_1": 0.08758630355199178,
+          "nRMSE_10": 0.789024809996287,
+          "nRMSE_20": 1.1341139872868855,
+          "nRMSE_29": 1.2567153771718342
+        },
+        "ood_high": {
+          "count": 3,
+          "nRMSE_1": 0.11471850673357646,
+          "nRMSE_10": 0.5687673389911652,
+          "nRMSE_20": 0.8918076554934183,
+          "nRMSE_29": 0.9544110496838888
+        }
+      },
+      "trajectories": [
+        {
+          "sim_id": 0,
+          "condition": "id",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Feed Rate": 0.024,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.031745683401823044,
+          "nRMSE_10": 0.5521764755249023,
+          "nRMSE_20": 0.8679603338241577,
+          "nRMSE_29": 1.079270362854004
+        },
+        {
+          "sim_id": 1,
+          "condition": "id",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Feed Rate": 0.024,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.058260880410671234,
+          "nRMSE_10": 0.3486449122428894,
+          "nRMSE_20": 0.7377423644065857,
+          "nRMSE_29": 0.9123210310935974
+        },
+        {
+          "sim_id": 2,
+          "condition": "id",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Feed Rate": 0.024,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.027512185275554657,
+          "nRMSE_10": 0.3293038308620453,
+          "nRMSE_20": 0.7149308919906616,
+          "nRMSE_29": 0.9515658020973206
+        },
+        {
+          "sim_id": 3,
+          "condition": "ood_low",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Feed Rate": 0.0228,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.09330205619335175,
+          "nRMSE_10": 0.8524288535118103,
+          "nRMSE_20": 1.2122882604599,
+          "nRMSE_29": 1.3216620683670044
+        },
+        {
+          "sim_id": 4,
+          "condition": "ood_low",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Feed Rate": 0.0228,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.08192537724971771,
+          "nRMSE_10": 0.7045466303825378,
+          "nRMSE_20": 1.0454429388046265,
+          "nRMSE_29": 1.206686019897461
+        },
+        {
+          "sim_id": 5,
+          "condition": "ood_low",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Feed Rate": 0.0228,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.08753147721290588,
+          "nRMSE_10": 0.8100989460945129,
+          "nRMSE_20": 1.1446107625961304,
+          "nRMSE_29": 1.2417980432510376
+        },
+        {
+          "sim_id": 6,
+          "condition": "ood_high",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Feed Rate": 0.0252,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.11454775929450989,
+          "nRMSE_10": 0.48908963799476624,
+          "nRMSE_20": 0.9411226511001587,
+          "nRMSE_29": 0.9423977136611938
+        },
+        {
+          "sim_id": 7,
+          "condition": "ood_high",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Feed Rate": 0.0252,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.1147836372256279,
+          "nRMSE_10": 0.6706771850585938,
+          "nRMSE_20": 0.9113772511482239,
+          "nRMSE_29": 0.999475359916687
+        },
+        {
+          "sim_id": 8,
+          "condition": "ood_high",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Feed Rate": 0.0252,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.11482412368059158,
+          "nRMSE_10": 0.5465351939201355,
+          "nRMSE_20": 0.8229230642318726,
+          "nRMSE_29": 0.9213600754737854
+        }
+      ],
+      "elapsed_seconds": 10.364169082604349
+    },
+    "gs_delta": {
+      "dataset_name": "gs_delta",
+      "test_split": {
+        "requested_dataset_name": "gs_delta",
+        "source_dataset_name": "gs_delta",
+        "source_file": "/home/yifeiliu/working/datasets_test/gs_delta.hdf5",
+        "source_file_name": "gs_delta.hdf5",
+        "source_num_simulations": 9,
+        "source_num_frames": 30,
+        "selected_sim_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "selected_num_simulations": 9,
+        "samples_per_simulation": 1
+      },
+      "num_test_trajectories": 9,
+      "num_evaluated_trajectories": 9,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        256,
+        256
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.035048354831006795,
+      "nRMSE_10": 0.7630535364151001,
+      "nRMSE_20": 1.077523734834459,
+      "nRMSE_29": 1.0123342871665955,
+      "conditions": {
+        "id": {
+          "count": 3,
+          "nRMSE_1": 0.020545896142721176,
+          "nRMSE_10": 0.5486872096856436,
+          "nRMSE_20": 1.0950469175974529,
+          "nRMSE_29": 1.0003570516904194
+        },
+        "ood_low": {
+          "count": 3,
+          "nRMSE_1": 0.04712647199630737,
+          "nRMSE_10": 0.8319645921389262,
+          "nRMSE_20": 1.197216232617696,
+          "nRMSE_29": 1.0864017407099407
+        },
+        "ood_high": {
+          "count": 3,
+          "nRMSE_1": 0.037472695112228394,
+          "nRMSE_10": 0.9085087378819784,
+          "nRMSE_20": 0.9403078556060791,
+          "nRMSE_29": 0.9502440293629965
+        }
+      },
+      "trajectories": [
+        {
+          "sim_id": 0,
+          "condition": "id",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Feed Rate": 0.028,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.02208123728632927,
+          "nRMSE_10": 0.5581508874893188,
+          "nRMSE_20": 1.055773138999939,
+          "nRMSE_29": 0.9541330933570862
+        },
+        {
+          "sim_id": 1,
+          "condition": "id",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Feed Rate": 0.028,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.019687572494149208,
+          "nRMSE_10": 0.4959222972393036,
+          "nRMSE_20": 1.0927658081054688,
+          "nRMSE_29": 1.0180739164352417
+        },
+        {
+          "sim_id": 2,
+          "condition": "id",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Feed Rate": 0.028,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.01986887864768505,
+          "nRMSE_10": 0.5919884443283081,
+          "nRMSE_20": 1.1366018056869507,
+          "nRMSE_29": 1.0288641452789307
+        },
+        {
+          "sim_id": 3,
+          "condition": "ood_low",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Feed Rate": 0.0266,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.049934133887290955,
+          "nRMSE_10": 0.834656298160553,
+          "nRMSE_20": 1.1767579317092896,
+          "nRMSE_29": 1.0779893398284912
+        },
+        {
+          "sim_id": 4,
+          "condition": "ood_low",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Feed Rate": 0.0266,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.04705999419093132,
+          "nRMSE_10": 0.82256019115448,
+          "nRMSE_20": 1.163650393486023,
+          "nRMSE_29": 1.0767043828964233
+        },
+        {
+          "sim_id": 5,
+          "condition": "ood_low",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Feed Rate": 0.0266,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.044385287910699844,
+          "nRMSE_10": 0.8386772871017456,
+          "nRMSE_20": 1.2512403726577759,
+          "nRMSE_29": 1.1045114994049072
+        },
+        {
+          "sim_id": 6,
+          "condition": "ood_high",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Feed Rate": 0.029400000000000003,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.0402890183031559,
+          "nRMSE_10": 0.9816674590110779,
+          "nRMSE_20": 0.941484808921814,
+          "nRMSE_29": 0.9663007259368896
+        },
+        {
+          "sim_id": 7,
+          "condition": "ood_high",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Feed Rate": 0.029400000000000003,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.0366973914206028,
+          "nRMSE_10": 0.8988106846809387,
+          "nRMSE_20": 0.9552503824234009,
+          "nRMSE_29": 0.9579396843910217
+        },
+        {
+          "sim_id": 8,
+          "condition": "ood_high",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Feed Rate": 0.029400000000000003,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.03543167561292648,
+          "nRMSE_10": 0.8450480699539185,
+          "nRMSE_20": 0.9241883754730225,
+          "nRMSE_29": 0.9264916777610779
+        }
+      ],
+      "elapsed_seconds": 10.364124016836286
+    },
+    "gs_epsilon": {
+      "dataset_name": "gs_epsilon",
+      "test_split": {
+        "requested_dataset_name": "gs_epsilon",
+        "source_dataset_name": "gs_epsilon",
+        "source_file": "/home/yifeiliu/working/datasets_test/gs_epsilon.hdf5",
+        "source_file_name": "gs_epsilon.hdf5",
+        "source_num_simulations": 9,
+        "source_num_frames": 30,
+        "selected_sim_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "selected_num_simulations": 9,
+        "samples_per_simulation": 1
+      },
+      "num_test_trajectories": 9,
+      "num_evaluated_trajectories": 9,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        256,
+        256
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.015161623557408651,
+      "nRMSE_10": 0.1855253063970142,
+      "nRMSE_20": 0.3211612237824334,
+      "nRMSE_29": 0.5404973824818929,
+      "conditions": {
+        "id": {
+          "count": 3,
+          "nRMSE_1": 0.009457875974476337,
+          "nRMSE_10": 0.06696698566277821,
+          "nRMSE_20": 0.17258464793364206,
+          "nRMSE_29": 0.3020556370417277
+        },
+        "ood_low": {
+          "count": 3,
+          "nRMSE_1": 0.016341570764780045,
+          "nRMSE_10": 0.2462852398554484,
+          "nRMSE_20": 0.36307697494824726,
+          "nRMSE_29": 0.591808557510376
+        },
+        "ood_high": {
+          "count": 3,
+          "nRMSE_1": 0.019685422380765278,
+          "nRMSE_10": 0.2433236837387085,
+          "nRMSE_20": 0.4278220633665721,
+          "nRMSE_29": 0.7276279727617899
+        }
+      },
+      "trajectories": [
+        {
+          "sim_id": 0,
+          "condition": "id",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Feed Rate": 0.02,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.009878387674689293,
+          "nRMSE_10": 0.06526800245046616,
+          "nRMSE_20": 0.1812615990638733,
+          "nRMSE_29": 0.2765216529369354
+        },
+        {
+          "sim_id": 1,
+          "condition": "id",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Feed Rate": 0.02,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.00935071799904108,
+          "nRMSE_10": 0.07487324625253677,
+          "nRMSE_20": 0.13338352739810944,
+          "nRMSE_29": 0.31985196471214294
+        },
+        {
+          "sim_id": 2,
+          "condition": "id",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Feed Rate": 0.02,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.009144522249698639,
+          "nRMSE_10": 0.060759708285331726,
+          "nRMSE_20": 0.20310881733894348,
+          "nRMSE_29": 0.30979329347610474
+        },
+        {
+          "sim_id": 3,
+          "condition": "ood_low",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Feed Rate": 0.019,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.015160081908106804,
+          "nRMSE_10": 0.2329382747411728,
+          "nRMSE_20": 0.38398024439811707,
+          "nRMSE_29": 0.5237960815429688
+        },
+        {
+          "sim_id": 4,
+          "condition": "ood_low",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Feed Rate": 0.019,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.017122477293014526,
+          "nRMSE_10": 0.2000030130147934,
+          "nRMSE_20": 0.3415592610836029,
+          "nRMSE_29": 0.6359778046607971
+        },
+        {
+          "sim_id": 5,
+          "condition": "ood_low",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Feed Rate": 0.019,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.016742153093218803,
+          "nRMSE_10": 0.30591443181037903,
+          "nRMSE_20": 0.36369141936302185,
+          "nRMSE_29": 0.6156517863273621
+        },
+        {
+          "sim_id": 6,
+          "condition": "ood_high",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Feed Rate": 0.021,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.019797807559370995,
+          "nRMSE_10": 0.26375484466552734,
+          "nRMSE_20": 0.5236011743545532,
+          "nRMSE_29": 0.8832095265388489
+        },
+        {
+          "sim_id": 7,
+          "condition": "ood_high",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Feed Rate": 0.021,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.019905315712094307,
+          "nRMSE_10": 0.22371797263622284,
+          "nRMSE_20": 0.29219141602516174,
+          "nRMSE_29": 0.6093279123306274
+        },
+        {
+          "sim_id": 8,
+          "condition": "ood_high",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Feed Rate": 0.021,
+            "Kill Rate": 0.056
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.019353143870830536,
+          "nRMSE_10": 0.2424982339143753,
+          "nRMSE_20": 0.4676735997200012,
+          "nRMSE_29": 0.6903464794158936
+        }
+      ],
+      "elapsed_seconds": 10.334786851890385
+    },
+    "gs_theta": {
+      "dataset_name": "gs_theta",
+      "test_split": {
+        "requested_dataset_name": "gs_theta",
+        "source_dataset_name": "gs_theta",
+        "source_file": "/home/yifeiliu/working/datasets_test/gs_theta.hdf5",
+        "source_file_name": "gs_theta.hdf5",
+        "source_num_simulations": 9,
+        "source_num_frames": 30,
+        "selected_sim_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "selected_num_simulations": 9,
+        "samples_per_simulation": 1
+      },
+      "num_test_trajectories": 9,
+      "num_evaluated_trajectories": 9,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        256,
+        256
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.03820435247487492,
+      "nRMSE_10": 0.7321969469388326,
+      "nRMSE_20": 1.0741533835728962,
+      "nRMSE_29": 1.0579648680157132,
+      "conditions": {
+        "id": {
+          "count": 3,
+          "nRMSE_1": 0.015725938603281975,
+          "nRMSE_10": 0.5800060431162516,
+          "nRMSE_20": 1.0144874850908916,
+          "nRMSE_29": 1.0035513639450073
+        },
+        "ood_low": {
+          "count": 3,
+          "nRMSE_1": 0.04783293977379799,
+          "nRMSE_10": 0.8883318106333414,
+          "nRMSE_20": 1.1574137210845947,
+          "nRMSE_29": 1.133897304534912
+        },
+        "ood_high": {
+          "count": 3,
+          "nRMSE_1": 0.05105417718489965,
+          "nRMSE_10": 0.7282529473304749,
+          "nRMSE_20": 1.0505588849385579,
+          "nRMSE_29": 1.0364458163579304
+        }
+      },
+      "trajectories": [
+        {
+          "sim_id": 0,
+          "condition": "id",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Feed Rate": 0.04,
+            "Kill Rate": 0.06
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.01545986533164978,
+          "nRMSE_10": 0.6769681572914124,
+          "nRMSE_20": 1.0606658458709717,
+          "nRMSE_29": 1.0278505086898804
+        },
+        {
+          "sim_id": 1,
+          "condition": "id",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Feed Rate": 0.04,
+            "Kill Rate": 0.06
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.015779778361320496,
+          "nRMSE_10": 0.5444549322128296,
+          "nRMSE_20": 0.9741749167442322,
+          "nRMSE_29": 0.9782651662826538
+        },
+        {
+          "sim_id": 2,
+          "condition": "id",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Feed Rate": 0.04,
+            "Kill Rate": 0.06
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.01593817211687565,
+          "nRMSE_10": 0.5185950398445129,
+          "nRMSE_20": 1.0086216926574707,
+          "nRMSE_29": 1.0045384168624878
+        },
+        {
+          "sim_id": 3,
+          "condition": "ood_low",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Feed Rate": 0.038,
+            "Kill Rate": 0.06
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.048546746373176575,
+          "nRMSE_10": 1.018757700920105,
+          "nRMSE_20": 1.1458990573883057,
+          "nRMSE_29": 1.111090898513794
+        },
+        {
+          "sim_id": 4,
+          "condition": "ood_low",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Feed Rate": 0.038,
+            "Kill Rate": 0.06
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.04874652624130249,
+          "nRMSE_10": 0.8551076650619507,
+          "nRMSE_20": 1.17487633228302,
+          "nRMSE_29": 1.1471846103668213
+        },
+        {
+          "sim_id": 5,
+          "condition": "ood_low",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Feed Rate": 0.038,
+            "Kill Rate": 0.06
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.0462055467069149,
+          "nRMSE_10": 0.7911300659179688,
+          "nRMSE_20": 1.1514657735824585,
+          "nRMSE_29": 1.143416404724121
+        },
+        {
+          "sim_id": 6,
+          "condition": "ood_high",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Feed Rate": 0.042,
+            "Kill Rate": 0.06
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.054225802421569824,
+          "nRMSE_10": 0.8113740086555481,
+          "nRMSE_20": 1.0508952140808105,
+          "nRMSE_29": 1.0330731868743896
+        },
+        {
+          "sim_id": 7,
+          "condition": "ood_high",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Feed Rate": 0.042,
+            "Kill Rate": 0.06
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.05123944953083992,
+          "nRMSE_10": 0.7246113419532776,
+          "nRMSE_20": 1.0532397031784058,
+          "nRMSE_29": 1.0341432094573975
+        },
+        {
+          "sim_id": 8,
+          "condition": "ood_high",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Feed Rate": 0.042,
+            "Kill Rate": 0.06
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.0476972796022892,
+          "nRMSE_10": 0.6487734913825989,
+          "nRMSE_20": 1.0475417375564575,
+          "nRMSE_29": 1.0421210527420044
+        }
+      ],
+      "elapsed_seconds": 10.359569091815501
+    },
+    "gs_iota": {
+      "dataset_name": "gs_iota",
+      "test_split": {
+        "requested_dataset_name": "gs_iota",
+        "source_dataset_name": "gs_iota",
+        "source_file": "/home/yifeiliu/working/datasets_test/gs_iota.hdf5",
+        "source_file_name": "gs_iota.hdf5",
+        "source_num_simulations": 9,
+        "source_num_frames": 30,
+        "selected_sim_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "selected_num_simulations": 9,
+        "samples_per_simulation": 1
+      },
+      "num_test_trajectories": 9,
+      "num_evaluated_trajectories": 9,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        256,
+        256
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.05347936972975731,
+      "nRMSE_10": 0.2665255069732666,
+      "nRMSE_20": 0.674795561366611,
+      "nRMSE_29": 0.7001539270083109,
+      "conditions": {
+        "id": {
+          "count": 3,
+          "nRMSE_1": 0.0461678480108579,
+          "nRMSE_10": 0.17919529477755228,
+          "nRMSE_20": 0.5775209267934164,
+          "nRMSE_29": 0.6017142732938131
+        },
+        "ood_low": {
+          "count": 3,
+          "nRMSE_1": 0.06561605756481488,
+          "nRMSE_10": 0.39793868859608966,
+          "nRMSE_20": 0.8350921670595804,
+          "nRMSE_29": 0.8771323164304098
+        },
+        "ood_high": {
+          "count": 3,
+          "nRMSE_1": 0.048654203613599144,
+          "nRMSE_10": 0.22244249284267426,
+          "nRMSE_20": 0.6117734909057617,
+          "nRMSE_29": 0.6216152707735697
+        }
+      },
+      "trajectories": [
+        {
+          "sim_id": 0,
+          "condition": "id",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Feed Rate": 0.05,
+            "Kill Rate": 0.0605
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.04636426270008087,
+          "nRMSE_10": 0.17470847070217133,
+          "nRMSE_20": 0.521295964717865,
+          "nRMSE_29": 0.5558923482894897
+        },
+        {
+          "sim_id": 1,
+          "condition": "id",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Feed Rate": 0.05,
+            "Kill Rate": 0.0605
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.046860530972480774,
+          "nRMSE_10": 0.1814211755990982,
+          "nRMSE_20": 0.5845096707344055,
+          "nRMSE_29": 0.6133999228477478
+        },
+        {
+          "sim_id": 2,
+          "condition": "id",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Feed Rate": 0.05,
+            "Kill Rate": 0.0605
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.045278750360012054,
+          "nRMSE_10": 0.18145623803138733,
+          "nRMSE_20": 0.6267571449279785,
+          "nRMSE_29": 0.6358505487442017
+        },
+        {
+          "sim_id": 3,
+          "condition": "ood_low",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Feed Rate": 0.0475,
+            "Kill Rate": 0.0605
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.06565913558006287,
+          "nRMSE_10": 0.3974273204803467,
+          "nRMSE_20": 0.7678366899490356,
+          "nRMSE_29": 0.818036675453186
+        },
+        {
+          "sim_id": 4,
+          "condition": "ood_low",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Feed Rate": 0.0475,
+            "Kill Rate": 0.0605
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.07031881809234619,
+          "nRMSE_10": 0.4146767258644104,
+          "nRMSE_20": 0.8531444668769836,
+          "nRMSE_29": 0.887291669845581
+        },
+        {
+          "sim_id": 5,
+          "condition": "ood_low",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Feed Rate": 0.0475,
+            "Kill Rate": 0.0605
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.0608702190220356,
+          "nRMSE_10": 0.38171201944351196,
+          "nRMSE_20": 0.8842953443527222,
+          "nRMSE_29": 0.9260686039924622
+        },
+        {
+          "sim_id": 6,
+          "condition": "ood_high",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Feed Rate": 0.052500000000000005,
+            "Kill Rate": 0.0605
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.04963342845439911,
+          "nRMSE_10": 0.23589883744716644,
+          "nRMSE_20": 0.5666289329528809,
+          "nRMSE_29": 0.5515275597572327
+        },
+        {
+          "sim_id": 7,
+          "condition": "ood_high",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Feed Rate": 0.052500000000000005,
+            "Kill Rate": 0.0605
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.04871654883027077,
+          "nRMSE_10": 0.2226228415966034,
+          "nRMSE_20": 0.6009393930435181,
+          "nRMSE_29": 0.6423793435096741
+        },
+        {
+          "sim_id": 8,
+          "condition": "ood_high",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Feed Rate": 0.052500000000000005,
+            "Kill Rate": 0.0605
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.04761263355612755,
+          "nRMSE_10": 0.20880579948425293,
+          "nRMSE_20": 0.6677521467208862,
+          "nRMSE_29": 0.6709389090538025
+        }
+      ],
+      "elapsed_seconds": 10.340269932057709
+    },
+    "gs_kappa": {
+      "dataset_name": "gs_kappa",
+      "test_split": {
+        "requested_dataset_name": "gs_kappa",
+        "source_dataset_name": "gs_kappa",
+        "source_file": "/home/yifeiliu/working/datasets_test/gs_kappa.hdf5",
+        "source_file_name": "gs_kappa.hdf5",
+        "source_num_simulations": 9,
+        "source_num_frames": 30,
+        "selected_sim_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "selected_num_simulations": 9,
+        "samples_per_simulation": 1
+      },
+      "num_test_trajectories": 9,
+      "num_evaluated_trajectories": 9,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        256,
+        256
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.032659373349613614,
+      "nRMSE_10": 0.2431181271870931,
+      "nRMSE_20": 0.5757666296429105,
+      "nRMSE_29": 0.7952116131782532,
+      "conditions": {
+        "id": {
+          "count": 3,
+          "nRMSE_1": 0.02270012100537618,
+          "nRMSE_10": 0.14380293836196265,
+          "nRMSE_20": 0.4628160496552785,
+          "nRMSE_29": 0.7129847804705302
+        },
+        "ood_low": {
+          "count": 3,
+          "nRMSE_1": 0.03786999980608622,
+          "nRMSE_10": 0.31233465671539307,
+          "nRMSE_20": 0.6615073084831238,
+          "nRMSE_29": 0.8206962744394938
+        },
+        "ood_high": {
+          "count": 3,
+          "nRMSE_1": 0.037407997995615005,
+          "nRMSE_10": 0.27321677406628925,
+          "nRMSE_20": 0.6029764215151469,
+          "nRMSE_29": 0.8519538839658102
+        }
+      },
+      "trajectories": [
+        {
+          "sim_id": 0,
+          "condition": "id",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Feed Rate": 0.052,
+            "Kill Rate": 0.063
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.02359047345817089,
+          "nRMSE_10": 0.111202172935009,
+          "nRMSE_20": 0.3458288609981537,
+          "nRMSE_29": 0.5923746228218079
+        },
+        {
+          "sim_id": 1,
+          "condition": "id",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Feed Rate": 0.052,
+            "Kill Rate": 0.063
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.02267097868025303,
+          "nRMSE_10": 0.1481136828660965,
+          "nRMSE_20": 0.5257338285446167,
+          "nRMSE_29": 0.7617226243019104
+        },
+        {
+          "sim_id": 2,
+          "condition": "id",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Feed Rate": 0.052,
+            "Kill Rate": 0.063
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.02183891087770462,
+          "nRMSE_10": 0.1720929592847824,
+          "nRMSE_20": 0.5168854594230652,
+          "nRMSE_29": 0.7848570942878723
+        },
+        {
+          "sim_id": 3,
+          "condition": "ood_low",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Feed Rate": 0.04939999999999999,
+            "Kill Rate": 0.063
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.038925111293792725,
+          "nRMSE_10": 0.28914299607276917,
+          "nRMSE_20": 0.59124755859375,
+          "nRMSE_29": 0.748778760433197
+        },
+        {
+          "sim_id": 4,
+          "condition": "ood_low",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Feed Rate": 0.04939999999999999,
+            "Kill Rate": 0.063
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.03834656998515129,
+          "nRMSE_10": 0.35371795296669006,
+          "nRMSE_20": 0.7310623526573181,
+          "nRMSE_29": 0.8465474247932434
+        },
+        {
+          "sim_id": 5,
+          "condition": "ood_low",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Feed Rate": 0.04939999999999999,
+            "Kill Rate": 0.063
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.03633831813931465,
+          "nRMSE_10": 0.29414302110671997,
+          "nRMSE_20": 0.6622120141983032,
+          "nRMSE_29": 0.866762638092041
+        },
+        {
+          "sim_id": 6,
+          "condition": "ood_high",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Feed Rate": 0.0546,
+            "Kill Rate": 0.063
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.038064733147621155,
+          "nRMSE_10": 0.2484181821346283,
+          "nRMSE_20": 0.5194292664527893,
+          "nRMSE_29": 0.7729105949401855
+        },
+        {
+          "sim_id": 7,
+          "condition": "ood_high",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Feed Rate": 0.0546,
+            "Kill Rate": 0.063
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.0377509705722332,
+          "nRMSE_10": 0.27559858560562134,
+          "nRMSE_20": 0.6051255464553833,
+          "nRMSE_29": 0.8617957830429077
+        },
+        {
+          "sim_id": 8,
+          "condition": "ood_high",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Feed Rate": 0.0546,
+            "Kill Rate": 0.063
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.03640829026699066,
+          "nRMSE_10": 0.29563355445861816,
+          "nRMSE_20": 0.6843744516372681,
+          "nRMSE_29": 0.9211552739143372
+        }
+      ],
+      "elapsed_seconds": 10.358866550959647
+    },
+    "sh": {
+      "dataset_name": "sh",
+      "test_split": {
+        "requested_dataset_name": "sh",
+        "source_dataset_name": "sh",
+        "source_file": "/home/yifeiliu/working/datasets_test/sh.hdf5",
+        "source_file_name": "sh.hdf5",
+        "source_num_simulations": 9,
+        "source_num_frames": 30,
+        "selected_sim_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "selected_num_simulations": 9,
+        "samples_per_simulation": 1
+      },
+      "num_test_trajectories": 9,
+      "num_evaluated_trajectories": 9,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        256,
+        256
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.08547355234622955,
+      "nRMSE_10": 0.4573725329505073,
+      "nRMSE_20": 0.7031586766242981,
+      "nRMSE_29": 0.8295816514227126,
+      "conditions": {
+        "id": {
+          "count": 3,
+          "nRMSE_1": 0.07506010681390762,
+          "nRMSE_10": 0.4260052889585495,
+          "nRMSE_20": 0.6908944348494211,
+          "nRMSE_29": 0.7337148686250051
+        },
+        "ood_low": {
+          "count": 3,
+          "nRMSE_1": 0.110188618923227,
+          "nRMSE_10": 0.5824094836910566,
+          "nRMSE_20": 0.8424436450004578,
+          "nRMSE_29": 1.1168834666411083
+        },
+        "ood_high": {
+          "count": 3,
+          "nRMSE_1": 0.07117193564772606,
+          "nRMSE_10": 0.3637028435866038,
+          "nRMSE_20": 0.5761378208796183,
+          "nRMSE_29": 0.6381466289361318
+        }
+      },
+      "trajectories": [
+        {
+          "sim_id": 0,
+          "condition": "id",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Critical Number": 1.0,
+            "Reactivity": 0.7
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.13376550376415253,
+          "nRMSE_10": 0.506407618522644,
+          "nRMSE_20": 0.6732085943222046,
+          "nRMSE_29": 0.7511991858482361
+        },
+        {
+          "sim_id": 1,
+          "condition": "id",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Critical Number": 1.0,
+            "Reactivity": 0.7
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.022982820868492126,
+          "nRMSE_10": 0.16502578556537628,
+          "nRMSE_20": 0.28815850615501404,
+          "nRMSE_29": 0.37438246607780457
+        },
+        {
+          "sim_id": 2,
+          "condition": "id",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Critical Number": 1.0,
+            "Reactivity": 0.7
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.06843199580907822,
+          "nRMSE_10": 0.6065824627876282,
+          "nRMSE_20": 1.111316204071045,
+          "nRMSE_29": 1.0755629539489746
+        },
+        {
+          "sim_id": 3,
+          "condition": "ood_low",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Critical Number": 1.0,
+            "Reactivity": 0.38
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.23716704547405243,
+          "nRMSE_10": 1.3847770690917969,
+          "nRMSE_20": 1.0224565267562866,
+          "nRMSE_29": 1.0943198204040527
+        },
+        {
+          "sim_id": 4,
+          "condition": "ood_low",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Critical Number": 1.0,
+            "Reactivity": 0.38
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.06396535784006119,
+          "nRMSE_10": 0.24162515997886658,
+          "nRMSE_20": 0.30825453996658325,
+          "nRMSE_29": 0.38211557269096375
+        },
+        {
+          "sim_id": 5,
+          "condition": "ood_low",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Critical Number": 1.0,
+            "Reactivity": 0.38
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.02943345345556736,
+          "nRMSE_10": 0.12082622200250626,
+          "nRMSE_20": 1.1966198682785034,
+          "nRMSE_29": 1.874215006828308
+        },
+        {
+          "sim_id": 6,
+          "condition": "ood_high",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Critical Number": 1.0,
+            "Reactivity": 1.05
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.03815330192446709,
+          "nRMSE_10": 0.26515188813209534,
+          "nRMSE_20": 0.4254259765148163,
+          "nRMSE_29": 0.5311155319213867
+        },
+        {
+          "sim_id": 7,
+          "condition": "ood_high",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Critical Number": 1.0,
+            "Reactivity": 1.05
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.08896901458501816,
+          "nRMSE_10": 0.2634504437446594,
+          "nRMSE_20": 0.372933954000473,
+          "nRMSE_29": 0.42857125401496887
+        },
+        {
+          "sim_id": 8,
+          "condition": "ood_high",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Critical Number": 1.0,
+            "Reactivity": 1.05
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.08639349043369293,
+          "nRMSE_10": 0.5625061988830566,
+          "nRMSE_20": 0.9300535321235657,
+          "nRMSE_29": 0.9547531008720398
+        }
+      ],
+      "elapsed_seconds": 10.21904693217948
+    },
+    "decay_turb": {
+      "dataset_name": "decay_turb",
+      "test_split": {
+        "requested_dataset_name": "decay_turb",
+        "source_dataset_name": "decay_turb",
+        "source_file": "/home/yifeiliu/working/datasets_test/decay_turb.hdf5",
+        "source_file_name": "decay_turb.hdf5",
+        "source_num_simulations": 9,
+        "source_num_frames": 30,
+        "selected_sim_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "selected_num_simulations": 9,
+        "samples_per_simulation": 1
+      },
+      "num_test_trajectories": 9,
+      "num_evaluated_trajectories": 9,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        256,
+        256
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.14872358987728754,
+      "nRMSE_10": 0.4403548671139611,
+      "nRMSE_20": 0.3822412110037274,
+      "nRMSE_29": 0.3386425342824724,
+      "conditions": {
+        "id": {
+          "count": 3,
+          "nRMSE_1": 0.13480855276187262,
+          "nRMSE_10": 0.3974533975124359,
+          "nRMSE_20": 0.3254278898239136,
+          "nRMSE_29": 0.28050121168295544
+        },
+        "ood_low": {
+          "count": 3,
+          "nRMSE_1": 0.19922726104656854,
+          "nRMSE_10": 0.6173792878786722,
+          "nRMSE_20": 0.5792255401611328,
+          "nRMSE_29": 0.4988928933938344
+        },
+        "ood_high": {
+          "count": 3,
+          "nRMSE_1": 0.11213493595520656,
+          "nRMSE_10": 0.30623199542363483,
+          "nRMSE_20": 0.2420701930920283,
+          "nRMSE_29": 0.2365334282318751
+        }
+      },
+      "trajectories": [
+        {
+          "sim_id": 0,
+          "condition": "id",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Viscosity": 5.5e-05
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.1657061129808426,
+          "nRMSE_10": 0.3786070644855499,
+          "nRMSE_20": 0.22668367624282837,
+          "nRMSE_29": 0.13502325117588043
+        },
+        {
+          "sim_id": 1,
+          "condition": "id",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Viscosity": 5.5e-05
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.1498132050037384,
+          "nRMSE_10": 0.44202423095703125,
+          "nRMSE_20": 0.3770543038845062,
+          "nRMSE_29": 0.36016717553138733
+        },
+        {
+          "sim_id": 2,
+          "condition": "id",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Viscosity": 5.5e-05
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.08890634030103683,
+          "nRMSE_10": 0.37172889709472656,
+          "nRMSE_20": 0.37254568934440613,
+          "nRMSE_29": 0.3463132083415985
+        },
+        {
+          "sim_id": 3,
+          "condition": "ood_low",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Viscosity": 9.5e-06
+          },
+          "numerical_overrides": {
+            "Sub Steps": 1000
+          },
+          "nRMSE_1": 0.26033568382263184,
+          "nRMSE_10": 0.5459707379341125,
+          "nRMSE_20": 0.37922388315200806,
+          "nRMSE_29": 0.340069442987442
+        },
+        {
+          "sim_id": 4,
+          "condition": "ood_low",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Viscosity": 9.5e-06
+          },
+          "numerical_overrides": {
+            "Sub Steps": 1000
+          },
+          "nRMSE_1": 0.23224911093711853,
+          "nRMSE_10": 0.793849527835846,
+          "nRMSE_20": 0.7789716720581055,
+          "nRMSE_29": 0.685791552066803
+        },
+        {
+          "sim_id": 5,
+          "condition": "ood_low",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Viscosity": 9.5e-06
+          },
+          "numerical_overrides": {
+            "Sub Steps": 1000
+          },
+          "nRMSE_1": 0.10509698837995529,
+          "nRMSE_10": 0.5123175978660583,
+          "nRMSE_20": 0.5794810652732849,
+          "nRMSE_29": 0.4708176851272583
+        },
+        {
+          "sim_id": 6,
+          "condition": "ood_high",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Viscosity": 0.000105
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.13156846165657043,
+          "nRMSE_10": 0.2841838598251343,
+          "nRMSE_20": 0.18600183725357056,
+          "nRMSE_29": 0.16327552497386932
+        },
+        {
+          "sim_id": 7,
+          "condition": "ood_high",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Viscosity": 0.000105
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.1258288323879242,
+          "nRMSE_10": 0.35996416211128235,
+          "nRMSE_20": 0.3078007996082306,
+          "nRMSE_29": 0.29942190647125244
+        },
+        {
+          "sim_id": 8,
+          "condition": "ood_high",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Viscosity": 0.000105
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.07900751382112503,
+          "nRMSE_10": 0.2745479643344879,
+          "nRMSE_20": 0.23240794241428375,
+          "nRMSE_29": 0.24690285325050354
+        }
+      ],
+      "elapsed_seconds": 10.250445974990726
+    },
+    "kolm_flow": {
+      "dataset_name": "kolm_flow",
+      "test_split": {
+        "requested_dataset_name": "kolm_flow",
+        "source_dataset_name": "kolm_flow",
+        "source_file": "/home/yifeiliu/working/datasets_test/kolm_flow.hdf5",
+        "source_file_name": "kolm_flow.hdf5",
+        "source_num_simulations": 9,
+        "source_num_frames": 30,
+        "selected_sim_ids": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "selected_num_simulations": 9,
+        "samples_per_simulation": 1
+      },
+      "num_test_trajectories": 9,
+      "num_evaluated_trajectories": 9,
+      "trajectory_length": 30,
+      "data_shape": [
+        2,
+        256,
+        256
+      ],
+      "channels": 2,
+      "nRMSE_1": 0.060459535775913134,
+      "nRMSE_10": 0.2690141085121367,
+      "nRMSE_20": 0.6682909859551324,
+      "nRMSE_29": 1.050950460963779,
+      "conditions": {
+        "id": {
+          "count": 3,
+          "nRMSE_1": 0.044387650986512504,
+          "nRMSE_10": 0.30041717489560443,
+          "nRMSE_20": 0.7162459095319113,
+          "nRMSE_29": 1.0827222267786663
+        },
+        "ood_low": {
+          "count": 3,
+          "nRMSE_1": 0.10790284474690755,
+          "nRMSE_10": 0.34244712193806964,
+          "nRMSE_20": 0.7812426487604777,
+          "nRMSE_29": 1.0847097237904866
+        },
+        "ood_high": {
+          "count": 3,
+          "nRMSE_1": 0.02908810538550218,
+          "nRMSE_10": 0.1641780212521553,
+          "nRMSE_20": 0.5073843697706858,
+          "nRMSE_29": 0.9854193727175394
+        }
+      },
+      "trajectories": [
+        {
+          "sim_id": 0,
+          "condition": "id",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Viscosity": 0.00055
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.046670783311128616,
+          "nRMSE_10": 0.2742712199687958,
+          "nRMSE_20": 0.6871251463890076,
+          "nRMSE_29": 1.0773366689682007
+        },
+        {
+          "sim_id": 1,
+          "condition": "id",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Viscosity": 0.00055
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.042351797223091125,
+          "nRMSE_10": 0.3631596565246582,
+          "nRMSE_20": 0.7067276239395142,
+          "nRMSE_29": 1.0824426412582397
+        },
+        {
+          "sim_id": 2,
+          "condition": "id",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Viscosity": 0.00055
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.044140372425317764,
+          "nRMSE_10": 0.2638206481933594,
+          "nRMSE_20": 0.7548849582672119,
+          "nRMSE_29": 1.088387370109558
+        },
+        {
+          "sim_id": 3,
+          "condition": "ood_low",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Viscosity": 9.5e-05
+          },
+          "numerical_overrides": {
+            "Sub Steps": 3000
+          },
+          "nRMSE_1": 0.11008426547050476,
+          "nRMSE_10": 0.40541595220565796,
+          "nRMSE_20": 0.7521226406097412,
+          "nRMSE_29": 0.9531444311141968
+        },
+        {
+          "sim_id": 4,
+          "condition": "ood_low",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Viscosity": 9.5e-05
+          },
+          "numerical_overrides": {
+            "Sub Steps": 3000
+          },
+          "nRMSE_1": 0.10515407472848892,
+          "nRMSE_10": 0.30037739872932434,
+          "nRMSE_20": 0.7437759041786194,
+          "nRMSE_29": 0.8591244220733643
+        },
+        {
+          "sim_id": 5,
+          "condition": "ood_low",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Viscosity": 9.5e-05
+          },
+          "numerical_overrides": {
+            "Sub Steps": 3000
+          },
+          "nRMSE_1": 0.10847019404172897,
+          "nRMSE_10": 0.3215480148792267,
+          "nRMSE_20": 0.8478294014930725,
+          "nRMSE_29": 1.441860318183899
+        },
+        {
+          "sim_id": 6,
+          "condition": "ood_high",
+          "seed": 2026072201,
+          "parameter_overrides": {
+            "Viscosity": 0.0010500000000000002
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.031846366822719574,
+          "nRMSE_10": 0.16236191987991333,
+          "nRMSE_20": 0.8165427446365356,
+          "nRMSE_29": 1.2336622476577759
+        },
+        {
+          "sim_id": 7,
+          "condition": "ood_high",
+          "seed": 2026072202,
+          "parameter_overrides": {
+            "Viscosity": 0.0010500000000000002
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.030746977776288986,
+          "nRMSE_10": 0.11960072070360184,
+          "nRMSE_20": 0.3610459268093109,
+          "nRMSE_29": 0.8732898831367493
+        },
+        {
+          "sim_id": 8,
+          "condition": "ood_high",
+          "seed": 2026072203,
+          "parameter_overrides": {
+            "Viscosity": 0.0010500000000000002
+          },
+          "numerical_overrides": {},
+          "nRMSE_1": 0.024670971557497978,
+          "nRMSE_10": 0.21057142317295074,
+          "nRMSE_20": 0.34456443786621094,
+          "nRMSE_29": 0.8493059873580933
+        }
+      ],
+      "elapsed_seconds": 10.2852504523471
+    }
+  },
+  "aggregate": {
+    "macro": {
+      "nRMSE_1": 0.06025250039666014,
+      "nRMSE_10": 0.4052593006807215,
+      "nRMSE_20": 0.622459831580617,
+      "nRMSE_29": 0.7574910358860601
+    },
+    "micro": {
+      "nRMSE_1": 0.06025250039666014,
+      "nRMSE_10": 0.4052593006807215,
+      "nRMSE_20": 0.622459831580617,
+      "nRMSE_29": 0.7574910358860601
+    },
+    "conditions": {
+      "id": {
+        "count": 51,
+        "macro": {
+          "nRMSE_1": 0.04433833531962306,
+          "nRMSE_10": 0.3397739707839255,
+          "nRMSE_20": 0.5624161568634651,
+          "nRMSE_29": 0.6785873084091673
+        },
+        "micro": {
+          "nRMSE_1": 0.04433833531962306,
+          "nRMSE_10": 0.3397739707839255,
+          "nRMSE_20": 0.562416156863465,
+          "nRMSE_29": 0.6785873084091673
+        }
+      },
+      "ood_low": {
+        "count": 51,
+        "macro": {
+          "nRMSE_1": 0.07420381528380161,
+          "nRMSE_10": 0.47299088055596633,
+          "nRMSE_20": 0.7309019667845146,
+          "nRMSE_29": 0.8647986428410399
+        },
+        "micro": {
+          "nRMSE_1": 0.07420381528380163,
+          "nRMSE_10": 0.47299088055596633,
+          "nRMSE_20": 0.7309019667845146,
+          "nRMSE_29": 0.8647986428410399
+        }
+      },
+      "ood_high": {
+        "count": 51,
+        "macro": {
+          "nRMSE_1": 0.06221534953653521,
+          "nRMSE_10": 0.403013034632393,
+          "nRMSE_20": 0.5740613282895555,
+          "nRMSE_29": 0.7290871473504047
+        },
+        "micro": {
+          "nRMSE_1": 0.0622153495365352,
+          "nRMSE_10": 0.40301303463239296,
+          "nRMSE_20": 0.5740613282895556,
+          "nRMSE_29": 0.7290871473504048
+        }
+      }
+    },
+    "total_evaluated_trajectories": 153
+  }
+}

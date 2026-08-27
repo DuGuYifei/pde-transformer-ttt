@@ -1,0 +1,98 @@
+{
+  "metadata": {
+    "model_source": "checkpoint",
+    "checkpoint": "/home/yifeiliu/working/runs_v2/pdes_vittt-cacheoff_128_60sims/checkpoints/epoch-epoch=099.ckpt",
+    "hf_model_source": "thuerey-group/pde-transformer",
+    "subfolder": "mc-s",
+    "work_dir": "/home/yifeiliu/working",
+    "data_dir": "/home/yifeiliu/working/datasets_official",
+    "data_dir_warning_non_official": false,
+    "run_root": "/home/yifeiliu/working/runs_v2",
+    "run_name": "pdes_vittt-cacheoff_128_60sims",
+    "model_type": "PDE-S",
+    "in_channels": 2,
+    "out_channels": 2,
+    "patch_size": 4,
+    "periodic": true,
+    "carrier_token_active": false,
+    "token_mixer_type": "vittt",
+    "resolved_token_mixer_type": "vittt",
+    "use_ttt_window_attention": false,
+    "use_ttt_state_cache_train": false,
+    "ttt_layer_type": "linear",
+    "ttt_mini_batch_size": 16,
+    "ttt_base_lr": 1.0,
+    "ttt_use_gate": false,
+    "ttt_scan_checkpoint_group_size": 0,
+    "vittt_inner_lr": 1.0,
+    "vittt_padding_mode": "zero",
+    "downsample_factor": 2,
+    "sample_size": 128,
+    "test_unrolling_steps": 29,
+    "max_channels": 2,
+    "rollout_steps": 30,
+    "eval_k": [
+      1,
+      10,
+      20,
+      29
+    ],
+    "datasets": [
+      "diff",
+      "hyp",
+      "burgers",
+      "kdv",
+      "ks",
+      "fisher",
+      "gs_alpha",
+      "gs_beta",
+      "gs_gamma",
+      "gs_delta",
+      "gs_epsilon",
+      "gs_theta",
+      "gs_iota",
+      "gs_kappa",
+      "sh",
+      "decay_turb",
+      "kolm_flow"
+    ],
+    "batch_size": 8,
+    "num_workers": 2,
+    "seed": 42,
+    "max_batches_per_dataset": null,
+    "torch_version": "2.5.1+cu121",
+    "device": "cuda:0",
+    "cuda_device_count": 1,
+    "config_path": "pdes_vittt-cacheoff_128_60sims.yaml",
+    "output_dir": "/home/yifeiliu/working/runs_v2/pdes_vittt-cacheoff_128_60sims/test_results/official_best_epoch099",
+    "cache_modes_run": [
+      "off"
+    ],
+    "overall_started_at": "2026-07-02T21:51:07",
+    "overall_ended_at": "2026-07-02T21:58:16",
+    "overall_elapsed_seconds": 429.03541347399005
+  },
+  "params": {
+    "total": 37230608,
+    "trainable": 37230608,
+    "total_m": "37.23M",
+    "trainable_m": "37.23M"
+  },
+  "aggregates_by_cache_mode": {
+    "off": {
+      "macro": {
+        "nRMSE_1": 0.10363878903435725,
+        "nRMSE_10": 0.8575106801706203,
+        "nRMSE_20": 0.9858183668641483,
+        "nRMSE_29": 1.057959547253216
+      },
+      "micro": {
+        "nRMSE_1": 0.06640597310726645,
+        "nRMSE_10": 0.9686496219913721,
+        "nRMSE_20": 0.929792225739553,
+        "nRMSE_29": 0.947924920988507
+      },
+      "total_evaluated_trajectories": 787
+    }
+  }
+}

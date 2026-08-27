@@ -1,0 +1,105 @@
+{
+  "metadata": {
+    "model_source": "checkpoint",
+    "checkpoint": "/home/yifeiliu/working/runs_attention_full256/pdes_attention_s_256_full_100ep/checkpoints/epoch-epoch=099.ckpt",
+    "hf_model_source": "thuerey-group/pde-transformer",
+    "subfolder": "mc-s",
+    "work_dir": "/home/yifeiliu/working",
+    "data_dir": "/home/yifeiliu/working/datasets_ape2d_full",
+    "data_dir_warning_non_official": false,
+    "dataset_profile": "full_paper",
+    "strict_test_split": true,
+    "id_ood_test": false,
+    "id_ood_manifest_path": null,
+    "run_root": "/home/yifeiliu/working/runs_attention_full256",
+    "run_name": "pdes_attention_s_256_full_100ep",
+    "model_type": "PDE-S",
+    "in_channels": 2,
+    "out_channels": 2,
+    "patch_size": 4,
+    "periodic": true,
+    "carrier_token_active": false,
+    "token_mixer_type": "attention",
+    "resolved_token_mixer_type": "attention",
+    "use_ttt_window_attention": false,
+    "use_ttt_state_cache_train": false,
+    "ttt_layer_type": "linear",
+    "ttt_mini_batch_size": 16,
+    "ttt_base_lr": 1.0,
+    "ttt_use_gate": false,
+    "ttt_scan_checkpoint_group_size": 0,
+    "vittt_inner_lr": 1.0,
+    "vittt_padding_mode": "zero",
+    "attention_ttt_type": "ttt_sequence",
+    "attention_ttt_gate_init": 0.1,
+    "attention_ttt_bidirectional": true,
+    "downsample_factor": 1,
+    "sample_size": 256,
+    "test_unrolling_steps": 29,
+    "max_channels": 2,
+    "rollout_steps": 30,
+    "eval_k": [
+      1,
+      10,
+      20,
+      29
+    ],
+    "datasets": [
+      "diff",
+      "burgers",
+      "kdv",
+      "ks",
+      "fisher",
+      "gs_alpha",
+      "gs_beta",
+      "gs_gamma",
+      "gs_delta",
+      "gs_epsilon",
+      "gs_theta",
+      "gs_iota",
+      "gs_kappa",
+      "sh",
+      "decay_turb",
+      "kolm_flow"
+    ],
+    "batch_size": 8,
+    "num_workers": 2,
+    "seed": 42,
+    "max_batches_per_dataset": null,
+    "torch_version": "2.5.1+cu121",
+    "device": "cuda:0",
+    "cuda_device_count": 1,
+    "config_path": "/home/yifeiliu/server_15_global_linear_full256/server_example/pdes_attention_256_full.yaml",
+    "output_dir": "/home/yifeiliu/working/eval_attention_full256/full_test",
+    "cache_modes_run": [
+      "off"
+    ],
+    "overall_started_at": "2026-07-27T21:31:21",
+    "overall_ended_at": "2026-07-27T21:41:02",
+    "overall_elapsed_seconds": 580.6253532920964
+  },
+  "params": {
+    "total": 33190328,
+    "trainable": 33190328,
+    "total_m": "33.19M",
+    "trainable_m": "33.19M"
+  },
+  "aggregates_by_cache_mode": {
+    "off": {
+      "macro": {
+        "nRMSE_1": 0.04948131111760934,
+        "nRMSE_10": 0.4678607866168022,
+        "nRMSE_20": 0.7816506275286277,
+        "nRMSE_29": 0.903583027323087
+      },
+      "micro": {
+        "nRMSE_1": 0.05338090736199828,
+        "nRMSE_10": 0.40582413203576034,
+        "nRMSE_20": 0.6883535417388468,
+        "nRMSE_29": 0.8259512253368602
+      },
+      "conditions": {},
+      "total_evaluated_trajectories": 850
+    }
+  }
+}

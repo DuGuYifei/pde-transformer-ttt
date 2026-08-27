@@ -1,0 +1,618 @@
+/home/yifeiliu/venv/lib/python3.12/site-packages/timm/models/layers/__init__.py:49: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+/home/yifeiliu/server_15_global_linear_full256/pdetransformer/data/pbdl_dataloader/dataset.py:6: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+Seed set to 42
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+Initializing distributed: GLOBAL_RANK: 0, MEMBER: 1/2
+/home/yifeiliu/venv/lib/python3.12/site-packages/timm/models/layers/__init__.py:49: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+/home/yifeiliu/server_15_global_linear_full256/pdetransformer/data/pbdl_dataloader/dataset.py:6: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+[rank: 1] Seed set to 42
+Initializing distributed: GLOBAL_RANK: 1, MEMBER: 2/2
+----------------------------------------------------------------------------------------------------
+distributed_backend=nccl
+All distributed processes registered. Starting with 2 processes
+----------------------------------------------------------------------------------------------------
+
+LOCAL_RANK: 1 - CUDA_VISIBLE_DEVICES: [0,1]
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0,1]
+[93m[1mWarning:[22m ./datasets/ is not a valid directory. No local datasets will be available.[0m
+[data] validated files and disjoint simulation splits
+[data] diff: file=600 train_source=500 test=100
+[data] burgers: file=600 train_source=500 test=100
+[data] kdv: file=600 train_source=500 test=100
+[data] ks: train_file=600 test_file=50
+[data] fisher: file=600 train_source=500 test=100
+[data] gs_alpha: train_file=100 test_file=30
+[data] gs_beta: train_file=100 test_file=30
+[data] gs_gamma: train_file=100 test_file=30
+[data] gs_delta: file=100 train_source=80 test=20
+[data] gs_epsilon: train_file=100 test_file=30
+[data] gs_theta: file=100 train_source=80 test=20
+[data] gs_iota: file=100 train_source=80 test=20
+[data] gs_kappa: file=100 train_source=80 test=20
+[data] sh: file=600 train_source=500 test=100
+[data] decay_turb: train_file=600 test_file=50
+[data] kolm_flow: train_file=600 test_file=50
+data_dir: ~/working/datasets_ape2d_full
+run_root: ~/working/runs_global_linear_full256
+run_name: pdes_global-linear-ttt_s_256_full_100ep
+model_type: PDE-S
+in_channels: 2
+out_channels: 2
+patch_size: 4
+periodic: true
+carrier_token_active: false
+token_mixer_type: global_linear_ttt
+vittt_inner_lr: 1.0
+vittt_head_dim: 32
+learning_rate: 4.0e-05
+max_epochs: 100
+batch_size: 8
+num_workers: 2
+devices: 2
+strategy: ddp
+precision: 32-true
+accumulate_grad_batches: 8
+seed: 42
+downsample_factor: 1
+sample_size: 256
+train_unrolling_steps: 1
+test_unrolling_steps: 29
+max_channels: 2
+auto_resume: true
+dataset_profile: full_paper
+
+parameters: 33,361,952
+effective_global_batch: 128
+resume_checkpoint: None
+init_checkpoint: None
+[96m[1mSuccess:[22m Loaded diff with 600 simulations (500 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded diff with 600 simulations (100 selected) and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded burgers with 600 simulations (500 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded burgers with 600 simulations (100 selected) and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded kdv with 600 simulations (500 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded kdv with 600 simulations (100 selected) and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded ks with 600 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded ks_test with 50 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded fisher with 600 simulations (500 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded fisher with 600 simulations (100 selected) and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_alpha with 100 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_alpha_test with 30 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_beta with 100 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_beta_test with 30 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_gamma with 100 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_gamma_test with 30 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_delta with 100 simulations (80 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_delta with 100 simulations (20 selected) and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_epsilon with 100 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_epsilon_test with 30 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_theta with 100 simulations (80 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_theta with 100 simulations (20 selected) and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_iota with 100 simulations (80 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_iota with 100 simulations (20 selected) and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_kappa with 100 simulations (80 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_kappa with 100 simulations (20 selected) and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded sh with 600 simulations (500 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded sh with 600 simulations (100 selected) and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded decay_turb with 600 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded decay_turb_test with 50 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded kolm_flow with 600 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded kolm_flow_test with 50 simulations and 1 samples each.[0m
+┏━━━┳━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┓
+┃   ┃ Name  ┃ Type           ┃ Params ┃ Mode  ┃ FLOPs ┃
+┡━━━╇━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━┩
+│ 0 │ model │ PDETransformer │ 33.4 M │ train │     0 │
+└───┴───────┴────────────────┴────────┴───────┴───────┘
+Trainable params: 33.4 M                                                        
+Non-trainable params: 0                                                         
+Total params: 33.4 M                                                            
+Total estimated model params size (MB): 133                                     
+Modules in train mode: 434                                                      
+Modules in eval mode: 0                                                         
+Total FLOPs: 0                                                                  
+[93m[1mWarning:[22m ./datasets/ is not a valid directory. No local datasets will be available.[0m
+[data] validated files and disjoint simulation splits
+[data] diff: file=600 train_source=500 test=100
+[data] burgers: file=600 train_source=500 test=100
+[data] kdv: file=600 train_source=500 test=100
+[data] ks: train_file=600 test_file=50
+[data] fisher: file=600 train_source=500 test=100
+[data] gs_alpha: train_file=100 test_file=30
+[data] gs_beta: train_file=100 test_file=30
+[data] gs_gamma: train_file=100 test_file=30
+[data] gs_delta: file=100 train_source=80 test=20
+[data] gs_epsilon: train_file=100 test_file=30
+[data] gs_theta: file=100 train_source=80 test=20
+[data] gs_iota: file=100 train_source=80 test=20
+[data] gs_kappa: file=100 train_source=80 test=20
+[data] sh: file=600 train_source=500 test=100
+[data] decay_turb: train_file=600 test_file=50
+[data] kolm_flow: train_file=600 test_file=50
+data_dir: ~/working/datasets_ape2d_full
+run_root: ~/working/runs_global_linear_full256
+run_name: pdes_global-linear-ttt_s_256_full_100ep
+model_type: PDE-S
+in_channels: 2
+out_channels: 2
+patch_size: 4
+periodic: true
+carrier_token_active: false
+token_mixer_type: global_linear_ttt
+vittt_inner_lr: 1.0
+vittt_head_dim: 32
+learning_rate: 4.0e-05
+max_epochs: 100
+batch_size: 8
+num_workers: 2
+devices: 2
+strategy: ddp
+precision: 32-true
+accumulate_grad_batches: 8
+seed: 42
+downsample_factor: 1
+sample_size: 256
+train_unrolling_steps: 1
+test_unrolling_steps: 29
+max_channels: 2
+auto_resume: true
+dataset_profile: full_paper
+
+parameters: 33,361,952
+effective_global_batch: 128
+resume_checkpoint: None
+init_checkpoint: None
+[96m[1mSuccess:[22m Loaded diff with 600 simulations (500 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded diff with 600 simulations (100 selected) and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded burgers with 600 simulations (500 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded burgers with 600 simulations (100 selected) and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded kdv with 600 simulations (500 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded kdv with 600 simulations (100 selected) and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded ks with 600 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded ks_test with 50 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded fisher with 600 simulations (500 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded fisher with 600 simulations (100 selected) and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_alpha with 100 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_alpha_test with 30 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_beta with 100 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_beta_test with 30 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_gamma with 100 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_gamma_test with 30 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_delta with 100 simulations (80 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_delta with 100 simulations (20 selected) and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_epsilon with 100 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_epsilon_test with 30 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_theta with 100 simulations (80 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_theta with 100 simulations (20 selected) and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_iota with 100 simulations (80 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_iota with 100 simulations (20 selected) and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_kappa with 100 simulations (80 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded gs_kappa with 100 simulations (20 selected) and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded sh with 600 simulations (500 selected) and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded sh with 600 simulations (100 selected) and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded decay_turb with 600 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded decay_turb_test with 50 simulations and 1 samples each.[0m
+[96m[1mSuccess:[22m Loaded kolm_flow with 600 simulations and 29 samples each.[0m
+[96m[1mSuccess:[22m Loaded kolm_flow_test with 50 simulations and 1 samples each.[0m
+/home/yifeiliu/venv/lib/python3.12/site-packages/lightning/pytorch/utilities/data.py:79: Trying to infer the `batch_size` from an ambiguous collection. The batch size we found is 8. To avoid any miscalculations, use `self.log(..., batch_size=batch_size)`.
+/home/yifeiliu/venv/lib/python3.12/site-packages/lightning/pytorch/utilities/data.py:79: Trying to infer the `batch_size` from an ambiguous collection. The batch size we found is 7. To avoid any miscalculations, use `self.log(..., batch_size=batch_size)`.
+[val] epoch=1 loss=0.0406076
+[train] epoch=1/100 step=484 elapsed=24.4min loss=0.0956968
+[val] epoch=1 loss=0.0406076
+[train] epoch=1/100 step=484 elapsed=24.4min loss=0.0956968
+[val] epoch=2 loss=0.0214432
+[train] epoch=2/100 step=968 elapsed=24.5min loss=0.0282771
+[val] epoch=2 loss=0.0214432
+[train] epoch=2/100 step=968 elapsed=24.5min loss=0.0282771
+[val] epoch=3 loss=0.0152967
+[train] epoch=3/100 step=1452 elapsed=24.5min loss=0.0179592
+[val] epoch=3 loss=0.0152967
+[train] epoch=3/100 step=1452 elapsed=24.5min loss=0.0179592
+[val] epoch=4 loss=0.0120619
+[train] epoch=4/100 step=1936 elapsed=24.5min loss=0.0138805
+[val] epoch=4 loss=0.0120619
+[train] epoch=4/100 step=1936 elapsed=24.5min loss=0.0138805
+[val] epoch=5 loss=0.0116087
+[train] epoch=5/100 step=2420 elapsed=24.5min loss=0.0117811
+[val] epoch=5 loss=0.0116087
+[train] epoch=5/100 step=2420 elapsed=24.5min loss=0.0117811
+[val] epoch=6 loss=0.00930704
+[train] epoch=6/100 step=2904 elapsed=24.5min loss=0.0100892
+[val] epoch=6 loss=0.00930704
+[train] epoch=6/100 step=2904 elapsed=24.5min loss=0.0100892
+[val] epoch=7 loss=0.00899761
+[train] epoch=7/100 step=3388 elapsed=24.5min loss=0.00902681
+[val] epoch=7 loss=0.00899761
+[train] epoch=7/100 step=3388 elapsed=24.5min loss=0.00902681
+[val] epoch=8 loss=0.00798023
+[train] epoch=8/100 step=3872 elapsed=24.5min loss=0.00843079
+[val] epoch=8 loss=0.00798023
+[train] epoch=8/100 step=3872 elapsed=24.5min loss=0.00843079
+[val] epoch=9 loss=0.0071387
+[train] epoch=9/100 step=4356 elapsed=24.5min loss=0.00768511
+[val] epoch=9 loss=0.0071387
+[train] epoch=9/100 step=4356 elapsed=24.5min loss=0.00768511
+[val] epoch=10 loss=0.00634532
+[train] epoch=10/100 step=4840 elapsed=24.5min loss=0.00692827
+[val] epoch=10 loss=0.00634532
+[train] epoch=10/100 step=4840 elapsed=24.5min loss=0.00692827
+[val] epoch=11 loss=0.00592767
+[train] epoch=11/100 step=5324 elapsed=24.5min loss=0.00673662
+[val] epoch=11 loss=0.00592767
+[train] epoch=11/100 step=5324 elapsed=24.5min loss=0.00673662
+[val] epoch=12 loss=0.00587067
+[train] epoch=12/100 step=5808 elapsed=24.5min loss=0.00605995
+[val] epoch=12 loss=0.00587067
+[train] epoch=12/100 step=5808 elapsed=24.5min loss=0.00605995
+[val] epoch=13 loss=0.00544009
+[train] epoch=13/100 step=6292 elapsed=24.5min loss=0.00555139
+[val] epoch=13 loss=0.00544009
+[train] epoch=13/100 step=6292 elapsed=24.5min loss=0.00555139
+[val] epoch=14 loss=0.0050607
+[train] epoch=14/100 step=6776 elapsed=24.5min loss=0.00546587
+[val] epoch=14 loss=0.0050607
+[train] epoch=14/100 step=6776 elapsed=24.5min loss=0.00546587
+[val] epoch=15 loss=0.00608734
+[train] epoch=15/100 step=7260 elapsed=24.5min loss=0.00496418
+[val] epoch=15 loss=0.00608734
+[train] epoch=15/100 step=7260 elapsed=24.5min loss=0.00496418
+[val] epoch=16 loss=0.00467349
+[train] epoch=16/100 step=7744 elapsed=24.5min loss=0.00463742
+[val] epoch=16 loss=0.00467349
+[train] epoch=16/100 step=7744 elapsed=24.5min loss=0.00463742
+[val] epoch=17 loss=0.00454385
+[train] epoch=17/100 step=8228 elapsed=24.5min loss=0.00443159
+[val] epoch=17 loss=0.00454385
+[train] epoch=17/100 step=8228 elapsed=24.5min loss=0.00443159
+[val] epoch=18 loss=0.00406784
+[train] epoch=18/100 step=8712 elapsed=24.5min loss=0.00415648
+[val] epoch=18 loss=0.00406784
+[train] epoch=18/100 step=8712 elapsed=24.5min loss=0.00415648
+[val] epoch=19 loss=0.00425576
+[train] epoch=19/100 step=9196 elapsed=24.5min loss=0.00385261
+[val] epoch=19 loss=0.00425576
+[train] epoch=19/100 step=9196 elapsed=24.5min loss=0.00385261
+[val] epoch=20 loss=0.00350775
+[train] epoch=20/100 step=9680 elapsed=24.5min loss=0.00372407
+[val] epoch=20 loss=0.00350775
+[train] epoch=20/100 step=9680 elapsed=24.5min loss=0.00372407
+[val] epoch=21 loss=0.00358957
+[train] epoch=21/100 step=10164 elapsed=24.5min loss=0.00368002
+[val] epoch=21 loss=0.00358957
+[train] epoch=21/100 step=10164 elapsed=24.5min loss=0.00368002
+[val] epoch=22 loss=0.0033154
+[train] epoch=22/100 step=10648 elapsed=24.5min loss=0.00339929
+[val] epoch=22 loss=0.0033154
+[train] epoch=22/100 step=10648 elapsed=24.5min loss=0.00339929
+[val] epoch=23 loss=0.00341718
+[train] epoch=23/100 step=11132 elapsed=24.5min loss=0.00391037
+[val] epoch=23 loss=0.00341718
+[train] epoch=23/100 step=11132 elapsed=24.5min loss=0.00391037
+[val] epoch=24 loss=0.00484595
+[train] epoch=24/100 step=11616 elapsed=24.5min loss=0.00317243
+[val] epoch=24 loss=0.00484595
+[train] epoch=24/100 step=11616 elapsed=24.5min loss=0.00317243
+[val] epoch=25 loss=0.00293291
+[train] epoch=25/100 step=12100 elapsed=24.5min loss=0.00333858
+[val] epoch=25 loss=0.00293291
+[train] epoch=25/100 step=12100 elapsed=24.5min loss=0.00333858
+[val] epoch=26 loss=0.00278798
+[train] epoch=26/100 step=12584 elapsed=24.5min loss=0.0030807
+[val] epoch=26 loss=0.00278798
+[train] epoch=26/100 step=12584 elapsed=24.5min loss=0.0030807
+[val] epoch=27 loss=0.00279262
+[train] epoch=27/100 step=13068 elapsed=24.5min loss=0.00273852
+[val] epoch=27 loss=0.00279262
+[train] epoch=27/100 step=13068 elapsed=24.5min loss=0.00273852
+[val] epoch=28 loss=0.00344413
+[train] epoch=28/100 step=13552 elapsed=24.5min loss=0.00301366
+[val] epoch=28 loss=0.00344413
+[train] epoch=28/100 step=13552 elapsed=24.5min loss=0.00301366
+[val] epoch=29 loss=0.00259722
+[train] epoch=29/100 step=14036 elapsed=24.5min loss=0.00267795
+[val] epoch=29 loss=0.00259722
+[train] epoch=29/100 step=14036 elapsed=24.5min loss=0.00267795
+[val] epoch=30 loss=0.00254223
+[train] epoch=30/100 step=14520 elapsed=24.5min loss=0.00257279
+[val] epoch=30 loss=0.00254223
+[train] epoch=30/100 step=14520 elapsed=24.5min loss=0.00257279
+[val] epoch=31 loss=0.00234508
+[train] epoch=31/100 step=15004 elapsed=24.5min loss=0.00254047
+[val] epoch=31 loss=0.00234508
+[train] epoch=31/100 step=15004 elapsed=24.5min loss=0.00254047
+[val] epoch=32 loss=0.00254032
+[train] epoch=32/100 step=15488 elapsed=24.5min loss=0.00238817
+[val] epoch=32 loss=0.00254032
+[train] epoch=32/100 step=15488 elapsed=24.5min loss=0.00238817
+[val] epoch=33 loss=0.00280304
+[train] epoch=33/100 step=15972 elapsed=24.5min loss=0.00244656
+[val] epoch=33 loss=0.00280304
+[train] epoch=33/100 step=15972 elapsed=24.5min loss=0.00244656
+[val] epoch=34 loss=0.00238441
+[train] epoch=34/100 step=16456 elapsed=24.5min loss=0.00225351
+[val] epoch=34 loss=0.00238441
+[train] epoch=34/100 step=16456 elapsed=24.5min loss=0.00225351
+[val] epoch=35 loss=0.00210879
+[train] epoch=35/100 step=16940 elapsed=24.5min loss=0.00216195
+[val] epoch=35 loss=0.00210879
+[train] epoch=35/100 step=16940 elapsed=24.5min loss=0.00216195
+[val] epoch=36 loss=0.00204337
+[train] epoch=36/100 step=17424 elapsed=24.5min loss=0.00229627
+[val] epoch=36 loss=0.00204337
+[train] epoch=36/100 step=17424 elapsed=24.5min loss=0.00229627
+[val] epoch=37 loss=0.00202716
+[train] epoch=37/100 step=17908 elapsed=24.5min loss=0.00222035
+[val] epoch=37 loss=0.00202716
+[train] epoch=37/100 step=17908 elapsed=24.5min loss=0.00222035
+[val] epoch=38 loss=0.00213149
+[train] epoch=38/100 step=18392 elapsed=24.5min loss=0.0023957
+[val] epoch=38 loss=0.00213149
+[train] epoch=38/100 step=18392 elapsed=24.5min loss=0.0023957
+[val] epoch=39 loss=0.00213587
+[train] epoch=39/100 step=18876 elapsed=24.5min loss=0.00226244
+[val] epoch=39 loss=0.00213587
+[train] epoch=39/100 step=18876 elapsed=24.5min loss=0.00226244
+[val] epoch=40 loss=0.00204968
+[train] epoch=40/100 step=19360 elapsed=24.5min loss=0.00222117
+[val] epoch=40 loss=0.00204968
+[train] epoch=40/100 step=19360 elapsed=24.5min loss=0.00222117
+[val] epoch=41 loss=0.00188966
+[train] epoch=41/100 step=19844 elapsed=24.5min loss=0.00221839
+[val] epoch=41 loss=0.00188966
+[train] epoch=41/100 step=19844 elapsed=24.5min loss=0.00221839
+[val] epoch=42 loss=0.00196922
+[train] epoch=42/100 step=20328 elapsed=24.5min loss=0.00192511
+[val] epoch=42 loss=0.00196922
+[train] epoch=42/100 step=20328 elapsed=24.5min loss=0.00192511
+[val] epoch=43 loss=0.00197098
+[train] epoch=43/100 step=20812 elapsed=24.5min loss=0.00179758
+[val] epoch=43 loss=0.00197098
+[train] epoch=43/100 step=20812 elapsed=24.5min loss=0.00179758
+[val] epoch=44 loss=0.00177575
+[train] epoch=44/100 step=21296 elapsed=24.5min loss=0.0018675
+[val] epoch=44 loss=0.00177575
+[train] epoch=44/100 step=21296 elapsed=24.5min loss=0.0018675
+[val] epoch=45 loss=0.00188748
+[train] epoch=45/100 step=21780 elapsed=24.5min loss=0.00177097
+[val] epoch=45 loss=0.00188748
+[train] epoch=45/100 step=21780 elapsed=24.5min loss=0.00177097
+[val] epoch=46 loss=0.00167398
+[train] epoch=46/100 step=22264 elapsed=24.5min loss=0.00173297
+[val] epoch=46 loss=0.00167398
+[train] epoch=46/100 step=22264 elapsed=24.5min loss=0.00173297
+[val] epoch=47 loss=0.00179285
+[train] epoch=47/100 step=22748 elapsed=24.5min loss=0.00172979
+[val] epoch=47 loss=0.00179285
+[train] epoch=47/100 step=22748 elapsed=24.5min loss=0.00172979
+[val] epoch=48 loss=0.00163882
+[train] epoch=48/100 step=23232 elapsed=24.5min loss=0.00165075
+[val] epoch=48 loss=0.00163882
+[train] epoch=48/100 step=23232 elapsed=24.5min loss=0.00165075
+[val] epoch=49 loss=0.00195476
+[train] epoch=49/100 step=23716 elapsed=24.5min loss=0.00161652
+[val] epoch=49 loss=0.00195476
+[train] epoch=49/100 step=23716 elapsed=24.5min loss=0.00161652
+[val] epoch=50 loss=0.00197486
+[train] epoch=50/100 step=24200 elapsed=24.5min loss=0.00154087
+[val] epoch=50 loss=0.00197486
+[train] epoch=50/100 step=24200 elapsed=24.5min loss=0.00154087
+[val] epoch=51 loss=0.00171523
+[train] epoch=51/100 step=24684 elapsed=24.5min loss=0.00155227
+[val] epoch=51 loss=0.00171523
+[train] epoch=51/100 step=24684 elapsed=24.5min loss=0.00155227
+[val] epoch=52 loss=0.00168099
+[train] epoch=52/100 step=25168 elapsed=24.5min loss=0.00171287
+[val] epoch=52 loss=0.00168099
+[train] epoch=52/100 step=25168 elapsed=24.5min loss=0.00171287
+[val] epoch=53 loss=0.00141048
+[train] epoch=53/100 step=25652 elapsed=24.5min loss=0.00141819
+[val] epoch=53 loss=0.00141048
+[train] epoch=53/100 step=25652 elapsed=24.5min loss=0.00141819
+[val] epoch=54 loss=0.00145025
+[train] epoch=54/100 step=26136 elapsed=24.5min loss=0.00142857
+[val] epoch=54 loss=0.00145025
+[train] epoch=54/100 step=26136 elapsed=24.5min loss=0.00142857
+[val] epoch=55 loss=0.00140777
+[train] epoch=55/100 step=26620 elapsed=24.5min loss=0.0014744
+[val] epoch=55 loss=0.00140777
+[train] epoch=55/100 step=26620 elapsed=24.5min loss=0.0014744
+[val] epoch=56 loss=0.00140388
+[train] epoch=56/100 step=27104 elapsed=24.5min loss=0.00133479
+[val] epoch=56 loss=0.00140388
+[train] epoch=56/100 step=27104 elapsed=24.5min loss=0.00133479
+[val] epoch=57 loss=0.00187079
+[train] epoch=57/100 step=27588 elapsed=24.5min loss=0.00151283
+[val] epoch=57 loss=0.00187079
+[train] epoch=57/100 step=27588 elapsed=24.5min loss=0.00151283
+[val] epoch=58 loss=0.00138515
+[train] epoch=58/100 step=28072 elapsed=24.5min loss=0.00139768
+[val] epoch=58 loss=0.00138515
+[train] epoch=58/100 step=28072 elapsed=24.5min loss=0.00139768
+[val] epoch=59 loss=0.00163133
+[train] epoch=59/100 step=28556 elapsed=24.5min loss=0.00137692
+[val] epoch=59 loss=0.00163133
+[train] epoch=59/100 step=28556 elapsed=24.5min loss=0.00137692
+[val] epoch=60 loss=0.00145188
+[train] epoch=60/100 step=29040 elapsed=24.5min loss=0.00132486
+[val] epoch=60 loss=0.00145188
+[train] epoch=60/100 step=29040 elapsed=24.5min loss=0.00132486
+[val] epoch=61 loss=0.00137164
+[train] epoch=61/100 step=29524 elapsed=24.5min loss=0.00131332
+[val] epoch=61 loss=0.00137164
+[train] epoch=61/100 step=29524 elapsed=24.5min loss=0.00131332
+[val] epoch=62 loss=0.00136684
+[train] epoch=62/100 step=30008 elapsed=24.5min loss=0.00124025
+[val] epoch=62 loss=0.00136684
+[train] epoch=62/100 step=30008 elapsed=24.5min loss=0.00124025
+[val] epoch=63 loss=0.00147075
+[train] epoch=63/100 step=30492 elapsed=24.5min loss=0.00126801
+[val] epoch=63 loss=0.00147075
+[train] epoch=63/100 step=30492 elapsed=24.5min loss=0.00126801
+[val] epoch=64 loss=0.00153185
+[train] epoch=64/100 step=30976 elapsed=24.5min loss=0.00130035
+[val] epoch=64 loss=0.00153185
+[train] epoch=64/100 step=30976 elapsed=24.5min loss=0.00130035
+[val] epoch=65 loss=0.00122322
+[train] epoch=65/100 step=31460 elapsed=24.5min loss=0.00118911
+[val] epoch=65 loss=0.00122322
+[train] epoch=65/100 step=31460 elapsed=24.5min loss=0.00118911
+[val] epoch=66 loss=0.00136826
+[train] epoch=66/100 step=31944 elapsed=24.5min loss=0.00156537
+[val] epoch=66 loss=0.00136826
+[train] epoch=66/100 step=31944 elapsed=24.5min loss=0.00156537
+[val] epoch=67 loss=0.00135251
+[train] epoch=67/100 step=32428 elapsed=24.5min loss=0.00119453
+[val] epoch=67 loss=0.00135251
+[train] epoch=67/100 step=32428 elapsed=24.5min loss=0.00119453
+[val] epoch=68 loss=0.00111117
+[train] epoch=68/100 step=32912 elapsed=24.5min loss=0.00112901
+[val] epoch=68 loss=0.00111117
+[train] epoch=68/100 step=32912 elapsed=24.5min loss=0.00112901
+[val] epoch=69 loss=0.00686171
+[train] epoch=69/100 step=33396 elapsed=24.5min loss=0.0014679
+[val] epoch=69 loss=0.00686171
+[train] epoch=69/100 step=33396 elapsed=24.5min loss=0.0014679
+[val] epoch=70 loss=0.00111041
+[train] epoch=70/100 step=33880 elapsed=24.5min loss=0.00135918
+[val] epoch=70 loss=0.00111041
+[train] epoch=70/100 step=33880 elapsed=24.5min loss=0.00135918
+[val] epoch=71 loss=0.00193041
+[train] epoch=71/100 step=34364 elapsed=24.5min loss=0.00129174
+[val] epoch=71 loss=0.00193041
+[train] epoch=71/100 step=34364 elapsed=24.5min loss=0.00129174
+[val] epoch=72 loss=0.00135848
+[train] epoch=72/100 step=34848 elapsed=24.5min loss=0.00115191
+[val] epoch=72 loss=0.00135848
+[train] epoch=72/100 step=34848 elapsed=24.5min loss=0.00115191
+[val] epoch=73 loss=0.00111193
+[train] epoch=73/100 step=35332 elapsed=24.5min loss=0.00121113
+[val] epoch=73 loss=0.00111193
+[train] epoch=73/100 step=35332 elapsed=24.5min loss=0.00121113
+[val] epoch=74 loss=0.00103978
+[train] epoch=74/100 step=35816 elapsed=24.5min loss=0.00116421
+[val] epoch=74 loss=0.00103978
+[train] epoch=74/100 step=35816 elapsed=24.5min loss=0.00116421
+[val] epoch=75 loss=0.00104824
+[train] epoch=75/100 step=36300 elapsed=24.5min loss=0.00110875
+[val] epoch=75 loss=0.00104824
+[train] epoch=75/100 step=36300 elapsed=24.5min loss=0.00110875
+[val] epoch=76 loss=0.00113799
+[train] epoch=76/100 step=36784 elapsed=24.5min loss=0.00100959
+[val] epoch=76 loss=0.00113799
+[train] epoch=76/100 step=36784 elapsed=24.5min loss=0.00100959
+[val] epoch=77 loss=0.00119889
+[train] epoch=77/100 step=37268 elapsed=24.5min loss=0.00101582
+[val] epoch=77 loss=0.00119889
+[train] epoch=77/100 step=37268 elapsed=24.5min loss=0.00101582
+[val] epoch=78 loss=0.00107718
+[train] epoch=78/100 step=37752 elapsed=24.5min loss=0.0010444
+[val] epoch=78 loss=0.00107718
+[train] epoch=78/100 step=37752 elapsed=24.5min loss=0.0010444
+[val] epoch=79 loss=0.00105437
+[train] epoch=79/100 step=38236 elapsed=24.5min loss=0.00097128
+[val] epoch=79 loss=0.00105437
+[train] epoch=79/100 step=38236 elapsed=24.5min loss=0.00097128
+[val] epoch=80 loss=0.00128986
+[train] epoch=80/100 step=38720 elapsed=24.5min loss=0.000972519
+[val] epoch=80 loss=0.00128986
+[train] epoch=80/100 step=38720 elapsed=24.5min loss=0.000972519
+[val] epoch=81 loss=0.000997715
+[train] epoch=81/100 step=39204 elapsed=24.5min loss=0.00115246
+[val] epoch=81 loss=0.000997715
+[train] epoch=81/100 step=39204 elapsed=24.5min loss=0.00115246
+[val] epoch=82 loss=0.00108919
+[train] epoch=82/100 step=39688 elapsed=24.6min loss=0.00141795
+[val] epoch=82 loss=0.00108919
+[train] epoch=82/100 step=39688 elapsed=24.6min loss=0.00141795
+[val] epoch=83 loss=0.000958935
+[train] epoch=83/100 step=40172 elapsed=24.6min loss=0.000941656
+[val] epoch=83 loss=0.000958935
+[train] epoch=83/100 step=40172 elapsed=24.6min loss=0.000941656
+[val] epoch=84 loss=0.00096345
+[train] epoch=84/100 step=40656 elapsed=24.6min loss=0.0011755
+[val] epoch=84 loss=0.00096345
+[train] epoch=84/100 step=40656 elapsed=24.6min loss=0.0011755
+[val] epoch=85 loss=0.00110085
+[train] epoch=85/100 step=41140 elapsed=24.6min loss=0.000912344
+[val] epoch=85 loss=0.00110085
+[train] epoch=85/100 step=41140 elapsed=24.6min loss=0.000912344
+[val] epoch=86 loss=0.000994577
+[train] epoch=86/100 step=41624 elapsed=24.6min loss=0.0009192
+[val] epoch=86 loss=0.000994577
+[train] epoch=86/100 step=41624 elapsed=24.6min loss=0.0009192
+[val] epoch=87 loss=0.000959974
+[train] epoch=87/100 step=42108 elapsed=24.6min loss=0.000888362
+[val] epoch=87 loss=0.000959974
+[train] epoch=87/100 step=42108 elapsed=24.6min loss=0.000888362
+[val] epoch=88 loss=0.00087635
+[train] epoch=88/100 step=42592 elapsed=24.6min loss=0.000924079
+[val] epoch=88 loss=0.00087635
+[train] epoch=88/100 step=42592 elapsed=24.6min loss=0.000924079
+[val] epoch=89 loss=0.000932038
+[train] epoch=89/100 step=43076 elapsed=24.6min loss=0.000878089
+[val] epoch=89 loss=0.000932038
+[train] epoch=89/100 step=43076 elapsed=24.6min loss=0.000878089
+[val] epoch=90 loss=0.00121997
+[train] epoch=90/100 step=43560 elapsed=24.6min loss=0.00088612
+[val] epoch=90 loss=0.00121997
+[train] epoch=90/100 step=43560 elapsed=24.6min loss=0.00088612
+[val] epoch=91 loss=0.000936941
+[train] epoch=91/100 step=44044 elapsed=24.6min loss=0.000856477
+[val] epoch=91 loss=0.000936941
+[train] epoch=91/100 step=44044 elapsed=24.6min loss=0.000856477
+[val] epoch=92 loss=0.00106918
+[train] epoch=92/100 step=44528 elapsed=24.6min loss=0.00084589
+[val] epoch=92 loss=0.00106918
+[train] epoch=92/100 step=44528 elapsed=24.6min loss=0.00084589
+[val] epoch=93 loss=0.000890081
+[train] epoch=93/100 step=45012 elapsed=24.6min loss=0.00083448
+[val] epoch=93 loss=0.000890081
+[train] epoch=93/100 step=45012 elapsed=24.6min loss=0.00083448
+[val] epoch=94 loss=0.000933586
+[train] epoch=94/100 step=45496 elapsed=24.6min loss=0.000847761
+[val] epoch=94 loss=0.000933586
+[train] epoch=94/100 step=45496 elapsed=24.6min loss=0.000847761
+[val] epoch=95 loss=0.000775277
+[train] epoch=95/100 step=45980 elapsed=24.6min loss=0.000817443
+[val] epoch=95 loss=0.000775277
+[train] epoch=95/100 step=45980 elapsed=24.6min loss=0.000817443
+[val] epoch=96 loss=0.000833226
+[train] epoch=96/100 step=46464 elapsed=24.5min loss=0.0008305
+[val] epoch=96 loss=0.000833226
+[train] epoch=96/100 step=46464 elapsed=24.5min loss=0.0008305
+[val] epoch=97 loss=0.00100271
+[train] epoch=97/100 step=46948 elapsed=24.5min loss=0.000780562
+[val] epoch=97 loss=0.00100271
+[train] epoch=97/100 step=46948 elapsed=24.5min loss=0.000780562
+[val] epoch=98 loss=0.00103247
+[train] epoch=98/100 step=47432 elapsed=24.5min loss=0.000849825
+[val] epoch=98 loss=0.00103247
+[train] epoch=98/100 step=47432 elapsed=24.5min loss=0.000849825
+[val] epoch=99 loss=0.000845613
+[train] epoch=99/100 step=47916 elapsed=24.5min loss=0.000814731
+[val] epoch=99 loss=0.000845613
+[train] epoch=99/100 step=47916 elapsed=24.5min loss=0.000814731
+`Trainer.fit` stopped: `max_epochs=100` reached.
+Restoring states from the checkpoint path at /home/yifeiliu/working/runs_global_linear_full256/pdes_global-linear-ttt_s_256_full_100ep/checkpoints/epoch-epoch=094.ckpt
+/home/yifeiliu/venv/lib/python3.12/site-packages/lightning/fabric/utilities/cloud_io.py:73: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+/home/yifeiliu/venv/lib/python3.12/site-packages/lightning/fabric/utilities/cloud_io.py:73: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+LOCAL_RANK: 1 - CUDA_VISIBLE_DEVICES: [0,1]
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0,1]
+Loaded model weights from the checkpoint at /home/yifeiliu/working/runs_global_linear_full256/pdes_global-linear-ttt_s_256_full_100ep/checkpoints/epoch-epoch=094.ckpt
+/home/yifeiliu/venv/lib/python3.12/site-packages/lightning/pytorch/trainer/connectors/data_connector.py:217: Using `DistributedSampler` with the dataloaders. During `trainer.validate()`, it is recommended to use `Trainer(devices=1, num_nodes=1)` to ensure each sample/batch gets evaluated exactly once. Otherwise, multi-device settings use `DistributedSampler` that replicates some samples to make sure all devices have same batch size in case of uneven inputs.
+[val] epoch=100 loss=0.000891279
+[train] epoch=100/100 step=48400 elapsed=24.5min loss=0.000754219
+[val] epoch=100 loss=0.000891279
+[train] epoch=100/100 step=48400 elapsed=24.5min loss=0.000754219
+[val] epoch=101 loss=0.000775277
+last_checkpoint: /home/yifeiliu/working/runs_global_linear_full256/pdes_global-linear-ttt_s_256_full_100ep/checkpoints/last.ckpt
+best_checkpoint: /home/yifeiliu/working/runs_global_linear_full256/pdes_global-linear-ttt_s_256_full_100ep/checkpoints/epoch-epoch=094.ckpt
+best_validation: [{'val/loss_epoch': 0.000775276857893914}]
+[val] epoch=101 loss=0.000775277
+last_checkpoint: /home/yifeiliu/working/runs_global_linear_full256/pdes_global-linear-ttt_s_256_full_100ep/checkpoints/last.ckpt
+best_checkpoint: /home/yifeiliu/working/runs_global_linear_full256/pdes_global-linear-ttt_s_256_full_100ep/checkpoints/epoch-epoch=094.ckpt
+best_validation: [{'val/loss_epoch': 0.000775276857893914}]

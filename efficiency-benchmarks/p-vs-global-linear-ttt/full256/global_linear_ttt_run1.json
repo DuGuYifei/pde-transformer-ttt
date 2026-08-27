@@ -1,0 +1,23 @@
+{
+  "mixer": "global_linear_ttt",
+  "implementation_file": "/home/yifeiliu/server_19_full256_efficiency_benchmark/pdetransformer/core/mixed_channels/pde_transformer.py",
+  "device": "NVIDIA GeForce GTX 1080 Ti",
+  "torch_version": "2.5.1+cu121",
+  "precision": "fp32",
+  "sample_size": 256,
+  "batch_size": 8,
+  "warmup_steps": 10,
+  "measure_steps": 50,
+  "accumulate_grad_batches": 8,
+  "seed": 42,
+  "parameters": 33361952,
+  "parameter_memory_mib_fp32": 127.2657470703125,
+  "step_time_ms_mean": 310.15124877929685,
+  "step_time_ms_median": 309.24742126464844,
+  "step_time_ms_stdev": 2.88448608154947,
+  "step_time_ms_p95": 317.3642272949219,
+  "samples_per_second": 25.793866803653554,
+  "measured_wall_seconds": 15.510007852688432,
+  "peak_memory_allocated_mib": 9434.32861328125,
+  "peak_memory_reserved_mib": 9628.0
+}
