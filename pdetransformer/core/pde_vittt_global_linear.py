@@ -1,6 +1,22 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from timm.models.layers import trunc_normal_
+
+
+class DepthwiseCPE2D(nn.Module):
+    """Conditional positional encoding over the complete stage feature map."""
+
+    def __init__(self, dim: int):
+        super().__init__()
+        self.proj = nn.Conv2d(dim, dim, kernel_size=3, groups=dim, bias=True)
+
+    def forward(self, x: torch.Tensor, periodic: bool) -> torch.Tensor:
+        padding_mode = "circular" if periodic else "constant"
+        return self.proj(F.pad(x, (1, 1, 1, 1), mode=padding_mode))
+
+    def reset_official_parameters(self) -> None:
+        self.proj.reset_parameters()
 
 
 class GlobalLinearTTTMixer(nn.Module):

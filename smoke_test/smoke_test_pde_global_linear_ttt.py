@@ -43,17 +43,15 @@ def load_experiment_modules():
     pde = importlib.import_module(
         "pdetransformer.core.mixed_channels.pde_transformer"
     )
-    global_vittt = importlib.import_module("pdetransformer.core.pde_vittt_global")
     linear_ttt = importlib.import_module(
         "pdetransformer.core.pde_vittt_global_linear"
     )
-    return pde, global_vittt, linear_ttt
+    return pde, linear_ttt
 
 
-pde_module, global_vittt_module, linear_ttt_module = load_experiment_modules()
+pde_module, linear_ttt_module = load_experiment_modules()
 PDETransformer = pde_module.PDETransformer
-DepthwiseCPE2D = global_vittt_module.DepthwiseCPE2D
-ConvEnhancedMlp = global_vittt_module.ConvEnhancedMlp
+DepthwiseCPE2D = linear_ttt_module.DepthwiseCPE2D
 GlobalLinearTTTMixer = linear_ttt_module.GlobalLinearTTTMixer
 
 
@@ -170,12 +168,8 @@ def assert_full_model_integration():
         if isinstance(module, GlobalLinearTTTMixer)
     ]
     cpes = [module for module in model.modules() if isinstance(module, DepthwiseCPE2D)]
-    conv_mlps = [
-        module for module in model.modules() if isinstance(module, ConvEnhancedMlp)
-    ]
     assert len(mixers) == 22
     assert len(cpes) == 22
-    assert not conv_mlps
     assert len({id(module.w0) for module in mixers}) == 22
     assert len({id(module.proj.weight) for module in cpes}) == 22
     assert all(module.head_dim == 32 for module in mixers)

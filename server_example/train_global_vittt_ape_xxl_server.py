@@ -233,13 +233,11 @@ def load_config(path: Path) -> dict:
         config.setdefault(key, value)
     if config["token_mixer_type"] not in {
         "attention",
-        "global_vittt",
-        "global_h_vittt",
         "global_linear_ttt",
     }:
         raise ValueError(f"Unsupported token_mixer_type={config['token_mixer_type']!r}")
     if config["carrier_token_active"] and config["token_mixer_type"] != "attention":
-        raise ValueError("Global ViTTT configurations cannot enable carrier tokens.")
+        raise ValueError("Full-map TTT configurations cannot enable carrier tokens.")
     if config["dataset_profile"] not in DATASET_PROFILES:
         raise ValueError(
             f"Unsupported dataset_profile={config['dataset_profile']!r}; "
