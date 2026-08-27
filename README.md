@@ -16,10 +16,9 @@ The final full-map linear PDE-TTT model is maintained on
 | Mixer | YAML | Update |
 |---|---|---|
 | Window ViT3 | `pdes_vittt-cacheoff_128_60sims.yaml` | ViT3-style two-branch window mixer |
-| Full-batch TTT-Linear | `pdes_window-linear-ttt_128_60sims.yaml` | One closed-form update per window |
-| Full-batch TTT-MLP | `pdes_window-fullbatch-mlp-ttt_128_60sims.yaml` | One non-causal MLP update per window |
-| Token-sequential Linear/MLP | `pdes_window-*-token-sequential_128_60sims.yaml` | Four groups of 16 tokens inside each window |
-| Window-sequential Linear/MLP | `pdes_window-*-window-sequential_128_60sims.yaml` | One update per window, carried across windows in a sample |
+| Window Full-Batch TTT-Linear | `pdes_window-linear-ttt_128_60sims.yaml` | One closed-form update per window |
+| Window Full-Batch TTT-MLP | `pdes_window-fullbatch-mlp-ttt_128_60sims.yaml` | One non-causal MLP update per window |
+| Window Token-Sequential TTT-Linear/MLP | `pdes_window-*-token-sequential_128_60sims.yaml` | Four groups of 16 tokens inside each window |
 
 Fast weights are temporary and are reconstructed on every model call. None of
 these configurations carries fast weights across PDE rollout steps.
