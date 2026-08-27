@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import types
 from pathlib import Path
 
 import torch
@@ -8,6 +9,16 @@ import torch
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
+for package_name, package_path in {
+    "pdetransformer": REPO_ROOT / "pdetransformer",
+    "pdetransformer.core": REPO_ROOT / "pdetransformer" / "core",
+    "pdetransformer.core.mixed_channels": (
+        REPO_ROOT / "pdetransformer" / "core" / "mixed_channels"
+    ),
+}.items():
+    package = types.ModuleType(package_name)
+    package.__path__ = [str(package_path)]
+    sys.modules[package_name] = package
 
 from pdetransformer.core.mixed_channels.pde_transformer import PDEBlock  # noqa: E402
 

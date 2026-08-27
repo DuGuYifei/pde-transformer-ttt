@@ -1,127 +1,62 @@
-# PDE-Transformer: Efficient and Versatile Transformers for Physics Simulations
+# Window Attention-TTT hybrid experiment
 
-<div align="center">
+This branch contains the Attention-TTT hybrid evaluated during the PDE-TTT
+architecture screen. It extends the
+[PDE-Transformer](https://github.com/tum-pbs/pde-transformer) window block
+without replacing self-attention:
 
-<p align="center">
-<a href="https://pypi.org/project/pdetransformer/">
-  <img src="https://img.shields.io/pypi/v/pdetransformer.svg" alt="PyPI">
-</a> 
-<a href="https://tum-pbs.github.io/pde-transformer">
-  <img src="https://img.shields.io/badge/docs-latest-green" alt="docs-latest">
-</a>
-<a href="https://github.com/tum-pbs/pde-transformer/releases">
-  <img src="https://img.shields.io/github/v/release/tum-pbs/pde-transformer?include_prereleases&label=changelog" alt="Changelog">
-</a>
-<a href="https://github.com/tum-pbs/pde-transformer/blob/main/LICENSE.txt">
-  <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
-</a>
-</p>
+1. local W-MSA or SW-MSA is applied inside each 8 x 8 window;
+2. the attention output passes through a forward-order TTT-MLP;
+3. a second TTT-MLP pass uses the reversed token order;
+4. learned gates add both temporary TTT outputs before the original
+   PDE-conditioned residual and outer MLP.
 
-[Paper](https://arxiv.org/pdf/2505.24717.pdf) • 
-[Project Page](https://tum-pbs.github.io/pde-transformer/landing.html) • 
-[🤗 Hugging Face](https://huggingface.co/thuerey-group/pde-transformer) • 
-[Documentation](https://tum-pbs.github.io/pde-transformer)
-</div>
+The two TTT passes reuse the learned TTT-MLP initialization but reconstruct
+temporary fast weights on every call. No fast-weight state is carried between
+PDE rollout steps.
 
----
+The final full-map linear model is maintained on
+[`thesis/pde-ttt`](https://github.com/DuGuYifei/pde-transformer-ttt/tree/thesis/pde-ttt).
 
-**Authors:** [Benjamin Holzschuh](), [Qiang Liu](), [Georg Kohl](), [Nils Thuerey](https://ge.in.tum.de/about/n-thuerey/)
-
----
-
-## For P3D: see https://github.com/tum-pbs/P3D
-
----
-
-**PDE-Transformer** is a state-of-the-art neural architecture for physics simulations, specifically designed for partial differential equations (PDEs) on regular grids. This work will be presented at **ICML 2025**.
-
-### Key Highlights
-- **Production Ready**: Available as a pip package for easy installation and experimentation.
-- **State-of-the-Art**: Outperforms existing methods across 16 different types of PDEs and three challenging downstream tasks involving complex dynamics. 
-- **Transfer Learning**: Improved performance when adapting pre-trained models to new physics problems with limited training data.
-- **Open Source**: Full implementation with pre-trained models and comprehensive documentation.
-
-### Quick Installation
+## Installation
 
 ```bash
-# Install from PyPI
-pip install pdetransformer
-
-# Or install from source
-git clone https://github.com/tum-pbs/pde-transformer.git
-cd pde-transformer
+git clone --branch thesis/window-attention-ttt-hybrid \
+  https://github.com/DuGuYifei/pde-transformer-ttt.git
+cd pde-transformer-ttt
+python -m venv venv
+source venv/bin/activate
 pip install -e .
 ```
 
-## Model Description
+On PowerShell use `./venv/Scripts/Activate.ps1`.
 
-PDE-Transformer is designed to efficiently process and predict the evolution of physical systems described by partial differential equations (PDEs). It can handle multiple types of PDEs, different resolutions, domain extents, boundary conditions, 
-and includes deep conditioning mechanisms for PDE- and task-specific information.
+## Train
 
-Key features:
-- **Multi-scale architecture** with token down- and upsampling for efficient modeling.
-- **Shifted window attention** for improved scaling to high-resolution data.
-- **Mixed Channel (MC) and Separate Channel (SC)** representations for handling multiple physical quantities.
-- **Flexible conditioning mechanism** for PDE parameters, boundary conditions, and simulation metadata.
-- **Pre-training and fine-tuning capabilities** for transfer learning across different physics domains.
+The retained thesis configuration is
+`server_example/pdes_attention-ttt-mlp-bidir_128_60sims.yaml`.
 
-### Training Objectives
-
-The model supports both supervised and diffusion training:
-
-- **Supervised Training**: Direct MSE loss for deterministic, unique solutions. Fast training and inference. 
-- **Flow Matching**: For probabilistic modeling and uncertainty quantification.
-
-## Supported PDE Types
-
-PDE-Transformer has been trained and evaluated on 16 different types of PDEs including:
-
-- **Linear PDEs**: Diffusion
-- **Nonlinear PDEs**: Burgers, Korteweg-de-Vries, Kuramoto-Sivashinsky
-- **Reaction-Diffusion**: Fisher-KPP, Swift-Hohenberg, Gray-Scott
-- **Fluid Dynamics**: Navier-Stokes (Decaying Turbulence, Kolmogorov Flow)
-
-## Quick Start
-
-```python
-from pdetransformer.core.mixed_channels import PDETransformer
-import torch
-
-# Load pre-trained model
-model = PDETransformer.from_pretrained('thuerey-group/pde-transformer', subfolder='mc-s').cuda()
-
-# For physics simulation
-x = torch.randn((1,2,256,256), dtype=torch.float32).cuda()
-predictions = model(x)
+```bash
+python server_example/train_ttt_ape_xxl_server.py \
+  --config server_example/pdes_attention-ttt-mlp-bidir_128_60sims.yaml
 ```
 
-See the following notebook for an example of how to initialize the model from pretrained weights and use it for inference:
-<a href="https://colab.research.google.com/github/tum-pbs/pde-transformer/blob/main/notebooks/visualization_mc_ape2d.ipynb">
-  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab">
-</a>
+## Evaluate
 
-## Documentation
-
-For detailed documentation, visit [tum-pbs.github.io/pde-transformer](https://tum-pbs.github.io/pde-transformer/).
-
-## Citation
-
-If you use PDE-Transformer in your research, please cite:
-
-```bibtex
-@article{holzschuh2025pde,
-  title={PDE-Transformer: Efficient and Versatile Transformers for Physics Simulations},
-  author={Holzschuh, Benjamin and Liu, Qiang and Kohl, Georg and Thuerey, Nils},
-  booktitle={Forty-second International Conference on Machine Learning, {ICML} 2025, Vancouver, Canada, July 13-19, 2025},
-  year={2025}
-}
+```bash
+python pretrained_eval/test_pretrained_mc_server.py \
+  --config server_example/pdes_attention-ttt-mlp-bidir_128_60sims.yaml \
+  --checkpoint-path /path/to/checkpoint.ckpt \
+  --data-dir ~/working/datasets \
+  --batch-size 8 \
+  --output-dir ~/working/eval/window-attention-ttt-hybrid
 ```
 
-## License
+## Verify
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE.txt) file for details.
+```bash
+python smoke_test/smoke_test_pde_attention_ttt.py
+```
 
----
-
-**Note**: This is a research project from the Technical University of Munich (TUM) Physics-based Simulation Group. 
-For questions and support, please refer to the GitHub repository or contact the authors.
+See `LICENSE.txt` and the upstream repository for license and citation
+information.
