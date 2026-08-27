@@ -15,8 +15,6 @@ The final full-map linear PDE-TTT model is maintained on
 
 | Mixer | YAML | Update |
 |---|---|---|
-| Sequence TTT-Linear | `pdes_ttt-sequence-linear-cacheoff_128_60sims.yaml` | Four ordered groups of 16 tokens inside each window |
-| Sequence TTT-MLP | `pdes_ttt-sequence-mlp-cacheoff_128_60sims.yaml` | Four ordered groups of 16 tokens inside each window |
 | Window ViT3 | `pdes_vittt-cacheoff_128_60sims.yaml` | ViT3-style two-branch window mixer |
 | Full-batch TTT-Linear | `pdes_window-linear-ttt_128_60sims.yaml` | One closed-form update per window |
 | Full-batch TTT-MLP | `pdes_window-fullbatch-mlp-ttt_128_60sims.yaml` | One non-causal MLP update per window |

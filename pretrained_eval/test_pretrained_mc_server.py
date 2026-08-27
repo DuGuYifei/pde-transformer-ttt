@@ -8,9 +8,7 @@ one YAML config. It supports both model sources used in this project:
 * official diffusers/safetensors checkpoints loaded with
   ``PDETransformer.from_pretrained``.
 
-The output schema is compatible with the previous official evaluation scripts:
-``results_cache_off.csv/json``, optional ``results_cache_on.csv/json`` for the
-old sequence-style TTT cache, and ``summary.json``.
+The evaluator writes per-dataset CSV/JSON results and ``summary.json``.
 """
 
 from __future__ import annotations
@@ -83,25 +81,11 @@ CONFIG_DEFAULTS: dict[str, Any] = {
     "periodic": True,
     "carrier_token_active": False,
     "token_mixer_type": None,
-    "use_ttt_window_attention": False,
-    "use_ttt_state_cache_train": False,
-    "ttt_layer_type": "linear",
-    "ttt_mini_batch_size": 16,
-    "ttt_base_lr": 1.0,
-    "ttt_use_gate": False,
-    "ttt_scan_checkpoint_group_size": 0,
     "vittt_inner_lr": 1.0,
     "vittt_head_dim": 32,
     "window_ttt_update_mode": "full_batch",
     "window_ttt_chunk_size": 16,
     "vittt_padding_mode": "zero",
-    "attention_ttt_type": "ttt_sequence",
-    "attention_ttt_gate_init": 0.1,
-    "attention_ttt_bidirectional": True,
-    "global_ttt_stage_names": [],
-    "global_ttt_inner_lr": 1.0,
-    "global_ttt_gate_init": 0.0,
-    "global_ttt_key_norm": True,
     "batch_size": 8,
     "num_workers": 2,
     "seed": 42,
@@ -154,10 +138,8 @@ def _format_int(n: int) -> str:
     return f"{n:,}"
 
 
-def _resolve_token_mixer(token_mixer_type: str | None, use_ttt_window_attention: bool) -> str:
-    if token_mixer_type is not None:
-        return token_mixer_type
-    return "ttt_sequence" if use_ttt_window_attention else "attention"
+def _resolve_token_mixer(token_mixer_type: str | None) -> str:
+    return token_mixer_type if token_mixer_type is not None else "attention"
 
 
 def _expand(path: Path | None) -> Path | None:
@@ -231,34 +213,12 @@ def parse_args() -> argparse.Namespace:
         "--token-mixer-type",
         choices=(
             "attention",
-            "ttt_sequence",
             "vittt",
             "window_linear_ttt",
             "window_fullbatch_mlp_ttt",
         ),
         default=cfg.get("token_mixer_type"),
         help="Local checkpoint mixer type. Ignored for from_pretrained models.",
-    )
-    parser.add_argument(
-        "--use-ttt-window-attention",
-        action=argparse.BooleanOptionalAction,
-        default=cfg["use_ttt_window_attention"],
-        help="Legacy flag: true maps to ttt_sequence when token_mixer_type is unset.",
-    )
-    parser.add_argument(
-        "--use-ttt-state-cache-train",
-        action=argparse.BooleanOptionalAction,
-        default=cfg["use_ttt_state_cache_train"],
-        help="Recorded training cache flag; inference cache is controlled by --cache-mode.",
-    )
-    parser.add_argument("--ttt-layer-type", choices=("linear", "mlp"), default=cfg["ttt_layer_type"])
-    parser.add_argument("--ttt-mini-batch-size", type=int, default=cfg["ttt_mini_batch_size"])
-    parser.add_argument("--ttt-base-lr", type=float, default=cfg["ttt_base_lr"])
-    parser.add_argument("--ttt-use-gate", action=argparse.BooleanOptionalAction, default=cfg["ttt_use_gate"])
-    parser.add_argument(
-        "--ttt-scan-checkpoint-group-size",
-        type=int,
-        default=cfg["ttt_scan_checkpoint_group_size"],
     )
     parser.add_argument("--vittt-inner-lr", type=float, default=cfg["vittt_inner_lr"])
     parser.add_argument("--vittt-head-dim", type=int, default=cfg["vittt_head_dim"])
@@ -277,26 +237,6 @@ def parse_args() -> argparse.Namespace:
         choices=("zero", "replicate"),
         default=cfg["vittt_padding_mode"],
     )
-    parser.add_argument(
-        "--attention-ttt-type",
-        choices=("ttt_sequence", "vittt"),
-        default=cfg["attention_ttt_type"],
-        help="Post-attention TTT branch used when token_mixer_type=attention_ttt.",
-    )
-    parser.add_argument("--attention-ttt-gate-init", type=float, default=cfg["attention_ttt_gate_init"])
-    parser.add_argument(
-        "--attention-ttt-bidirectional",
-        action=argparse.BooleanOptionalAction,
-        default=cfg["attention_ttt_bidirectional"],
-    )
-    parser.add_argument("--global-ttt-inner-lr", type=float, default=cfg["global_ttt_inner_lr"])
-    parser.add_argument("--global-ttt-gate-init", type=float, default=cfg["global_ttt_gate_init"])
-    parser.add_argument(
-        "--global-ttt-key-norm",
-        action=argparse.BooleanOptionalAction,
-        default=cfg["global_ttt_key_norm"],
-    )
-
     parser.add_argument("--batch-size", type=int, default=cfg["batch_size"])
     parser.add_argument("--num-workers", type=int, default=cfg["num_workers"])
     parser.add_argument("--seed", type=int, default=cfg["seed"])
@@ -311,15 +251,6 @@ def parse_args() -> argparse.Namespace:
         help="Select the reviewed legacy_small or full_paper simulation split.",
     )
 
-    parser.add_argument(
-        "--cache-mode",
-        choices=("auto", "off", "on", "both"),
-        default="auto",
-        help=(
-            "TTT state cache mode during inference. auto means both for "
-            "ttt_sequence checkpoints, off for attention/vittt/attention_ttt/pretrained."
-        ),
-    )
     parser.add_argument("--rollout-steps", type=int, default=DEFAULT_ROLLOUT_STEPS)
     parser.add_argument("--eval-k", type=int, nargs="+", default=list(DEFAULT_EVAL_K))
     parser.add_argument(
@@ -630,11 +561,6 @@ def build_checkpoint_strategy(args: argparse.Namespace, checkpoint_path: Path) -
         vittt_head_dim=args.vittt_head_dim,
         window_ttt_update_mode=args.window_ttt_update_mode,
         window_ttt_chunk_size=args.window_ttt_chunk_size,
-        ttt_layer_type=args.ttt_layer_type,
-        ttt_mini_batch_size=args.ttt_mini_batch_size,
-        ttt_base_lr=args.ttt_base_lr,
-        ttt_use_gate=args.ttt_use_gate,
-        ttt_scan_checkpoint_group_size=args.ttt_scan_checkpoint_group_size,
         vittt_padding_mode=args.vittt_padding_mode,
     )
     strategy = SingleStepSupervised(
@@ -827,9 +753,8 @@ def evaluate_dataset(
     }
 
 
-def run_cache_mode(
+def run_evaluation(
     strategy: SingleStepSupervised,
-    cache_mode_on: bool,
     args: argparse.Namespace,
     data_dir: Path,
     device: torch.device,
@@ -837,9 +762,6 @@ def run_cache_mode(
     base_metadata: dict[str, Any],
     params: dict[str, Any],
 ) -> dict[str, Any]:
-    cache_label = "on" if cache_mode_on else "off"
-    strategy.use_ttt_state_cache_inference = cache_mode_on
-    strategy.use_ttt_state_cache_train = False
     strategy.eval()
 
     started_iso = datetime.now().isoformat(timespec="seconds")
@@ -847,7 +769,7 @@ def run_cache_mode(
 
     print()
     print("=" * 78)
-    print(f"== Official eval (cache mode: {cache_label}) ==")
+    print("== Official evaluation ==")
     print("=" * 78)
     print(f"model_source:      {base_metadata['model_source']}")
     print(f"checkpoint:        {base_metadata.get('checkpoint')}")
@@ -928,13 +850,12 @@ def run_cache_mode(
     ended_iso = datetime.now().isoformat(timespec="seconds")
 
     print("-" * 78)
-    print("[aggregate:%s] macro: %s" % (cache_label, "  ".join(f"nRMSE_{k}={macro[k]:.6g}" for k in args.eval_k)))
-    print("[aggregate:%s] micro: %s" % (cache_label, "  ".join(f"nRMSE_{k}={micro[k]:.6g}" for k in args.eval_k)))
+    print("[aggregate] macro: %s" % "  ".join(f"nRMSE_{k}={macro[k]:.6g}" for k in args.eval_k))
+    print("[aggregate] micro: %s" % "  ".join(f"nRMSE_{k}={micro[k]:.6g}" for k in args.eval_k))
     for condition, condition_result in condition_aggregate.items():
         print(
-            "[aggregate:%s:%s] macro: %s"
+            "[aggregate:%s] macro: %s"
             % (
-                cache_label,
                 condition,
                 "  ".join(
                     f"nRMSE_{k}={condition_result['macro'][k]:.6g}"
@@ -948,7 +869,6 @@ def run_cache_mode(
     metadata = dict(base_metadata)
     metadata.update(
         {
-            "cache_mode": cache_label,
             "started_at": started_iso,
             "ended_at": ended_iso,
             "elapsed_seconds": elapsed_total,
@@ -1001,8 +921,8 @@ def run_cache_mode(
         },
     }
 
-    json_path = output_dir / f"results_cache_{cache_label}.json"
-    csv_path = output_dir / f"results_cache_{cache_label}.csv"
+    json_path = output_dir / "results.json"
+    csv_path = output_dir / "results.csv"
     with json_path.open("w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
 
@@ -1063,8 +983,8 @@ def run_cache_mode(
     print(f"wrote {json_path}")
     print(f"wrote {csv_path}")
     if args.id_ood_test:
-        condition_csv_path = output_dir / f"results_conditions_cache_{cache_label}.csv"
-        trajectory_csv_path = output_dir / f"results_trajectories_cache_{cache_label}.csv"
+        condition_csv_path = output_dir / "results_conditions.csv"
+        trajectory_csv_path = output_dir / "results_trajectories.csv"
         condition_fieldnames = [
             "dataset",
             "condition",
@@ -1133,23 +1053,6 @@ def run_cache_mode(
         print(f"wrote {condition_csv_path}")
         print(f"wrote {trajectory_csv_path}")
     return payload
-
-
-def select_cache_modes(args: argparse.Namespace, resolved_token_mixer: str, is_pretrained: bool) -> list[bool]:
-    cache_capable = (not is_pretrained) and resolved_token_mixer == "ttt_sequence"
-    if args.cache_mode == "auto":
-        return [False, True] if cache_capable else [False]
-    if not cache_capable and args.cache_mode != "off":
-        print(
-            f"[note] cache mode {args.cache_mode!r} is invalid for "
-            f"{'pretrained' if is_pretrained else resolved_token_mixer}; forcing off."
-        )
-        return [False]
-    if args.cache_mode == "off":
-        return [False]
-    if args.cache_mode == "on":
-        return [True]
-    return [False, True]
 
 
 def main() -> None:
@@ -1221,8 +1124,7 @@ def main() -> None:
 
     is_pretrained = checkpoint_path is None
     resolved_token_mixer = "attention" if is_pretrained else _resolve_token_mixer(
-        args.token_mixer_type,
-        args.use_ttt_window_attention,
+        args.token_mixer_type
     )
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
@@ -1302,21 +1204,11 @@ def main() -> None:
         "carrier_token_active": args.carrier_token_active,
         "token_mixer_type": args.token_mixer_type,
         "resolved_token_mixer_type": resolved_token_mixer,
-        "use_ttt_window_attention": args.use_ttt_window_attention,
-        "use_ttt_state_cache_train": args.use_ttt_state_cache_train,
-        "ttt_layer_type": args.ttt_layer_type,
-        "ttt_mini_batch_size": args.ttt_mini_batch_size,
-        "ttt_base_lr": args.ttt_base_lr,
-        "ttt_use_gate": args.ttt_use_gate,
-        "ttt_scan_checkpoint_group_size": args.ttt_scan_checkpoint_group_size,
         "vittt_inner_lr": args.vittt_inner_lr,
         "vittt_head_dim": args.vittt_head_dim,
         "window_ttt_update_mode": args.window_ttt_update_mode,
         "window_ttt_chunk_size": args.window_ttt_chunk_size,
         "vittt_padding_mode": args.vittt_padding_mode,
-        "attention_ttt_type": args.attention_ttt_type,
-        "attention_ttt_gate_init": args.attention_ttt_gate_init,
-        "attention_ttt_bidirectional": args.attention_ttt_bidirectional,
         "downsample_factor": args.downsample_factor,
         "sample_size": args.sample_size,
         "test_unrolling_steps": args.test_unrolling_steps,
@@ -1335,37 +1227,29 @@ def main() -> None:
         "output_dir": str(output_dir),
     }
 
-    cache_modes = select_cache_modes(args, resolved_token_mixer, is_pretrained)
-    payloads: dict[str, dict[str, Any]] = {}
     overall_start = datetime.now().isoformat(timespec="seconds")
     overall_t0 = time.perf_counter()
-    for cache_mode_on in cache_modes:
-        label = "on" if cache_mode_on else "off"
-        payloads[label] = run_cache_mode(
-            strategy=strategy,
-            cache_mode_on=cache_mode_on,
-            args=args,
-            data_dir=data_dir,
-            device=device,
-            output_dir=output_dir,
-            base_metadata=base_metadata,
-            params=params,
-        )
+    payload = run_evaluation(
+        strategy=strategy,
+        args=args,
+        data_dir=data_dir,
+        device=device,
+        output_dir=output_dir,
+        base_metadata=base_metadata,
+        params=params,
+    )
     overall_elapsed = time.perf_counter() - overall_t0
     overall_end = datetime.now().isoformat(timespec="seconds")
 
     summary = {
         "metadata": {
             **base_metadata,
-            "cache_modes_run": list(payloads.keys()),
             "overall_started_at": overall_start,
             "overall_ended_at": overall_end,
             "overall_elapsed_seconds": overall_elapsed,
         },
         "params": params,
-        "aggregates_by_cache_mode": {
-            label: payload["aggregate"] for label, payload in payloads.items()
-        },
+        "aggregate": payload["aggregate"],
     }
     summary_path = output_dir / "summary.json"
     with summary_path.open("w", encoding="utf-8") as f:
